@@ -136,15 +136,15 @@ mod test {
     use super::*;
 
     #[test]
-    fn basic_iteartion() {
+    fn basic_iteration() {
         let mut G = Graph::new();
-        for i in 0..4 {
+        let n:u32 = 10;
+        for i in 0..(n/2) {
             G.add_edge(i, 5+i);
         }
 
-        for e in G.edges() {
-            println!("{:?}", e);
-        }
+        assert_eq!(G.edges().count(), (n/2) as usize);
+        assert_eq!(G.edges().count(), G.num_edges() as usize);        
     }
 
     #[test]
