@@ -57,12 +57,19 @@ impl<'a> Iterator for EdgeIterator<'a> {
         self.advance();
 
         while self.curr_it.is_some() {
-            let u = self.curr_it.as_mut().unwrap().next();
-            if u.is_none() {
+            let uu = self.curr_it.as_mut().unwrap().next();
+            if uu.is_none() {
                 self.advance();
                 continue;
             }
-            return Some((self.curr_v, *u.unwrap()))
+
+            // Tie-breaking so we only return every edge once
+            let u = *uu.unwrap();
+            if self.curr_v > u {
+                self.advance();
+                continue
+            }
+            return Some((self.curr_v, u))
         }
 
         return None

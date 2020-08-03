@@ -138,15 +138,12 @@ mod test {
     #[test]
     fn basic_iteartion() {
         let mut G = Graph::new();
-        for i in 0..10 {
-            G.add_vertex(i);
-        }
-        for i in 0..5 {
-            G.add_edge(i, 2*i);
+        for i in 0..4 {
+            G.add_edge(i, 5+i);
         }
 
         for e in G.edges() {
-            print!("{:?}", e);
+            println!("{:?}", e);
         }
     }
 
