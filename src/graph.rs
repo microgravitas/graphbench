@@ -146,22 +146,6 @@ impl Graph {
         }
     }
 
-    pub fn remove_loops(&mut self) -> usize {
-        let mut cands = Vec::new();
-        for u in self.vertices().cloned() {
-            if self.adjacent(u, u) {
-                cands.push(u)
-            }
-        }
-
-        let c = cands.len();
-        for u in cands.into_iter() {
-            self.remove_edge(u, u);
-        }
-
-        return c
-    }
-
     pub fn remove_node(&mut self, u:Vertex) -> bool {
         if !self.contains(u) {
             false
@@ -179,6 +163,35 @@ impl Graph {
         }
     }
 
+    pub fn remove_loops(&mut self) -> usize {
+        let mut cands = Vec::new();
+        for u in self.vertices().cloned() {
+            if self.adjacent(u, u) {
+                cands.push(u)
+            }
+        }
+
+        let c = cands.len();
+        for u in cands.into_iter() {
+            self.remove_edge(u, u);
+        }
+
+        return c
+    }
+
+    pub fn remove_isolates(&mut self) -> usize {
+        let cands:Vec<Vertex> = self.vertices().filter(|&u| self.degree(*u) == 0).cloned().collect();
+        let c = cands.len();
+        for u in cands.into_iter() {
+            self.remove_node(u);
+        }
+
+        return c
+    }
+
+    /*
+        Subgraphs
+    */
     pub fn subgraph<I>(&self, vertices:I) -> Graph where I: Iterator<Item=Vertex> {
         let mut G = Graph::new();
         let selected:VertexSet = vertices.collect();
