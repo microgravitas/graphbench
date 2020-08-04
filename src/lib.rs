@@ -4,3 +4,4 @@
 
 pub mod graph;
 pub mod iterators;
+pub mod parse;
