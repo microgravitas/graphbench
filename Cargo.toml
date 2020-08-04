@@ -7,3 +7,16 @@ edition = "2018"
 [dependencies]
 fnv = "1.0.7"
 flate2 = "1.0.16"
+
+[dependencies.pyo3]
+version = "0.11.1"
+features = ["extension-module"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.maturin]
+classifier = [
+  "Programming Language :: Rust",
+  "Operating System :: POSIX :: Linux",
+]

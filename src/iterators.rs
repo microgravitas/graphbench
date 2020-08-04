@@ -2,6 +2,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 
 use crate::graph::Graph;
 use crate::graph::Vertex;
+use crate::graph::Edge;
 
 pub type VertexIterator<'a> = std::collections::hash_map::Keys<'a, Vertex, FnvHashSet<Vertex>>;
 pub type NVertexIterator<'a> = std::collections::hash_set::Iter<'a, Vertex>;
@@ -36,12 +37,13 @@ pub struct EdgeIterator<'a> {
 
 impl<'a> EdgeIterator<'a> {
     pub fn new(G: &'a Graph) -> EdgeIterator {
-        EdgeIterator{N_it: G.neighbours_iter(), curr_v: 0, curr_it: None}
+        let mut res = EdgeIterator{N_it: G.neighbours_iter(), curr_v: 99999, curr_it: None};
+        res.advance();
+        res
     }
 
     fn advance(&mut self) {
-        let res = self.N_it.next();
-        if let Some((v,it)) = res {
+        if let Some((v,it)) = self.N_it.next() {
             self.curr_v = v;
             self.curr_it = Some(it);
         } else {
@@ -51,11 +53,9 @@ impl<'a> EdgeIterator<'a> {
 }
 
 impl<'a> Iterator for EdgeIterator<'a> {
-    type  Item = (Vertex, Vertex);
+    type Item = Edge;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.advance();
-
         while self.curr_it.is_some() {
             let uu = self.curr_it.as_mut().unwrap().next();
             if uu.is_none() {
@@ -66,7 +66,6 @@ impl<'a> Iterator for EdgeIterator<'a> {
             // Tie-breaking so we only return every edge once
             let u = *uu.unwrap();
             if self.curr_v > u {
-                self.advance();
                 continue
             }
             return Some((self.curr_v, u))

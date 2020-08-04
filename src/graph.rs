@@ -1,11 +1,13 @@
 use fnv::{FnvHashMap, FnvHashSet};
 
 use crate::iterators::*;
-// use iterators::EdgeIterator
 
 pub type Vertex = u32;
+pub type Edge = (Vertex, Vertex);
 pub type VertexSet = FnvHashSet<Vertex>;
 pub type VertexSetRef<'a> = FnvHashSet<&'a Vertex>;
+pub type EdgeSet = FnvHashSet<Edge>;
+
 
 #[derive(Debug)]
 pub struct Graph {
@@ -290,7 +292,7 @@ impl Graph {
 mod test {
     use super::*;
 
-    #[test]
+    // #[test]
     fn components() {
         let mut G = Graph::new();
         let n:u32 = 10;
@@ -347,15 +349,48 @@ mod test {
     }
 
     #[test]
-    fn basic_iteration() {
+    fn N_iteration() {
         let mut G = Graph::new();
-        let n:u32 = 10;
-        for i in 0..(n/2) {
-            G.add_edge(i, 5+i);
+        G.add_edge(0, 1);
+        G.add_edge(0, 2);
+        G.add_edge(0, 3);
+        G.add_edge(0, 4);
+        G.add_edge(0, 5);
+
+        for (v,N) in G.neighbours_iter() {
+            if v == 0 {
+                assert_eq!(N.cloned().collect::<VertexSet>(), [1,2,3,4,5].iter().cloned().collect());
+            } else {
+                assert_eq!(N.cloned().collect::<VertexSet>(), [0].iter().cloned().collect());
+            }
+        }
+    }
+
+    #[test]
+    fn edge_iteration() {
+        // {
+        //     let mut G = Graph::new();
+        //     let n:u32 = 10;
+        //     for i in 0..(n/2) {
+        //         G.add_edge(i, 5+i);
+        //     }
+        //
+        //     assert_eq!(G.edges().count(), (n/2) as usize);
+        //     assert_eq!(G.edges().count(), G.num_edges() as usize);
+        // }
+
+        let mut G = Graph::new();
+        G.add_edge(0, 1);
+        G.add_edge(0, 2);
+        G.add_edge(0, 3);
+        G.add_edge(0, 4);
+        G.add_edge(0, 5);
+
+        for e in G.edges() {
+            println!("{:?}", e);
         }
 
-        assert_eq!(G.edges().count(), (n/2) as usize);
-        assert_eq!(G.edges().count(), G.num_edges() as usize);
+        assert_eq!(G.edges().count(), 5);
     }
 
     #[test]
