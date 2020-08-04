@@ -13,6 +13,22 @@ pub struct Graph {
     _m: u64
 }
 
+impl PartialEq for Graph {
+    fn eq(&self, other: &Self) -> bool {
+        if self.num_vertices() != other.num_vertices() {
+            return false
+        }
+        if self.num_edges() != other.num_edges() {
+            return false
+        }
+        if self.degs != other.degs {
+            return false
+        }
+        return self.adj == other.adj;
+    }
+}
+impl Eq for Graph {}
+
 impl Graph {
     pub fn new() -> Graph {
         Graph{adj: FnvHashMap::default(),
@@ -158,6 +174,7 @@ impl Graph {
             }
 
             self.adj.remove(&u);
+            self.degs.remove(&u);
 
             true
         }
@@ -190,8 +207,21 @@ impl Graph {
     }
 
     /*
-        Subgraphs
+        Subgraphs and components
     */
+    pub fn copy(&self) -> Graph {
+        let mut G = Graph::new();
+        for v in self.vertices() {
+            G.add_vertex(*v);
+            for u in self.neighbours(*v) {
+                G.add_edge(*u, *v);
+            }
+        }
+
+        return G
+    }
+
+
     pub fn subgraph<I>(&self, vertices:I) -> Graph where I: Iterator<Item=Vertex> {
         let mut G = Graph::new();
         let selected:VertexSet = vertices.collect();
@@ -243,11 +273,52 @@ mod test {
             G.add_edge(i, 5+i);
         }
 
-        // assert_eq!(G.components().len(), G.edges().count());
+        assert_eq!(G.components().len(), G.edges().count());
 
         for comp in G.components() {
             println!("{:?}", comp);
         }
+    }
+
+    #[test]
+    fn equality() {
+        let mut G = Graph::new();
+        G.add_edge(0, 1);
+        G.add_edge(1, 2);
+        G.add_edge(2, 3);
+        G.add_edge(3, 0);
+
+        let mut H = G.subgraph([0,1,2,3].iter().cloned());
+        assert_eq!(G, H);
+        H.add_edge(0, 2);
+        assert_ne!(G, H);
+        H.remove_edge(0, 2);
+        assert_eq!(G, H);
+    }
+
+    #[test]
+    fn isolates_and_loops() {
+        let mut G = Graph::new();
+        G.add_edge(0, 1);
+        G.add_edge(0, 0);
+        G.add_edge(2, 2);
+
+        assert_eq!(G.num_vertices(), 3);
+        assert_eq!(G.num_edges(), 3);
+
+        G.remove_loops();
+
+        assert_eq!(G.num_vertices(), 3);
+        assert_eq!(G.num_edges(), 1);
+
+        G.remove_isolates();
+        assert_eq!(G.num_vertices(), 2);
+        assert_eq!(G.num_edges(), 1);
+
+        G.remove_edge(0, 1);
+        G.remove_isolates();
+
+        assert_eq!(G, Graph::new());
     }
 
     #[test]
