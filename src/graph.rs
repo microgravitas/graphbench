@@ -5,6 +5,7 @@ use crate::iterators::*;
 
 pub type Vertex = u32;
 pub type VertexSet = FnvHashSet<Vertex>;
+pub type VertexSetRef<'a> = FnvHashSet<&'a Vertex>;
 
 #[derive(Debug)]
 pub struct Graph {
@@ -87,9 +88,9 @@ impl Graph {
         }
     }
 
-    pub fn neighbourhood<I>(&self, it:I) -> VertexSet where I: Iterator<Item=Vertex>  {
+    pub fn neighbourhood<'a, I>(&self, it:I) -> VertexSet where I: Iterator<Item=&'a Vertex> {
         let mut res = FnvHashSet::default();
-        let centers:VertexSet = it.collect();
+        let centers:VertexSet = it.cloned().collect();
 
         for &v in &centers {
             res.extend(self.neighbours(v));
@@ -99,33 +100,31 @@ impl Graph {
         return res
     }
 
-    pub fn closed_neighbourhood<I>(&self, it:I) -> VertexSet where I: Iterator<Item=Vertex>  {
+    pub fn closed_neighbourhood<'a, I>(&self, it:I) -> VertexSet where I: Iterator<Item=&'a Vertex> {
         let mut res = FnvHashSet::default();
-        let centers:VertexSet = it.collect();
-
-        for &v in &centers {
+        for &v in it {
             res.extend(self.neighbours(v));
         }
 
         return res
     }
 
-    pub fn r_neighbours<I>(&self, u:Vertex, r:u32) -> VertexSet where I: Iterator<Item=Vertex>  {
-        return self.r_neighbourhood([u].iter().cloned(), r)
+    pub fn r_neighbours<'a,I>(&self, u:Vertex, r:u32) -> VertexSet where I: Iterator<Item=&'a Vertex> {
+        return self.r_neighbourhood([u].iter(), r)
     }
 
-    pub fn r_neighbourhood<I>(&self, it:I, r:u32) -> VertexSet where I: Iterator<Item=Vertex>  {
+    pub fn r_neighbourhood<'a,I>(&self, it:I, r:u32) -> VertexSet where I: Iterator<Item=&'a Vertex> {
         let mut res:VertexSet = FnvHashSet::default();
         res.extend(it);
         for _ in 0..r {
-            let ext = self.closed_neighbourhood(res.iter().cloned());
+            let ext = self.closed_neighbourhood(res.iter());
             res.extend(ext);
         }
         return res
     }
 
     /*
-        Modification
+        Basic operations
     */
     pub fn add_vertex(&mut self, u:Vertex) {
         if !self.adj.contains_key(&u) {
@@ -162,7 +161,7 @@ impl Graph {
         }
     }
 
-    pub fn remove_node(&mut self, u:Vertex) -> bool {
+    pub fn remove_vertex(&mut self, u:Vertex) -> bool {
         if !self.contains(u) {
             false
         } else {
@@ -200,10 +199,35 @@ impl Graph {
         let cands:Vec<Vertex> = self.vertices().filter(|&u| self.degree(*u) == 0).cloned().collect();
         let c = cands.len();
         for u in cands.into_iter() {
-            self.remove_node(u);
+            self.remove_vertex(u);
         }
 
         return c
+    }
+
+    /*
+        Advanced operations
+    */
+    pub fn contract<'a, I>(&mut self, mut vertices:I) -> Vertex where I: Iterator<Item=&'a Vertex> {
+        let u = vertices.next().unwrap();
+        self.contract_into(*u, vertices);
+        return *u;
+    }
+
+    pub fn contract_into<'a, I>(&mut self, center:Vertex, vertices:I) where I: Iterator<Item=&'a Vertex> {
+        let mut contract:VertexSet = vertices.cloned().collect();
+        contract.remove(&center);
+
+        let mut N = self.neighbourhood(contract.iter());
+        N.remove(&center);
+
+        for u in N {
+            self.add_edge(center, u);
+        }
+
+        for v in contract {
+            self.remove_vertex(v);
+        }
     }
 
     /*
@@ -222,9 +246,9 @@ impl Graph {
     }
 
 
-    pub fn subgraph<I>(&self, vertices:I) -> Graph where I: Iterator<Item=Vertex> {
+    pub fn subgraph<'a, I>(&self, vertices:I) -> Graph where I: Iterator<Item=&'a Vertex> {
         let mut G = Graph::new();
-        let selected:VertexSet = vertices.collect();
+        let selected:VertexSet = vertices.cloned().collect();
         for &v in &selected {
             G.add_vertex(v);
             let Nv:VertexSet = self.neighbours(v).cloned().collect();
@@ -246,7 +270,7 @@ impl Graph {
             comp.insert(u);
 
             loop {
-                let ext = self.neighbourhood(comp.iter().cloned());
+                let ext = self.neighbourhood(comp.iter());
                 if ext.is_empty() {
                     break;
                 }
@@ -258,6 +282,7 @@ impl Graph {
         }
         comps
     }
+
 
 }
 
@@ -288,7 +313,7 @@ mod test {
         G.add_edge(2, 3);
         G.add_edge(3, 0);
 
-        let mut H = G.subgraph([0,1,2,3].iter().cloned());
+        let mut H = G.subgraph([0,1,2,3].iter());
         assert_eq!(G, H);
         H.add_edge(0, 2);
         assert_ne!(G, H);
@@ -359,18 +384,51 @@ mod test {
         assert_eq!(G.degree(0), 2);
         assert_eq!(G.num_edges(), 3);
 
-        G.remove_node(2);
+        G.remove_vertex(2);
         assert_eq!(G.degree(0), 1);
         assert_eq!(G.num_vertices(), 2);
         assert_eq!(G.num_edges(), 1);
 
-        G.remove_node(1);
+        G.remove_vertex(1);
         assert_eq!(G.degree(0), 0);
         assert_eq!(G.num_vertices(), 1);
         assert_eq!(G.num_edges(), 0);
 
-        G.remove_node(0);
+        G.remove_vertex(0);
         assert_eq!(G.num_vertices(), 0);
         assert_eq!(G.num_edges(), 0);
+    }
+
+    #[test]
+    fn contract() {
+        let mut G = Graph::new();
+        G.add_edge(0, 1);
+        G.add_edge(1, 2);
+        G.add_edge(2, 0);
+        G.add_edge(0, 3);
+        G.add_edge(1, 4);
+        G.add_edge(2, 5);
+
+        {
+            let mut H = G.copy();
+            H.contract_into(0, [0, 1, 2].iter());
+            assert_eq!(H.num_vertices(), 4);
+            assert_eq!(H.vertices().collect::<VertexSetRef>(),
+                        [0,3,4,5].iter().collect());
+
+            let mut HH = G.copy();
+            HH.contract([0, 1, 2].iter()); // Contracts into first vertex of collection
+            assert_eq!(H, HH);
+        }
+
+        {
+            let mut H = G.copy();
+            H.contract_into(0, [0, 1].iter());
+            assert_eq!(H.num_vertices(), 5);
+            assert_eq!(H.neighbours(0).collect::<VertexSetRef>(),
+                        [2,3,4].iter().collect());
+            assert_eq!(H.vertices().collect::<VertexSetRef>(),
+                        [0,2,3,4,5].iter().collect());
+        }
     }
 }
