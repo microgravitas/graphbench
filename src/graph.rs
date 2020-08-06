@@ -4,16 +4,16 @@ use crate::iterators::*;
 
 pub type Vertex = u32;
 pub type Edge = (Vertex, Vertex);
+pub type Arc = (Vertex, Vertex);
 pub type VertexSet = FnvHashSet<Vertex>;
 pub type VertexSetRef<'a> = FnvHashSet<&'a Vertex>;
 pub type EdgeSet = FnvHashSet<Edge>;
-
 
 #[derive(Debug)]
 pub struct Graph {
     adj: FnvHashMap<Vertex, VertexSet>,
     degs: FnvHashMap<Vertex, u32>,
-    _m: u64
+    m: u64
 }
 
 impl PartialEq for Graph {
@@ -36,7 +36,7 @@ impl Graph {
     pub fn new() -> Graph {
         Graph{adj: FnvHashMap::default(),
               degs: FnvHashMap::default(),
-              _m: 0}
+              m: 0}
     }
 
     /*
@@ -47,7 +47,7 @@ impl Graph {
     }
 
     pub fn num_edges(&self) -> u64 {
-        self._m
+        self.m
     }
 
     pub fn adjacent(&self, u:Vertex, v:Vertex) -> bool {
@@ -111,7 +111,7 @@ impl Graph {
         return res
     }
 
-    pub fn r_neighbours<'a,I>(&self, u:Vertex, r:u32) -> VertexSet where I: Iterator<Item=&'a Vertex> {
+    pub fn r_neighbours(&self, u:Vertex, r:u32) -> VertexSet {
         return self.r_neighbourhood([u].iter(), r)
     }
 
@@ -143,7 +143,7 @@ impl Graph {
             self.adj.get_mut(&v).unwrap().insert(u);
             self.degs.insert(u, self.degs[&u] + 1);
             self.degs.insert(v, self.degs[&v] + 1);
-            self._m += 1;
+            self.m += 1;
             true
         } else {
             false
@@ -156,7 +156,7 @@ impl Graph {
             self.adj.get_mut(&v).unwrap().remove(&u);
             self.degs.insert(u, self.degs[&u] - 1);
             self.degs.insert(v, self.degs[&v] - 1);
-            self._m -= 1;
+            self.m -= 1;
             true
         } else {
             false
@@ -171,7 +171,7 @@ impl Graph {
             for &v in &N {
                 self.adj.get_mut(&v).unwrap().remove(&u);
                 self.degs.insert(v, self.degs[&v] - 1);
-                self._m -= 1;
+                self.m -= 1;
             }
 
             self.adj.remove(&u);

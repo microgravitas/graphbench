@@ -8,8 +8,11 @@ use pyo3::wrap_pyfunction;
 use std::iter::Map;
 
 pub mod graph;
+pub mod dtfgraph;
+
 pub mod iterators;
 pub mod parse;
+
 pub mod pygraph;
 
 #[cfg(not(test))] // pyclass and pymethods break `cargo test`

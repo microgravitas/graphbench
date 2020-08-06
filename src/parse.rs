@@ -7,12 +7,12 @@ use std::fs::File;
 use flate2::read::GzDecoder;
 
 impl Graph {
-    pub fn from_txt(filename: &str) -> io::Result<Graph> {
+    pub fn from_txt(filename:&str) -> io::Result<Graph> {
         let file = File::open(filename)?;
         Graph::parse(&mut io::BufReader::new(file))
     }
 
-    pub fn from_gzipped(filename: &str) -> io::Result<Graph> {
+    pub fn from_gzipped(filename:&str) -> io::Result<Graph> {
         let file = File::open(filename)?;
         let gz = GzDecoder::new(file);
 
