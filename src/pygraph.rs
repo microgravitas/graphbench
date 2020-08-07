@@ -65,7 +65,7 @@ impl PyGraph {
         Ok(self.G.num_vertices())
     }
 
-    pub fn num_edges(&self) -> PyResult<u64> {
+    pub fn num_edges(&self) -> PyResult<usize> {
         Ok(self.G.num_edges())
     }
 

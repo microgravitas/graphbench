@@ -15,7 +15,8 @@ pub type DTFVertexIterator<'a> = std::collections::hash_map::Keys<'a, Vertex, DT
 
 pub struct DTFGraph {
     nodes: FnvHashMap<Vertex, DTFNode>,
-    depth: usize
+    depth: usize,
+    m: u64
 }
 
 pub struct DTFNode {
@@ -72,11 +73,31 @@ impl DTFNode {
     pub fn in_neighbours_at(&self, depth:usize) -> InArcIterator {
         self.in_arcs.get(depth-1).unwrap().iter()
     }
+
+    pub fn in_degree(&self) -> u32 {
+        self.in_degs.iter().sum1().unwrap()
+    }
+
+    pub fn out_degree(&self) -> u32 {
+        self.out_degs.iter().sum1().unwrap()
+    }
+
+    pub fn degree(&self) -> u32 {
+        self.out_degree()+self.in_degree()
+    }
 }
 
 impl DTFGraph {
     pub fn new() -> DTFGraph {
-        DTFGraph { nodes: FnvHashMap::default(), depth: 1 }
+        DTFGraph { nodes: FnvHashMap::default(), depth: 1, m: 0 }
+    }
+
+    pub fn num_vertices(&self) -> usize {
+        self.nodes.len()
+    }
+
+    pub fn num_arcs(&self) -> usize {
+        self.m as usize
     }
 
     pub fn vertices(&self) -> DTFVertexIterator {
@@ -191,6 +212,7 @@ impl DTFGraph {
         if inserted {
             let nodeU = self.nodes.entry(u).or_insert_with(||  DTFNode::new(d));
             nodeU.out_degs[w-1] += 1;
+            self.m += 1
         }
     }
 
@@ -214,8 +236,20 @@ impl DTFGraph {
         DTFArcIterator::new(self, depth)
     }
 
-    pub fn in_neighbours_iter(&self, depth:usize) -> DTFNIterator {
+    pub fn in_neighbourhoods_iter(&self, depth:usize) -> DTFNIterator {
         DTFNIterator::new(self, depth)
+    }
+
+    pub fn in_degree(&self, u:Vertex) -> u32 {
+        self.nodes.get(&u).unwrap().in_degree()
+    }
+
+    pub fn out_degree(&self, u:Vertex) -> u32 {
+        self.nodes.get(&u).unwrap().out_degree()
+    }
+
+    pub fn degree(&self, u:Vertex) -> u32 {
+        self.nodes.get(&u).unwrap().degree()
     }
 
     pub fn in_neighbours(&self, u:Vertex) -> VertexSet {
@@ -263,20 +297,6 @@ impl DTFGraph {
         }
         Some(dist)
     }
-
-    // def distance(self,u,v):
-    //     distance = float('inf')
-    //     Nu = {}
-    //     for x,d in self.in_neighbours(u):
-    //         Nu[x] = d
-    //         if x == v:
-    //             distance = d
-    //     for x,d in self.in_neighbours(v):
-    //         if x == u:
-    //             distance = min(distance,d)
-    //         elif x in Nu:
-    //             distance = min(distance,d+Nu[x])
-    //     return distance
 
     pub fn augment(&mut self, depth:usize) {
         while self.depth < depth {
@@ -373,13 +393,110 @@ impl DTFGraph {
         }
         res
     }
+
+    fn domset(&mut self, radius:u32) -> VertexSet {
+        self.augment(radius as usize);
+
+        let mut domset = VertexSet::default();
+        let mut dom_distance = FnvHashMap::<Vertex, u32>::default();
+        let mut dom_counter = FnvHashMap::<Vertex, u32>::default();
+
+        let cutoff = (2*radius).pow(2);
+        let n = self.num_vertices() as i64;
+
+        // Sort by _decreasing_ in-degree, tie-break by
+        // total degree.
+        let order:Vec<Vertex> = self.vertices()
+                .cloned()
+                .sorted_by_key(|u| -(self.in_degree(*u) as i64)*n - (self.degree(*u) as i64))
+                .collect();
+        let undominated = radius+1;
+
+        for v in order.iter() {
+            dom_distance.insert(*v, undominated);
+            dom_counter.insert(*v, 0);
+        }
+
+        for v in order {
+            // Update domination distance of v via its in-neighbours
+            for r in 1..(radius+1) {
+                for u in self.in_neighbours_at(v, r as usize) {
+                    *dom_distance.get_mut(&v).unwrap() = min(dom_distance[&v],  r+dom_distance[u]);
+                }
+            }
+
+            // If v is a already dominated we have nothing else to do
+            if dom_distance[&v] <= radius {
+                continue
+            }
+
+            // Otherwise, we add v to the dominating set
+            domset.insert(v);
+            dom_distance.insert(v, 0);
+
+            // Update dominationg distance for v's in-neighbours
+            for r in 1..(radius+1) {
+                for u in self.in_neighbours_at(v, r as usize) {
+                    *dom_counter.get_mut(u).unwrap() += 1;
+                    *dom_distance.get_mut(u).unwrap() = min(dom_distance[u], r);
+
+                    // If a vertex has been an in-neigbhour of a domination node for
+                    // too many time, we include it in the domset.
+                    if dom_counter[&u] > cutoff && !domset.contains(&u) {
+                        domset.insert(*u);
+                        dom_distance.insert(*u, 0);
+
+                        for rx in 1..(radius+1) {
+                            for x in self.in_neighbours_at(*u,  rx as usize) {
+                                *dom_distance.get_mut(&x).unwrap() += min(dom_distance[&x],  rx);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        domset
+    }
+
+    //     for v in order:
+    //         # look at the in neighbors to update the distance
+    //         for r in range(1, radius + 1):
+    //             for u in graph.in_neighbours_weight(v, r):
+    //                 domdistance[v] = min(domdistance[v], r+domdistance[u])
+    //
+    //         # if v is already dominated at radius, no need to work
+    //         if domdistance[v] <= radius:
+    //             continue
+    //
+    //         # if v is not dominated at radius, put v in the dominating set
+    //         domset.add(v)
+    //         domdistance[v] = 0
+    //
+    //         # update distances of neighbors of v if v is closer if u has had too
+    //         # many of its neighbors taken into the domset, include it too.
+    //         for r in range(1, radius + 1):
+    //             for u in graph.in_neighbours_weight(v, r):
+    //                 domcounter[u] += 1
+    //                 domdistance[u] = min(domdistance[u], r)
+    //                 if domcounter[u] > c and u not in domset:
+    //                     # add u to domset
+    //                     domset.add(u)
+    //                     domdistance[u] = 0
+    //                     for x, rx in graph.in_neighbours(u):
+    //                         domdistance[x] = min(domdistance[x], rx)
+    //                 # only need to update domdistance if u didn't get added
+    //
+    //     return domset
+
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::parse;
 
-    #[test]
+    // #[test]
     fn iteration() {
         let mut H = DTFGraph::new();
         H.add_arc(1, 0, 1);
@@ -391,6 +508,19 @@ mod test {
     }
 
     #[test]
+    fn domset() {
+        let G = Graph::from_txt("resources/karate.txt").unwrap();
+
+        let mut H = DTFGraph::orient(&G);
+
+        for r in 1..5 {
+            let D = H.domset(r);
+            println!("Found Karate {}-domset of size {}", r, D.len());
+            assert_eq!(G.r_neighbourhood(D.iter(), r).len(), G.num_vertices());
+        }
+    }
+
+    // #[test]
     fn distance() {
         let mut G = Graph::new();
         G.add_edge(0, 1);
@@ -413,6 +543,6 @@ mod test {
         assert_eq!(H.small_distance(0,3), Some(3));
         assert_eq!(H.small_distance(1,4), Some(3));
 
-        assert_eq!(H.small_distance(0,4), Some(4));        
+        assert_eq!(H.small_distance(0,4), Some(4));
     }
 }

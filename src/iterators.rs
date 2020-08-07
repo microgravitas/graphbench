@@ -136,7 +136,7 @@ pub struct DTFArcIterator<'a> {
 impl<'a> DTFArcIterator<'a> {
     pub fn new(G: &'a DTFGraph, depth:usize) -> DTFArcIterator {
         let mut res = DTFArcIterator {
-            N_it: G.in_neighbours_iter(depth),
+            N_it: G.in_neighbourhoods_iter(depth),
             curr_v: std::u32::MAX,
             curr_it: None,
         };

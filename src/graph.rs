@@ -46,8 +46,8 @@ impl Graph {
         self.adj.len()
     }
 
-    pub fn num_edges(&self) -> u64 {
-        self.m
+    pub fn num_edges(&self) -> usize {
+        self.m as usize
     }
 
     pub fn adjacent(&self, u:Vertex, v:Vertex) -> bool {
