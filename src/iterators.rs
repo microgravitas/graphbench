@@ -1,8 +1,8 @@
 use fnv::{FnvHashMap, FnvHashSet};
 
-use crate::graph::{Vertex, Edge, Arc};
-use crate::graph::Graph;
-use crate::graph::VertexSet;
+use crate::editgraph::{Vertex, Edge, Arc};
+use crate::editgraph::EditGraph;
+use crate::editgraph::VertexSet;
 
 use crate::dtfgraph::DTFGraph;
 use crate::dtfgraph::DTFVertexIterator;
@@ -16,12 +16,12 @@ pub type NVertexIterator<'a> = std::collections::hash_set::Iter<'a, Vertex>;
     the iterator returns a pair (v,N(v)).
 */
 pub struct NIterator<'a> {
-    G: &'a Graph,
+    G: &'a EditGraph,
     v_it: VertexIterator<'a>,
 }
 
 impl<'a> NIterator<'a> {
-    pub fn new(G: &'a Graph) -> NIterator<'a> {
+    pub fn new(G: &'a EditGraph) -> NIterator<'a> {
         NIterator {
             G,
             v_it: G.vertices(),
@@ -50,7 +50,7 @@ pub struct EdgeIterator<'a> {
 }
 
 impl<'a> EdgeIterator<'a> {
-    pub fn new(G: &'a Graph) -> EdgeIterator {
+    pub fn new(G: &'a EditGraph) -> EdgeIterator {
         let mut res = EdgeIterator {
             N_it: G.neighbours_iter(),
             curr_v: std::u32::MAX,

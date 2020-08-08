@@ -9,7 +9,7 @@ use pyo3::exceptions;
 
 use std::collections::HashSet;
 
-use crate::graph::*;
+use crate::editgraph::*;
 
 use std::cell::{Cell, RefCell};
 
@@ -31,7 +31,7 @@ impl PyObjectProtocol for PyGraph {
     }
 
     fn __repr__(&self) -> PyResult<String> {
-        Ok(format!("Graph (n={},m={})]", self.G.num_vertices(), self.G.num_edges() ))
+        Ok(format!("EditGraph (n={},m={})]", self.G.num_vertices(), self.G.num_edges() ))
     }
 }
 
@@ -43,18 +43,18 @@ impl PyObjectProtocol for PyGraph {
 impl PyGraph {
     #[new]
     pub fn new() -> PyGraph {
-        PyGraph{G: Graph::new()}
+        PyGraph{G: EditGraph::new()}
     }
 
     #[staticmethod]
     pub fn from_file(filename:&str) -> PyResult<PyGraph> {
         if &filename[filename.len()-3..] == ".gz" {
-            match Graph::from_gzipped(filename) {
+            match EditGraph::from_gzipped(filename) {
                 Ok(G) => Ok(PyGraph{G}),
                 Err(_) => Err(PyErr::new::<exceptions::IOError, _>("IO-Error"))
             }
         } else {
-            match Graph::from_txt(filename) {
+            match EditGraph::from_txt(filename) {
                 Ok(G) => Ok(PyGraph{G}),
                 Err(_) => Err(PyErr::new::<exceptions::IOError, _>("IO-Error"))
             }
@@ -150,7 +150,7 @@ impl PyGraph {
         Subgraphs and components
     */
     pub fn copy(&self) -> PyResult<PyGraph> {
-        Ok(PyGraph{G: self.G.copy()})
+        Ok(PyGraph{G: self.G.clone()})
     }
 
     pub fn subgraph(&self, vertices:HashSet<u32>) -> PyResult<PyGraph> {
@@ -163,7 +163,7 @@ impl PyGraph {
 }
 
 #[cfg(not(test))] // pyclass and pymethods break `cargo test`
-#[pyclass(name=Graph)]
+#[pyclass(name=EditGraph)]
 pub struct PyGraph {
-    G: Graph
+    G: EditGraph
 }

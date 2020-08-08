@@ -8,6 +8,7 @@ use pyo3::wrap_pyfunction;
 use std::iter::Map;
 
 pub mod graph;
+pub mod editgraph;
 pub mod dtfgraph;
 
 pub mod iterators;

@@ -3,7 +3,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 use itertools::Itertools;
 
 
-use crate::graph::{Graph, Vertex, VertexSet, Arc, EdgeSet};
+use crate::editgraph::{EditGraph, Vertex, VertexSet, Arc, EdgeSet};
 use crate::iterators::VertexIterator;
 use crate::iterators::DTFArcIterator;
 use crate::iterators::DTFNIterator;
@@ -104,7 +104,7 @@ impl DTFGraph {
         self.nodes.keys()
     }
 
-    pub fn orient(G: &Graph) -> DTFGraph {
+    pub fn orient(G: &EditGraph) -> DTFGraph {
         let mut H = DTFGraph::new();
 
         /*
@@ -300,7 +300,7 @@ impl DTFGraph {
 
     pub fn augment(&mut self, depth:usize) {
         while self.depth < depth {
-            let mut fGraph = Graph::new();
+            let mut fGraph = EditGraph::new();
             let mut tArcs = FnvHashSet::<Arc>::default();
 
             // This updates self.depth!
@@ -458,37 +458,6 @@ impl DTFGraph {
 
         domset
     }
-
-    //     for v in order:
-    //         # look at the in neighbors to update the distance
-    //         for r in range(1, radius + 1):
-    //             for u in graph.in_neighbours_weight(v, r):
-    //                 domdistance[v] = min(domdistance[v], r+domdistance[u])
-    //
-    //         # if v is already dominated at radius, no need to work
-    //         if domdistance[v] <= radius:
-    //             continue
-    //
-    //         # if v is not dominated at radius, put v in the dominating set
-    //         domset.add(v)
-    //         domdistance[v] = 0
-    //
-    //         # update distances of neighbors of v if v is closer if u has had too
-    //         # many of its neighbors taken into the domset, include it too.
-    //         for r in range(1, radius + 1):
-    //             for u in graph.in_neighbours_weight(v, r):
-    //                 domcounter[u] += 1
-    //                 domdistance[u] = min(domdistance[u], r)
-    //                 if domcounter[u] > c and u not in domset:
-    //                     # add u to domset
-    //                     domset.add(u)
-    //                     domdistance[u] = 0
-    //                     for x, rx in graph.in_neighbours(u):
-    //                         domdistance[x] = min(domdistance[x], rx)
-    //                 # only need to update domdistance if u didn't get added
-    //
-    //     return domset
-
 }
 
 #[cfg(test)]
@@ -509,7 +478,7 @@ mod test {
 
     #[test]
     fn domset() {
-        let G = Graph::from_txt("resources/karate.txt").unwrap();
+        let G = EditGraph::from_txt("resources/karate.txt").unwrap();
 
         let mut H = DTFGraph::orient(&G);
 
@@ -522,7 +491,7 @@ mod test {
 
     // #[test]
     fn distance() {
-        let mut G = Graph::new();
+        let mut G = EditGraph::new();
         G.add_edge(0, 1);
         G.add_edge(1, 2);
         G.add_edge(2, 3);

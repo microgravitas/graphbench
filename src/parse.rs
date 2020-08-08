@@ -1,26 +1,26 @@
-use crate::graph::Graph;
-use crate::graph::Vertex;
+use crate::editgraph::EditGraph;
+use crate::editgraph::Vertex;
 
 use std::io;
 use std::io::BufRead;
 use std::fs::File;
 use flate2::read::GzDecoder;
 
-impl Graph {
-    pub fn from_txt(filename:&str) -> io::Result<Graph> {
+impl EditGraph {
+    pub fn from_txt(filename:&str) -> io::Result<EditGraph> {
         let file = File::open(filename)?;
-        Graph::parse(&mut io::BufReader::new(file))
+        EditGraph::parse(&mut io::BufReader::new(file))
     }
 
-    pub fn from_gzipped(filename:&str) -> io::Result<Graph> {
+    pub fn from_gzipped(filename:&str) -> io::Result<EditGraph> {
         let file = File::open(filename)?;
         let gz = GzDecoder::new(file);
 
-        Graph::parse(&mut io::BufReader::new(gz))
+        EditGraph::parse(&mut io::BufReader::new(gz))
     }
 
-    fn parse<R: BufRead>(reader: &mut R) -> io::Result<Graph> {
-        let mut G = Graph::new();
+    fn parse<R: BufRead>(reader: &mut R) -> io::Result<EditGraph> {
+        let mut G = EditGraph::new();
         let mut i = 0;
         for line in reader.lines() {
             let l = line.unwrap();
@@ -30,8 +30,8 @@ impl Graph {
                         format!("Line {} does not contain two tokens", i));
                 return Err(err)
             }
-            let u = Graph::parse_vertex(tokens[0])?;
-            let v = Graph::parse_vertex(tokens[1])?;
+            let u = EditGraph::parse_vertex(tokens[0])?;
+            let v = EditGraph::parse_vertex(tokens[1])?;
 
             G.add_edge(u,v);
             i += 1;
@@ -55,12 +55,12 @@ mod test {
 
     #[test]
     fn import() {
-        let G = Graph::from_gzipped("resources/karate.txt.gz").unwrap();
+        let G = EditGraph::from_gzipped("resources/karate.txt.gz").unwrap();
 
         assert_eq!(G.num_vertices(), 34);
         assert_eq!(G.num_edges(), 78);
 
-        let H = Graph::from_txt("resources/karate.txt").unwrap();
+        let H = EditGraph::from_txt("resources/karate.txt").unwrap();
 
         assert_eq!(G, H);
     }
