@@ -119,7 +119,7 @@ impl<V, G> EdgeIterable<V,G> for G where V: Ord + Clone, G: Graph<V> {
 }
 
 /*
-    Neighbourhood iterator for normal graphs. At each step,
+    Neighbourhood iterator for dtf graphs. At each step,
     the iterator returns a pair (v,N(v)).
 */
 pub struct DTFNIterator<'a> {
@@ -143,7 +143,7 @@ impl<'a> Iterator for DTFNIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let v = *self.v_it.next()?;
-        let N = self.G.in_neighbours_at(v, self.depth);
+        let N = self.G.in_neighbours_at(&v, self.depth);
 
         Some((v, N))
     }

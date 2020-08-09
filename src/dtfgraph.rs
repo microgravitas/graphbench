@@ -44,7 +44,7 @@ impl DTFNode {
         }
     }
 
-    pub fn has_in_neighbour(&self, v:Vertex) -> bool {
+    pub fn has_in_neighbour(&self, v:&Vertex) -> bool {
         for N in &self.in_arcs {
             if N.contains(&v) {
                 return true
@@ -53,7 +53,7 @@ impl DTFNode {
         false
     }
 
-    pub fn get_arc_weight_from(&self, v:Vertex) -> Option<u32> {
+    pub fn get_arc_weight_from(&self, v:&Vertex) -> Option<u32> {
         for (i,N) in self.in_arcs.iter().enumerate() {
             if N.contains(&v) {
                 return Some((i+1) as u32)
@@ -216,19 +216,19 @@ impl DTFGraph {
         }
     }
 
-    pub fn adjacent(&self, u:Vertex, v:Vertex) -> bool {
+    pub fn adjacent(&self, u:&Vertex, v:&Vertex) -> bool {
         // Returns whether there is an arc uv or vu
         self.has_arc(u,v) || self.has_arc(v,u)
     }
 
-    pub fn has_arc(&self, u:Vertex, v:Vertex) -> bool {
+    pub fn has_arc(&self, u:&Vertex, v:&Vertex) -> bool {
         if !self.nodes.contains_key(&v) {
             return false
         }
         self.nodes.get(&v).unwrap().has_in_neighbour(u)
     }
 
-    pub fn get_arc_weight(&self, u:Vertex, v:Vertex) -> Option<u32> {
+    pub fn get_arc_weight(&self, u:&Vertex, v:&Vertex) -> Option<u32> {
         self.nodes.get(&v).unwrap().get_arc_weight_from(u)
     }
 
@@ -240,37 +240,37 @@ impl DTFGraph {
         DTFNIterator::new(self, depth)
     }
 
-    pub fn in_degree(&self, u:Vertex) -> u32 {
+    pub fn in_degree(&self, u:&Vertex) -> u32 {
         self.nodes.get(&u).unwrap().in_degree()
     }
 
-    pub fn out_degree(&self, u:Vertex) -> u32 {
+    pub fn out_degree(&self, u:&Vertex) -> u32 {
         self.nodes.get(&u).unwrap().out_degree()
     }
 
-    pub fn degree(&self, u:Vertex) -> u32 {
+    pub fn degree(&self, u:&Vertex) -> u32 {
         self.nodes.get(&u).unwrap().degree()
     }
 
-    pub fn in_neighbours(&self, u:Vertex) -> VertexSet {
+    pub fn in_neighbours(&self, u:&Vertex) -> VertexSet {
         self.nodes.get(&u).unwrap().in_neighbours()
     }
 
-    pub fn in_neighbours_at(&self, u:Vertex, depth:usize) -> InArcIterator {
+    pub fn in_neighbours_at(&self, u:&Vertex, depth:usize) -> InArcIterator {
         self.nodes.get(&u).unwrap().in_neighbours_at(depth)
     }
 
-    pub fn in_neighbours_distance(&self, u:Vertex) -> FnvHashMap<Vertex, u32> {
+    pub fn in_neighbours_distance(&self, u:&Vertex) -> FnvHashMap<Vertex, u32> {
         let mut res:FnvHashMap<Vertex, u32> = FnvHashMap::default();
         for d in 1..(self.depth+1) {
-            for v in self.in_neighbours_at(u, d) {
+            for v in self.in_neighbours_at(&u, d) {
                 res.insert(*v, d as u32);
             }
         }
         res
     }
 
-    pub fn small_distance(&self, u: Vertex, v:Vertex) -> Option<u32> {
+    pub fn small_distance(&self, u:&Vertex, v:&Vertex) -> Option<u32> {
         let mut dist = std::u32::MAX;
 
         match self.get_arc_weight(u, v) {
@@ -308,15 +308,15 @@ impl DTFGraph {
 
             // Collect fraternal edges and transitive arcs
             for u in self.vertices() {
-                for x in self._trans_tails(*u, self.depth) {
+                for x in self._trans_tails(u, self.depth) {
                     tArcs.insert((x, *u));
                 }
                 if self.depth == 2 {
-                    for (x,y) in self._frat_pairs2(*u) {
+                    for (x,y) in self._frat_pairs2(u) {
                         fGraph.add_edge(&x,&y);
                     }
                 } else {
-                    for (x,y) in self._frat_pairs(*u, self.depth) {
+                    for (x,y) in self._frat_pairs(u, self.depth) {
                         fGraph.add_edge(&x,&y);
                     }
                 }
@@ -337,7 +337,7 @@ impl DTFGraph {
         }
     }
 
-    fn _trans_tails(&self, u:Vertex, depth:usize) -> VertexSet {
+    fn _trans_tails(&self, u:&Vertex, depth:usize) -> VertexSet {
         // Returns vertices y \in N^{--}(u) \setminus N^-(u) such that
         // the weights of arcs (y,x), (x,u) add up to 'weight'
 
@@ -347,19 +347,19 @@ impl DTFGraph {
             let wx = depth - wy;
 
             for y in self.in_neighbours_at(u, wy) {
-                cands.extend(self.in_neighbours_at(*y, wx));
+                cands.extend(self.in_neighbours_at(y, wx));
             }
         }
 
         // We finally have to remove all candidates x which
         // already have an arc to u,  x --?--> u.
         let mut Nu:VertexSet = self.in_neighbours(u);
-        Nu.insert(u);
+        Nu.insert(*u);
 
         cands.difference(&Nu).cloned().collect()
     }
 
-    fn _frat_pairs(&self, u:Vertex, depth:usize) -> EdgeSet {
+    fn _frat_pairs(&self, u:&Vertex, depth:usize) -> EdgeSet {
         assert_ne!(depth, 2);
         // Since depth != 2, we have that 1 != depth-1 and therefore
         // we can easily nest the iteration below without checking for equality.
@@ -371,7 +371,7 @@ impl DTFGraph {
 
             for x in self.in_neighbours_at(u, *wx) {
                 for y in self.in_neighbours_at(u, wy) {
-                    if !self.adjacent(*x,*y) {
+                    if !self.adjacent(x, y) {
                         res.insert((*x,*y));
                     }
                 }
@@ -380,14 +380,14 @@ impl DTFGraph {
         res
     }
 
-    fn _frat_pairs2(&self, u:Vertex) -> EdgeSet {
+    fn _frat_pairs2(&self, u:&Vertex) -> EdgeSet {
         let mut res = EdgeSet::default();
 
         let N = self.in_neighbours_at(u, 1);
 
         // This is the same as _frat_pairs, but specifically for depth 2
         for (x,y) in N.tuple_combinations() {
-            if !self.adjacent(*x,*y) {
+            if !self.adjacent(x, y) {
                 res.insert((*x,*y));
             }
         }
@@ -408,7 +408,7 @@ impl DTFGraph {
         // total degree.
         let order:Vec<Vertex> = self.vertices()
                 .cloned()
-                .sorted_by_key(|u| -(self.in_degree(*u) as i64)*n - (self.degree(*u) as i64))
+                .sorted_by_key(|u| -(self.in_degree(u) as i64)*n - (self.degree(u) as i64))
                 .collect();
         let undominated = radius+1;
 
@@ -420,7 +420,7 @@ impl DTFGraph {
         for v in order {
             // Update domination distance of v via its in-neighbours
             for r in 1..(radius+1) {
-                for u in self.in_neighbours_at(v, r as usize) {
+                for u in self.in_neighbours_at(&v, r as usize) {
                     *dom_distance.get_mut(&v).unwrap() = min(dom_distance[&v],  r+dom_distance[u]);
                 }
             }
@@ -436,7 +436,7 @@ impl DTFGraph {
 
             // Update dominationg distance for v's in-neighbours
             for r in 1..(radius+1) {
-                for u in self.in_neighbours_at(v, r as usize) {
+                for u in self.in_neighbours_at(&v, r as usize) {
                     *dom_counter.get_mut(u).unwrap() += 1;
                     *dom_distance.get_mut(u).unwrap() = min(dom_distance[u], r);
 
@@ -447,7 +447,7 @@ impl DTFGraph {
                         dom_distance.insert(*u, 0);
 
                         for rx in 1..(radius+1) {
-                            for x in self.in_neighbours_at(*u,  rx as usize) {
+                            for x in self.in_neighbours_at(u,  rx as usize) {
                                 *dom_distance.get_mut(&x).unwrap() += min(dom_distance[&x],  rx);
                             }
                         }
@@ -472,7 +472,7 @@ mod test {
         H.add_arc(2, 0, 1);
         H.add_arc(3, 0, 1);
 
-        assert_eq!(H.in_neighbours_at(0, 1).cloned().collect::<FnvHashSet<Vertex>>(),
+        assert_eq!(H.in_neighbours_at(&0, 1).cloned().collect::<FnvHashSet<Vertex>>(),
                    [1,2,3].iter().cloned().collect::<FnvHashSet<Vertex>>());
     }
 
@@ -500,18 +500,18 @@ mod test {
         let mut H = DTFGraph::orient(&G);
 
         H.augment(4);
-        assert_eq!(H.small_distance(0,1), Some(1));
-        assert_eq!(H.small_distance(1,2), Some(1));
-        assert_eq!(H.small_distance(2,3), Some(1));
-        assert_eq!(H.small_distance(3,4), Some(1));
+        assert_eq!(H.small_distance(&0,&1), Some(1));
+        assert_eq!(H.small_distance(&1,&2), Some(1));
+        assert_eq!(H.small_distance(&2,&3), Some(1));
+        assert_eq!(H.small_distance(&3,&4), Some(1));
 
-        assert_eq!(H.small_distance(0,2), Some(2));
-        assert_eq!(H.small_distance(1,3), Some(2));
-        assert_eq!(H.small_distance(2,4), Some(2));
+        assert_eq!(H.small_distance(&0,&2), Some(2));
+        assert_eq!(H.small_distance(&1,&3), Some(2));
+        assert_eq!(H.small_distance(&2,&4), Some(2));
 
-        assert_eq!(H.small_distance(0,3), Some(3));
-        assert_eq!(H.small_distance(1,4), Some(3));
+        assert_eq!(H.small_distance(&0,&3), Some(3));
+        assert_eq!(H.small_distance(&1,&4), Some(3));
 
-        assert_eq!(H.small_distance(0,4), Some(4));
+        assert_eq!(H.small_distance(&0,&4), Some(4));
     }
 }
