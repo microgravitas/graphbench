@@ -9,6 +9,7 @@ use pyo3::exceptions;
 
 use std::collections::HashSet;
 
+use crate::graph::Graph;
 use crate::editgraph::*;
 
 use std::cell::{Cell, RefCell};
@@ -70,15 +71,15 @@ impl PyGraph {
     }
 
     pub fn adjacent(&self, u:Vertex, v:Vertex) -> PyResult<bool> {
-        Ok(self.G.adjacent(u, v))
+        Ok(self.G.adjacent(&u, &v))
     }
 
-    pub fn degree(&self, u:Vertex) -> PyResult<u32> {
-        Ok(self.G.degree(u))
+    pub fn degree(&self, u:Vertex) -> PyResult<usize> {
+        Ok(self.G.degree(&u))
     }
 
     pub fn contains(&mut self, u:Vertex) -> PyResult<bool> {
-        Ok(self.G.contains(u))
+        Ok(self.G.contains(&u))
     }
 
     pub fn vertices(&self) -> PyResult<VertexSet> {
@@ -94,7 +95,7 @@ impl PyGraph {
         Neighbourhood methods
     */
     pub fn neighbours(&self, u:Vertex) -> PyResult<VertexSet> {
-        Ok(self.G.neighbours(u).cloned().collect())
+        Ok(self.G.neighbours(&u).cloned().collect())
     }
 
     pub fn neighbourhood(&self, c:HashSet<u32>) -> PyResult<VertexSet> {
@@ -110,20 +111,20 @@ impl PyGraph {
     }
 
     pub fn add_vertex(&mut self, u:Vertex) -> PyResult<()> {
-        self.G.add_vertex(u);
+        self.G.add_vertex(&u);
         Ok(())
     }
 
     pub fn add_edge(&mut self, u:Vertex, v:Vertex) -> PyResult<bool> {
-        Ok( self.G.add_edge(u, v) )
+        Ok( self.G.add_edge(&u, &v) )
     }
 
     pub fn remove_edge(&mut self, u:Vertex, v:Vertex) -> PyResult<bool> {
-        Ok( self.G.remove_edge(u, v) )
+        Ok( self.G.remove_edge(&u, &v) )
     }
 
     pub fn remove_vertex(&mut self, u:Vertex) -> PyResult<bool> {
-        Ok( self.G.remove_vertex(u) )
+        Ok( self.G.remove_vertex(&u) )
     }
 
     pub fn remove_loops(&mut self) -> PyResult<usize> {
@@ -143,7 +144,7 @@ impl PyGraph {
     }
 
     pub fn contract_into(&mut self, center:Vertex, vertices:HashSet<u32>) {
-        self.G.contract_into(center, vertices.iter());
+        self.G.contract_into(&center, vertices.iter());
     }
 
     /*

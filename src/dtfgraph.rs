@@ -2,7 +2,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 
 use itertools::Itertools;
 
-
+use crate::graph::Graph;
 use crate::editgraph::{EditGraph, Vertex, VertexSet, Arc, EdgeSet};
 use crate::iterators::VertexIterator;
 use crate::iterators::DTFArcIterator;
@@ -112,20 +112,20 @@ impl DTFGraph {
             size, but all values below `small` (here 32) are put in their own
             buckets.
         */
-        fn calc_index(i: u32) -> u32 {
+        fn calc_index(i: usize) -> usize {
             let small = 2_i32.pow(5);
-            min(i, small as u32) as u32
+            min(i, small as usize)
                 + (max(0, (i as i32) - small + 1) as u32)
                     .next_power_of_two()
-                    .trailing_zeros()
+                    .trailing_zeros() as usize
         }
 
-        let mut deg_dict = FnvHashMap::<Vertex, u32>::default();
+        let mut deg_dict = FnvHashMap::<Vertex, usize>::default();
         let mut buckets = FnvHashMap::<i32, VertexSet>::default();
 
         for v in G.vertices() {
             H.add_vertex(*v);
-            let d = G.degree(*v);
+            let d = G.degree(v);
             deg_dict.insert(*v, d);
             buckets
                 .entry(calc_index(d) as i32)
@@ -147,10 +147,10 @@ impl DTFGraph {
                 break;
             }
 
-            let v = buckets[&d].iter().cloned().next().unwrap();
+            let v = buckets[&d].iter().next().unwrap().clone();
             buckets.get_mut(&d).unwrap().remove(&v);
 
-            for u in G.neighbours(v) {
+            for u in G.neighbours(&v) {
                 if seen.contains(u) {
                     continue;
                 }
@@ -313,18 +313,18 @@ impl DTFGraph {
                 }
                 if self.depth == 2 {
                     for (x,y) in self._frat_pairs2(*u) {
-                        fGraph.add_edge(x,y);
+                        fGraph.add_edge(&x,&y);
                     }
                 } else {
                     for (x,y) in self._frat_pairs(*u, self.depth) {
-                        fGraph.add_edge(x,y);
+                        fGraph.add_edge(&x,&y);
                     }
                 }
             }
 
             for (s, t) in &tArcs {
                 self.add_arc(*s, *t, self.depth);
-                fGraph.remove_edge(*s,*t);
+                fGraph.remove_edge(s, t);
             }
 
             // TODO: implement depth-2 ldo
@@ -492,10 +492,10 @@ mod test {
     // #[test]
     fn distance() {
         let mut G = EditGraph::new();
-        G.add_edge(0, 1);
-        G.add_edge(1, 2);
-        G.add_edge(2, 3);
-        G.add_edge(3, 4);
+        G.add_edge(&0, &1);
+        G.add_edge(&1, &2);
+        G.add_edge(&2, &3);
+        G.add_edge(&3, &4);
 
         let mut H = DTFGraph::orient(&G);
 

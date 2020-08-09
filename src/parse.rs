@@ -6,6 +6,8 @@ use std::io::BufRead;
 use std::fs::File;
 use flate2::read::GzDecoder;
 
+use crate::graph::Graph;
+
 impl EditGraph {
     pub fn from_txt(filename:&str) -> io::Result<EditGraph> {
         let file = File::open(filename)?;
@@ -33,7 +35,7 @@ impl EditGraph {
             let u = EditGraph::parse_vertex(tokens[0])?;
             let v = EditGraph::parse_vertex(tokens[1])?;
 
-            G.add_edge(u,v);
+            G.add_edge(&u,&v);
             i += 1;
         }
 

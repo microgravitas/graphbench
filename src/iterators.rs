@@ -1,5 +1,7 @@
 use fnv::{FnvHashMap, FnvHashSet};
 
+use crate::graph::Graph;
+
 use crate::editgraph::{Vertex, Edge, Arc};
 use crate::editgraph::EditGraph;
 use crate::editgraph::VertexSet;
@@ -15,45 +17,55 @@ pub type NVertexIterator<'a> = std::collections::hash_set::Iter<'a, Vertex>;
     Neighbourhood iterator for normal graphs. At each step,
     the iterator returns a pair (v,N(v)).
 */
-pub struct NIterator<'a> {
-    G: &'a EditGraph,
-    v_it: VertexIterator<'a>,
+pub struct NIterator<'a, V, G: Graph<V>> where V: Clone {
+    graph: &'a G,
+    v_it: Box<dyn Iterator<Item=&'a V> + 'a>
 }
 
-impl<'a> NIterator<'a> {
-    pub fn new(G: &'a EditGraph) -> NIterator<'a> {
+impl<'a, V, G:Graph<V>> NIterator<'a, V, G> where V: Clone {
+    pub fn new(graph: &'a G) -> NIterator<'a, V, G> {
         NIterator {
-            G,
-            v_it: G.vertices(),
+            graph,
+            v_it: graph.vertices(),
         }
     }
 }
 
-impl<'a> Iterator for NIterator<'a> {
-    type Item = (Vertex, NVertexIterator<'a>);
+impl<'a, V: Clone, G:Graph<V>> Iterator for NIterator<'a, V, G> where V: Clone {
+    type Item = (V, Box<dyn Iterator<Item=&'a V> + 'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let v = *self.v_it.next()?;
-        let N = self.G.neighbours(v);
+        let v = self.v_it.next()?.clone();
+        let N = self.graph.neighbours(&v);
 
         Some((v, N))
+    }
+}
+
+trait NIterable<V, G: Graph<V>> where V: Clone {
+    fn neighbourhoods(&self) -> NIterator<V,G>;
+}
+
+impl<V,G:Graph<V>> NIterable<V,G> for G where V: Clone {
+    fn neighbourhoods(&self) -> NIterator<V,G> {
+        NIterator::<V,G>::new(self)
     }
 }
 
 /*
     Edge iterator for normal graphs.
 */
-pub struct EdgeIterator<'a> {
-    N_it: NIterator<'a>,
-    curr_v: Vertex,
-    curr_it: Option<NVertexIterator<'a>>,
+pub struct EdgeIterator<'a, V, G: Graph<V>> where V: Ord + Clone {
+    N_it: NIterator<'a, V, G>,
+    curr_v: Option<V>,
+    curr_it: Option<Box<dyn Iterator<Item=&'a V> + 'a>>,
 }
 
-impl<'a> EdgeIterator<'a> {
-    pub fn new(G: &'a EditGraph) -> EdgeIterator {
+impl<'a, V, G: Graph<V>> EdgeIterator<'a, V, G> where V: Ord, V: Clone {
+    pub fn new(graph: &'a G) -> EdgeIterator<'a, V, G> {
         let mut res = EdgeIterator {
-            N_it: G.neighbours_iter(),
-            curr_v: std::u32::MAX,
+            N_it: graph.neighbourhoods(),
+            curr_v: None,
             curr_it: None,
         };
         res.advance();
@@ -62,7 +74,7 @@ impl<'a> EdgeIterator<'a> {
 
     fn advance(&mut self) {
         if let Some((v, it)) = self.N_it.next() {
-            self.curr_v = v;
+            self.curr_v = Some(v);
             self.curr_it = Some(it);
         } else {
             self.curr_it = None;
@@ -70,26 +82,39 @@ impl<'a> EdgeIterator<'a> {
     }
 }
 
-impl<'a> Iterator for EdgeIterator<'a> {
-    type Item = Edge;
+impl<'a, V, G> Iterator for EdgeIterator<'a, V, G> where V: Ord + Clone, G: Graph<V> {
+    type Item = (V, V);
 
     fn next(&mut self) -> Option<Self::Item> {
         while self.curr_it.is_some() {
-            let uu = self.curr_it.as_mut().unwrap().next();
-            if uu.is_none() {
-                self.advance();
-                continue;
-            }
+            let uu = {
+                let uu = self.curr_it.as_mut().unwrap().next();
+                if uu.is_none() {
+                    self.advance();
+                    continue;
+                }
+                uu.clone()
+            };
 
             // Tie-breaking so we only return every edge once
-            let u = *uu.unwrap();
-            if self.curr_v > u {
+            let u = uu.unwrap().clone();
+            if self.curr_v.as_ref().unwrap() > &u {
                 continue;
             }
-            return Some((self.curr_v, u));
+            return Some((self.curr_v.as_ref().unwrap().clone(), u.clone()));
         }
 
         return None;
+    }
+}
+
+trait EdgeIterable<V: Ord, G: Graph<V>> where V: Clone {
+    fn edges(&self) -> EdgeIterator<V,G>;
+}
+
+impl<V, G> EdgeIterable<V,G> for G where V: Ord + Clone, G: Graph<V> {
+    fn edges(&self) -> EdgeIterator<V,G> {
+        EdgeIterator::<V,G>::new(self)
     }
 }
 
