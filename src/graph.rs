@@ -13,7 +13,7 @@ pub trait Graph<Vertex> {
     fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
 }
 
-pub trait Diraph<Vertex>: Graph<Vertex> {
+pub trait Digraph<Vertex>: Graph<Vertex> {
 
     fn adjacent(&self, u:&Vertex, v:&Vertex) -> bool {
         self.has_arc(u, v) || self.has_arc(v, u)
