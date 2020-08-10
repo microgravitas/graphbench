@@ -1,4 +1,4 @@
-use fnv::FnvHashSet;
+use fnv::{FnvHashSet, FnvHashMap};
 
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
@@ -45,6 +45,12 @@ impl PyGraph {
     #[new]
     pub fn new() -> PyGraph {
         PyGraph{G: EditGraph::new()}
+    }
+
+    pub fn normalize(&mut self) -> FnvHashMap<Vertex, Vertex>{
+        let (GG, mapping) = self.G.normalize();
+        self.G = GG;
+        mapping
     }
 
     #[staticmethod]
@@ -106,7 +112,7 @@ impl PyGraph {
         Ok(self.G.closed_neighbourhood(c.iter()))
     }
 
-    pub fn r_neighbours(&self, u:Vertex, r:u32) -> PyResult<VertexSet> {
+    pub fn r_neighbours(&self, u:Vertex, r:usize) -> PyResult<VertexSet> {
         Ok(self.G.r_neighbours(u, r))
     }
 
@@ -164,7 +170,7 @@ impl PyGraph {
 }
 
 #[cfg(not(test))] // pyclass and pymethods break `cargo test`
-#[pyclass(name=EditGraph)]
+#[pyclass(name=Graph)]
 pub struct PyGraph {
     G: EditGraph
 }

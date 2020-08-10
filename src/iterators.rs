@@ -1,6 +1,6 @@
 use fnv::{FnvHashMap, FnvHashSet};
 
-use crate::graph::Graph;
+use crate::graph::*;
 
 use crate::editgraph::{Vertex, Edge, Arc};
 use crate::editgraph::EditGraph;
@@ -13,25 +13,20 @@ use crate::dtfgraph::InArcIterator;
 pub type VertexIterator<'a> = std::collections::hash_map::Keys<'a, Vertex, FnvHashSet<Vertex>>;
 pub type NVertexIterator<'a> = std::collections::hash_set::Iter<'a, Vertex>;
 
-/*
-    Neighbourhood iterator for normal graphs. At each step,
-    the iterator returns a pair (v,N(v)).
-*/
-pub struct NIterator<'a, V, G: Graph<V>> where V: Clone {
+/// Neighbourhood iterators for graphs and digraphs. At each step, the iterator
+/// returns a pair `(v,N(v))` (or `(v,N^-(v))` or `(v,N^+(V))` for digraphs).
+pub struct NeighIterator<'a, V, G: Graph<V>> where V: Clone {
     graph: &'a G,
     v_it: Box<dyn Iterator<Item=&'a V> + 'a>
 }
 
-impl<'a, V, G:Graph<V>> NIterator<'a, V, G> where V: Clone {
-    pub fn new(graph: &'a G) -> NIterator<'a, V, G> {
-        NIterator {
-            graph,
-            v_it: graph.vertices(),
-        }
+impl<'a, V, G> NeighIterator<'a, V, G> where V: Clone, G: Graph<V> {
+    pub fn new(graph: &'a G) -> NeighIterator<'a, V, G> {
+        NeighIterator { graph, v_it: graph.vertices() }
     }
 }
 
-impl<'a, V: Clone, G:Graph<V>> Iterator for NIterator<'a, V, G> where V: Clone {
+impl<'a, V, G> Iterator for NeighIterator<'a, V, G> where V: Clone, G: Graph<V> {
     type Item = (V, Box<dyn Iterator<Item=&'a V> + 'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -42,21 +37,72 @@ impl<'a, V: Clone, G:Graph<V>> Iterator for NIterator<'a, V, G> where V: Clone {
     }
 }
 
-trait NIterable<V, G: Graph<V>> where V: Clone {
-    fn neighbourhoods(&self) -> NIterator<V,G>;
+// Note: It would be nice if we could just re-use NeighItertor here, but stable Rust
+// currently does not support overlapping `impl` blocks.
+pub struct DiNeighIterator<'a, V, G: Graph<V>> where V: Clone {
+    graph: &'a G,
+    v_it: Box<dyn Iterator<Item=&'a V> + 'a>,
+    mode: DiNeighIteratorMode
 }
 
-impl<V,G:Graph<V>> NIterable<V,G> for G where V: Clone {
-    fn neighbourhoods(&self) -> NIterator<V,G> {
-        NIterator::<V,G>::new(self)
+enum DiNeighIteratorMode {IN, OUT}
+
+impl<'a, V, D> DiNeighIterator<'a, V, D> where V: Clone, D: Digraph<V> {
+    pub fn new_in(graph: &'a D) -> DiNeighIterator<'a, V, D> {
+        DiNeighIterator { graph, mode: DiNeighIteratorMode::IN, v_it: graph.vertices() }
+    }
+
+    pub fn new_out(graph: &'a D) -> DiNeighIterator<'a, V, D> {
+        DiNeighIterator { graph, mode: DiNeighIteratorMode::OUT, v_it: graph.vertices() }
     }
 }
 
-/*
-    Edge iterator for normal graphs.
-*/
+impl<'a, V, D> Iterator for DiNeighIterator<'a, V, D> where V: Clone, D: Digraph<V> {
+    type Item = (V, Box<dyn Iterator<Item=&'a V> + 'a>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let v = self.v_it.next()?.clone();
+        match &self.mode {
+            DiNeighIteratorMode::IN =>  {let N = self.graph.in_neighbours(&v);
+                    Some((v, N))},
+            DiNeighIteratorMode::OUT => {let N = self.graph.out_neighbours(&v);
+                    Some((v, N))}
+        }
+    }
+}
+
+pub trait NeighIterable<V, G> where V: Clone, G: Graph<V> {
+    fn neighbourhoods(&self) -> NeighIterator<V,G>;
+}
+
+impl<V, G> NeighIterable<V,G> for G where V: Clone, G: Graph<V> {
+    fn neighbourhoods(&self) -> NeighIterator<V, G> {
+        NeighIterator::<V, G>::new(self)
+    }
+}
+
+pub trait DiNeighIterable<V, D> where V: Clone, D: Digraph<V> {
+    fn in_neighbourhoods(&self) -> DiNeighIterator<V, D>;
+    fn out_neighbourhoods(&self) -> DiNeighIterator<V, D>;
+}
+
+impl<V, D> DiNeighIterable<V, D> for D where V: Clone, D: Digraph<V> {
+    fn in_neighbourhoods(&self) -> DiNeighIterator<V, D> {
+        DiNeighIterator::<V, D>::new_in(self)
+    }
+
+    fn out_neighbourhoods(&self) -> DiNeighIterator<V, D> {
+        DiNeighIterator::<V, D>::new_out(self)
+    }
+}
+
+/// Edge iterator for graphs. This iterator uses an `NeighIterator`
+/// internally, so in order to break ties between edge `{u,v}` and `{v,u}`
+/// we need the vertex type `V` to implement `std::cmp::Ord`.
+/// The associated trait EdgeIterable is implemented for generic graphs
+///  to provide the method `edges(...)` to create an `EdgeIterator`.
 pub struct EdgeIterator<'a, V, G: Graph<V>> where V: Ord + Clone {
-    N_it: NIterator<'a, V, G>,
+    N_it: NeighIterator<'a, V, G>,
     curr_v: Option<V>,
     curr_it: Option<Box<dyn Iterator<Item=&'a V> + 'a>>,
 }
@@ -108,7 +154,7 @@ impl<'a, V, G> Iterator for EdgeIterator<'a, V, G> where V: Ord + Clone, G: Grap
     }
 }
 
-trait EdgeIterable<V: Ord, G: Graph<V>> where V: Clone {
+pub trait EdgeIterable<V: Ord, G: Graph<V>> where V: Clone {
     fn edges(&self) -> EdgeIterator<V,G>;
 }
 
@@ -118,13 +164,16 @@ impl<V, G> EdgeIterable<V,G> for G where V: Ord + Clone, G: Graph<V> {
     }
 }
 
+
+
+
 /*
     Neighbourhood iterator for dtf graphs. At each step,
     the iterator returns a pair (v,N(v)).
 */
 pub struct DTFNIterator<'a> {
     G: &'a DTFGraph,
-    v_it: DTFVertexIterator<'a>,
+    v_it: Box<dyn Iterator<Item=&'a Vertex> + 'a>,
     depth: usize,
 }
 
@@ -139,7 +188,7 @@ impl<'a> DTFNIterator<'a> {
 }
 
 impl<'a> Iterator for DTFNIterator<'a> {
-    type Item = (Vertex, InArcIterator<'a>);
+    type Item = (Vertex, Box<dyn Iterator<Item=&'a Vertex> + 'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let v = *self.v_it.next()?;
@@ -155,7 +204,7 @@ impl<'a> Iterator for DTFNIterator<'a> {
 pub struct DTFArcIterator<'a> {
     N_it: DTFNIterator<'a>,
     curr_v: Vertex,
-    curr_it: Option<InArcIterator<'a>>,
+    curr_it: Option<Box<dyn Iterator<Item=&'a Vertex> + 'a>>,
 }
 
 impl<'a> DTFArcIterator<'a> {

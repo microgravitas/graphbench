@@ -99,12 +99,24 @@ impl EditGraph {
               m: 0}
     }
 
-    pub fn edges(&self) -> EdgeIterator<Vertex,Self> {
-        EdgeIterator::new(self)
-    }
+    pub fn normalize(&self) -> (EditGraph, FnvHashMap<Vertex, Vertex>) {
+        let mut res = EditGraph::new();
+        let mut order:Vec<_> = self.vertices().collect();
+        order.sort_unstable();
 
-    pub fn neighbourhoods(&self) -> NIterator<Vertex,Self> {
-        NIterator::new(self)
+        let id2vex:FnvHashMap<Vertex, Vertex> = order.iter()
+                                .enumerate().map(|(i,v)| (i as Vertex, **v) )
+                                .collect();
+        let vex2id:FnvHashMap<Vertex, Vertex> = id2vex.iter()
+                                .map(|(i,v)| (*v, *i))
+                                .collect();
+        for u in self.vertices() {
+            res.add_vertex(&vex2id[&u]);
+        }
+        for (u, v) in self.edges() {
+            res.add_edge(&vex2id[&u], &vex2id[&v]);
+        }
+        (res, id2vex)
     }
 
     /*
@@ -131,11 +143,11 @@ impl EditGraph {
         return res
     }
 
-    pub fn r_neighbours(&self, u:Vertex, r:u32) -> VertexSet {
+    pub fn r_neighbours(&self, u:Vertex, r:usize) -> VertexSet {
         return self.r_neighbourhood([u].iter(), r)
     }
 
-    pub fn r_neighbourhood<'a,I>(&self, it:I, r:u32) -> VertexSet where I: Iterator<Item=&'a Vertex> {
+    pub fn r_neighbourhood<'a,I>(&self, it:I, r:usize) -> VertexSet where I: Iterator<Item=&'a Vertex> {
         let mut res:VertexSet = FnvHashSet::default();
         res.extend(it);
         for _ in 0..r {

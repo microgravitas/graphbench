@@ -2,11 +2,9 @@ use fnv::{FnvHashMap, FnvHashSet};
 
 use itertools::Itertools;
 
-use crate::graph::Graph;
+use crate::graph::*;
 use crate::editgraph::{EditGraph, Vertex, VertexSet, Arc, EdgeSet};
-use crate::iterators::VertexIterator;
-use crate::iterators::DTFArcIterator;
-use crate::iterators::DTFNIterator;
+use crate::iterators::*;
 
 use std::cmp::{max, min};
 
@@ -16,7 +14,77 @@ pub type DTFVertexIterator<'a> = std::collections::hash_map::Keys<'a, Vertex, DT
 pub struct DTFGraph {
     nodes: FnvHashMap<Vertex, DTFNode>,
     depth: usize,
-    m: u64
+    ms: Vec<usize>
+}
+
+pub struct DTFLayer<'a> {
+    graph: &'a DTFGraph,
+    depth: usize
+}
+
+impl<'a> DTFLayer<'a> {
+    pub fn new(graph: &'a DTFGraph, depth: usize) {
+        DTFLayer{ graph, depth };
+    }
+}
+
+impl<'a> Graph<Vertex> for DTFLayer<'a> {
+    fn num_vertices(&self) -> usize {
+        self.graph.num_vertices()
+    }
+
+    fn num_edges(&self) -> usize {
+        self.graph.num_arcs_at_depth(self.depth)
+    }
+
+    fn contains(&self, u:&Vertex) -> bool {
+        self.graph.contains(u)
+    }
+
+    fn adjacent(&self, u:&Vertex, v:&Vertex) -> bool {
+        self.graph.adjacent(u, v)
+    }
+
+    fn degree(&self, u:&Vertex) -> usize {
+        self.graph.degree(u)
+    }
+
+    fn vertices<'b>(&'b self) -> Box<dyn Iterator<Item=&Vertex> + 'b> {
+        self.graph.vertices()
+    }
+
+    fn neighbours<'b>(&'b self, _:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'b> {
+        // DTFGraph does not implement this method for efficiency reasons.
+        unimplemented!("DTFGraph does not implement Graph::neighbours");
+    }
+}
+
+impl<'b> Digraph<Vertex> for DTFLayer<'b> {
+    fn has_arc(&self, u:&Vertex, v:&Vertex) -> bool {
+        self.graph.has_arc_at(u, v, self.depth)
+    }
+
+    fn in_degree(&self, u:&Vertex) -> usize {
+        self.graph.in_degree(u)
+    }
+
+    fn out_degree(&self, u:&Vertex) -> usize {
+        self.graph.out_degree(u)
+    }
+
+    fn neighbours<'a>(&'a self, _:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+        // DTFGraph does not implement this method for efficiency reasons.
+        unimplemented!("DTFGraph does not implement Graph::neighbours");
+    }
+
+    fn out_neighbours<'a>(&'a self, _:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+        // DTFGraph does not implement this method for efficiency reasons.
+        unimplemented!("DTFGraph does not implement Graph::out_neighbours");
+    }
+
+    fn in_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+        self.graph.in_neighbours_at(u, self.depth)
+    }
 }
 
 pub struct DTFNode {
@@ -53,7 +121,14 @@ impl DTFNode {
         false
     }
 
-    pub fn get_arc_weight_from(&self, v:&Vertex) -> Option<u32> {
+    pub fn has_in_neighbour_at(&self, v:&Vertex, depth:usize) -> bool {
+        match self.in_arcs.get(depth-1) {
+            Some(X) => X.contains(v),
+            None => false
+        }
+    }
+
+    pub fn get_arc_depth_from(&self, v:&Vertex) -> Option<u32> {
         for (i,N) in self.in_arcs.iter().enumerate() {
             if N.contains(&v) {
                 return Some((i+1) as u32)
@@ -62,56 +137,119 @@ impl DTFNode {
         return None
     }
 
-    pub fn in_neighbours(&self) -> VertexSet {
-        let mut res = VertexSet::default();
-        for N in &self.in_arcs {
-            res.extend(N.iter());
-        }
-        res
+    pub fn in_neighbours(&self) -> Box<dyn Iterator<Item=&Vertex> + '_> {
+        // let mut res = VertexSet::default();
+        // for N in &self.in_arcs {
+        //     res.extend(N.iter());
+        // }
+        // res
+
+        Box::new(self.in_arcs.iter().flat_map(|N| N.iter()))
     }
 
-    pub fn in_neighbours_at(&self, depth:usize) -> InArcIterator {
-        self.in_arcs.get(depth-1).unwrap().iter()
+    pub fn in_neighbours_at(&self, depth:usize) ->  Box<dyn Iterator<Item=&Vertex> + '_> {
+        Box::new(self.in_arcs.get(depth-1).unwrap().iter())
     }
 
-    pub fn in_degree(&self) -> u32 {
-        self.in_degs.iter().sum1().unwrap()
+    pub fn in_degree(&self) -> usize {
+        self.in_degs.iter().sum1::<u32>().unwrap() as usize
     }
 
-    pub fn out_degree(&self) -> u32 {
-        self.out_degs.iter().sum1().unwrap()
+    pub fn out_degree(&self) -> usize {
+        self.out_degs.iter().sum1::<u32>().unwrap() as usize
     }
 
-    pub fn degree(&self) -> u32 {
+    pub fn degree(&self) -> usize {
         self.out_degree()+self.in_degree()
+    }
+}
+
+
+impl Graph<Vertex> for DTFGraph {
+    fn num_vertices(&self) -> usize {
+        self.nodes.len()
+    }
+
+    fn num_edges(&self) -> usize {
+        self.ms[0]
+    }
+
+    fn contains(&self, u:&Vertex) -> bool {
+        self.nodes.contains_key(u)
+    }
+
+    fn vertices<'a>(&'a self) ->  Box<dyn Iterator<Item=&Vertex> + 'a> {
+        Box::new(self.nodes.keys())
+    }
+
+    fn adjacent(&self, u:&Vertex, v:&Vertex) -> bool {
+        // Returns whether there is an arc uv or vu
+        self.has_arc(u,v) || self.has_arc(v,u)
+    }
+
+    fn neighbours<'a>(&'a self, _:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+        unimplemented!("DTFGraph does not implement DiGraph::neighbours");
+    }
+
+    fn degree(&self, u:&Vertex) -> usize {
+        self.nodes.get(&u).unwrap().degree()
+    }
+}
+
+impl Digraph<Vertex> for DTFGraph {
+    fn has_arc(&self, u:&Vertex, v:&Vertex) -> bool {
+        if !self.nodes.contains_key(&v) {
+            return false
+        }
+        self.nodes.get(&v).unwrap().has_in_neighbour(u)
+    }
+
+    fn in_degree(&self, u:&Vertex) -> usize {
+        self.nodes.get(&u).unwrap().in_degree()
+    }
+
+    fn out_degree(&self, u:&Vertex) -> usize {
+        self.nodes.get(&u).unwrap().out_degree()
+    }
+
+    fn out_neighbours<'a>(&'a self, _:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>  {
+        unimplemented!("DTFGraph does not implement DiGraph::out_neighbours");
+    }
+
+    fn in_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>  {
+        self.nodes.get(&u).unwrap().in_neighbours()
     }
 }
 
 impl DTFGraph {
     pub fn new() -> DTFGraph {
-        DTFGraph { nodes: FnvHashMap::default(), depth: 1, m: 0 }
+        DTFGraph { nodes: FnvHashMap::default(), depth: 1, ms: vec![0] }
     }
 
-    pub fn num_vertices(&self) -> usize {
-        self.nodes.len()
+    pub fn layer(&mut self, depth:usize) -> DTFLayer {
+        self.reserve_depth(depth);
+        DTFLayer{ graph: self, depth }
     }
 
-    pub fn num_arcs(&self) -> usize {
-        self.m as usize
+    pub fn num_arcs_at_depth(&self, depth: usize) -> usize {
+        if depth > self.depth {
+            0
+        } else {
+            self.ms[depth-1]
+        }
     }
 
-    pub fn vertices(&self) -> DTFVertexIterator {
-        self.nodes.keys()
+    pub fn add_vertex(&mut self, u: Vertex) {
+        let d = self.depth;
+        self.nodes.entry(u).or_insert_with(||  DTFNode::new(d));
     }
 
-    pub fn orient(G: &EditGraph) -> DTFGraph {
+    pub fn orient<G>(graph: &G) -> DTFGraph where G: Graph<Vertex> {
         let mut H = DTFGraph::new();
 
-        /*
-            This index function defines buckets of exponentially increasing
-            size, but all values below `small` (here 32) are put in their own
-            buckets.
-        */
+        // This index function defines buckets of exponentially increasing
+        // size, but all values below `small` (here 32) are put in their own
+        // buckets.
         fn calc_index(i: usize) -> usize {
             let small = 2_i32.pow(5);
             min(i, small as usize)
@@ -123,9 +261,9 @@ impl DTFGraph {
         let mut deg_dict = FnvHashMap::<Vertex, usize>::default();
         let mut buckets = FnvHashMap::<i32, VertexSet>::default();
 
-        for v in G.vertices() {
+        for v in graph.vertices() {
             H.add_vertex(*v);
-            let d = G.degree(v);
+            let d = graph.degree(v);
             deg_dict.insert(*v, d);
             buckets
                 .entry(calc_index(d) as i32)
@@ -135,7 +273,7 @@ impl DTFGraph {
 
         let mut seen = FnvHashSet::<Vertex>::default();
 
-        for _ in 0..G.num_vertices() {
+        for _ in 0..graph.num_vertices() {
             // Find non-empty bucket. If this loop executes, we
             // know that |G| > 0 so a non-empty bucket must exist.
             let mut d = 0;
@@ -150,7 +288,7 @@ impl DTFGraph {
             let v = buckets[&d].iter().next().unwrap().clone();
             buckets.get_mut(&d).unwrap().remove(&v);
 
-            for u in G.neighbours(&v) {
+            for u in graph.neighbours(&v) {
                 if seen.contains(u) {
                     continue;
                 }
@@ -182,28 +320,24 @@ impl DTFGraph {
         H
     }
 
-    pub fn add_vertex(&mut self, u: Vertex) {
-        let d = self.depth;
-        self.nodes.entry(u).or_insert_with(||  DTFNode::new(d));
-    }
-
     fn reserve_depth(&mut self, depth:usize) {
         if self.depth < depth {
             for (_, node) in self.nodes.iter_mut() {
                 node.reserve_depth(depth);
             }
+            self.ms.push(0);
         }
         self.depth = depth;
     }
 
-    pub fn add_arc(&mut self, u:Vertex, v:Vertex, w:usize) {
-        self.reserve_depth(w);
+    pub fn add_arc(&mut self, u:Vertex, v:Vertex, depth:usize) {
+        self.reserve_depth(depth);
 
         let d = self.depth;
         let inserted = {
             let nodeV = self.nodes.entry(v).or_insert_with(||  DTFNode::new(d));
-            if nodeV.in_arcs.get_mut(w-1).unwrap().insert(u) {
-                nodeV.in_degs[w-1] += 1;
+            if nodeV.in_arcs.get_mut(depth-1).unwrap().insert(u) {
+                nodeV.in_degs[depth-1] += 1;
                 true
             } else {
                 false
@@ -211,25 +345,20 @@ impl DTFGraph {
         };
         if inserted {
             let nodeU = self.nodes.entry(u).or_insert_with(||  DTFNode::new(d));
-            nodeU.out_degs[w-1] += 1;
-            self.m += 1
+            nodeU.out_degs[depth-1] += 1;
+            self.ms[depth-1] += 1
         }
     }
 
-    pub fn adjacent(&self, u:&Vertex, v:&Vertex) -> bool {
-        // Returns whether there is an arc uv or vu
-        self.has_arc(u,v) || self.has_arc(v,u)
-    }
-
-    pub fn has_arc(&self, u:&Vertex, v:&Vertex) -> bool {
+    pub fn has_arc_at(&self, u:&Vertex, v:&Vertex, depth:usize) -> bool {
         if !self.nodes.contains_key(&v) {
             return false
         }
-        self.nodes.get(&v).unwrap().has_in_neighbour(u)
+        self.nodes.get(&v).unwrap().has_in_neighbour_at(u, depth)
     }
 
-    pub fn get_arc_weight(&self, u:&Vertex, v:&Vertex) -> Option<u32> {
-        self.nodes.get(&v).unwrap().get_arc_weight_from(u)
+    pub fn get_arc_depth(&self, u:&Vertex, v:&Vertex) -> Option<u32> {
+        self.nodes.get(&v).unwrap().get_arc_depth_from(u)
     }
 
     pub fn arcs_at(&self, depth:usize) -> DTFArcIterator {
@@ -240,27 +369,11 @@ impl DTFGraph {
         DTFNIterator::new(self, depth)
     }
 
-    pub fn in_degree(&self, u:&Vertex) -> u32 {
-        self.nodes.get(&u).unwrap().in_degree()
-    }
-
-    pub fn out_degree(&self, u:&Vertex) -> u32 {
-        self.nodes.get(&u).unwrap().out_degree()
-    }
-
-    pub fn degree(&self, u:&Vertex) -> u32 {
-        self.nodes.get(&u).unwrap().degree()
-    }
-
-    pub fn in_neighbours(&self, u:&Vertex) -> VertexSet {
-        self.nodes.get(&u).unwrap().in_neighbours()
-    }
-
-    pub fn in_neighbours_at(&self, u:&Vertex, depth:usize) -> InArcIterator {
+    pub fn in_neighbours_at<'a>(&'a self, u:&Vertex, depth:usize) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
         self.nodes.get(&u).unwrap().in_neighbours_at(depth)
     }
 
-    pub fn in_neighbours_distance(&self, u:&Vertex) -> FnvHashMap<Vertex, u32> {
+    pub fn in_neighbours_with_weights(&self, u:&Vertex) -> FnvHashMap<Vertex, u32> {
         let mut res:FnvHashMap<Vertex, u32> = FnvHashMap::default();
         for d in 1..(self.depth+1) {
             for v in self.in_neighbours_at(&u, d) {
@@ -273,17 +386,17 @@ impl DTFGraph {
     pub fn small_distance(&self, u:&Vertex, v:&Vertex) -> Option<u32> {
         let mut dist = std::u32::MAX;
 
-        match self.get_arc_weight(u, v) {
+        match self.get_arc_depth(u, v) {
             Some(i) => {dist = i},
             None => {}
         }
 
-        match self.get_arc_weight(v, u) {
+        match self.get_arc_depth(v, u) {
             Some(i) => {dist = i},
             None => {}
         }
 
-        let Nv = self.in_neighbours_distance(v);
+        let Nv = self.in_neighbours_with_weights(v);
         for d in 1..(self.depth+1) {
             for x in self.in_neighbours_at(u, d) {
                 if Nv.contains_key(x) {
@@ -353,7 +466,8 @@ impl DTFGraph {
 
         // We finally have to remove all candidates x which
         // already have an arc to u,  x --?--> u.
-        let mut Nu:VertexSet = self.in_neighbours(u);
+        // TODO: Implement this using iterators only.
+        let mut Nu:VertexSet = self.in_neighbours(u).cloned().collect();
         Nu.insert(*u);
 
         cands.difference(&Nu).cloned().collect()
@@ -383,10 +497,10 @@ impl DTFGraph {
     fn _frat_pairs2(&self, u:&Vertex) -> EdgeSet {
         let mut res = EdgeSet::default();
 
-        let N = self.in_neighbours_at(u, 1);
+        let N:Vec<_> = self.in_neighbours_at(u, 1).collect();
 
         // This is the same as _frat_pairs, but specifically for depth 2
-        for (x,y) in N.tuple_combinations() {
+        for (x,y) in N.into_iter().tuple_combinations() {
             if !self.adjacent(x, y) {
                 res.insert((*x,*y));
             }
@@ -485,7 +599,7 @@ mod test {
         for r in 1..5 {
             let D = H.domset(r);
             println!("Found Karate {}-domset of size {}", r, D.len());
-            assert_eq!(G.r_neighbourhood(D.iter(), r).len(), G.num_vertices());
+            assert_eq!(G.r_neighbourhood(D.iter(), r as usize).len(), G.num_vertices());
         }
     }
 
