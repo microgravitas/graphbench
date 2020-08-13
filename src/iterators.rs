@@ -233,15 +233,23 @@ impl<V, D> ArcIterable<V, D> for D where V: Ord + Clone, D: Digraph<V> {
 pub struct DTFNIterator<'a> {
     G: &'a DTFGraph,
     v_it: Box<dyn Iterator<Item=&'a Vertex> + 'a>,
-    depth: usize,
+    depth: Option<usize>,
 }
 
 impl<'a> DTFNIterator<'a> {
-    pub fn new(G: &'a DTFGraph, depth: usize) -> DTFNIterator<'a> {
+    pub fn all_depths(G: &'a DTFGraph) -> DTFNIterator<'a> {
         DTFNIterator {
             G,
             v_it: G.vertices(),
-            depth,
+            depth: None,
+        }
+    }
+
+    pub fn fixed_depth(G: &'a DTFGraph, depth: usize) -> DTFNIterator<'a> {
+        DTFNIterator {
+            G,
+            v_it: G.vertices(),
+            depth: Some(depth),
         }
     }
 }
@@ -250,10 +258,17 @@ impl<'a> Iterator for DTFNIterator<'a> {
     type Item = (Vertex, Box<dyn Iterator<Item=&'a Vertex> + 'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let v = *self.v_it.next()?;
-        let N = self.G.in_neighbours_at(&v, self.depth);
+        if let Some(depth) = self.depth {
+            let v = *self.v_it.next()?;
+            let N = self.G.in_neighbours_at(&v, depth);
 
-        Some((v, N))
+            Some((v, N))
+        } else {
+            let v = *self.v_it.next()?;
+            let N = self.G.in_neighbours(&v);
+
+            Some((v, N))
+        }
     }
 }
 
@@ -267,9 +282,19 @@ pub struct DTFArcIterator<'a> {
 }
 
 impl<'a> DTFArcIterator<'a> {
-    pub fn new(G: &'a DTFGraph, depth:usize) -> DTFArcIterator {
+    pub fn all_depths(G: &'a DTFGraph) -> DTFArcIterator {
         let mut res = DTFArcIterator {
-            N_it: G.in_neighbourhoods_iter(depth),
+            N_it: G.in_neighbourhoods_iter(),
+            curr_v: std::u32::MAX,
+            curr_it: None,
+        };
+        res.advance();
+        res
+    }
+
+    pub fn fixed_depth(G: &'a DTFGraph, depth:usize) -> DTFArcIterator {
+        let mut res = DTFArcIterator {
+            N_it: G.in_neighbourhoods_iter_at(depth),
             curr_v: std::u32::MAX,
             curr_it: None,
         };

@@ -233,15 +233,6 @@ impl DTFGraph {
         res
     }
 
-    pub fn arcs<'a>(&'a mut self) -> Box<dyn Iterator<Item=(Vertex, Vertex)> + 'a> {
-        let mut its = Vec::new();
-        for i in 1..self.depth {
-            its.push(self.layer(i).arcs())
-        };
-        // its
-        Box::new(its.iter().flatten())
-    }
-
     pub fn layer(&mut self, depth:usize) -> DTFLayer {
         self.reserve_depth(depth);
         DTFLayer{ graph: self, depth }
@@ -407,12 +398,20 @@ impl DTFGraph {
         self.nodes.get(&v).unwrap().get_arc_depth_from(u)
     }
 
-    pub fn arcs_at(&self, depth:usize) -> DTFArcIterator {
-        DTFArcIterator::new(self, depth)
+    pub fn arcs(&self) -> DTFArcIterator {
+        DTFArcIterator::all_depths(self)
     }
 
-    pub fn in_neighbourhoods_iter(&self, depth:usize) -> DTFNIterator {
-        DTFNIterator::new(self, depth)
+    pub fn arcs_at(&self, depth:usize) -> DTFArcIterator {
+        DTFArcIterator::fixed_depth(self, depth)
+    }
+
+    pub fn in_neighbourhoods_iter(&self) -> DTFNIterator {
+        DTFNIterator::all_depths(self)
+    }
+
+    pub fn in_neighbourhoods_iter_at(&self, depth:usize) -> DTFNIterator {
+        DTFNIterator::fixed_depth(self, depth)
     }
 
     pub fn in_neighbours_at<'a>(&'a self, u:&Vertex, depth:usize) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
