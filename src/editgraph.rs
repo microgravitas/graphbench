@@ -2,7 +2,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 
 use crate::iterators::*;
 
-use crate::graph::Graph;
+use crate::graph::{Graph, MutableGraph};
 
 pub type Vertex = u32;
 pub type Edge = (Vertex, Vertex);
@@ -92,13 +92,72 @@ impl Graph<Vertex> for EditGraph {
     }
 }
 
-impl EditGraph {
-    pub fn new() -> EditGraph {
+impl MutableGraph<Vertex> for EditGraph {
+    fn new() -> EditGraph {
         EditGraph{adj: FnvHashMap::default(),
               degs: FnvHashMap::default(),
               m: 0}
     }
 
+    fn add_vertex(&mut self, u:&Vertex) -> bool {
+        if !self.adj.contains_key(&u) {
+            self.adj.insert(*u, FnvHashSet::default());
+            self.degs.insert(*u, 0);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn add_edge(&mut self, u:&Vertex, v:&Vertex) -> bool {
+        self.add_vertex(u);
+        self.add_vertex(v);
+        if !self.adjacent(u, v) {
+            self.adj.get_mut(u).unwrap().insert(*v);
+            self.adj.get_mut(v).unwrap().insert(*u);
+            self.degs.insert(*u, self.degs[u] + 1);
+            self.degs.insert(*v, self.degs[v] + 1);
+            self.m += 1;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn remove_edge(&mut self, u:&Vertex, v:&Vertex) -> bool {
+        if self.adjacent(u, v) {
+            self.adj.get_mut(&u).unwrap().remove(&v);
+            self.adj.get_mut(&v).unwrap().remove(&u);
+            self.degs.insert(*u, self.degs[&u] - 1);
+            self.degs.insert(*v, self.degs[&v] - 1);
+            self.m -= 1;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn remove_vertex(&mut self, u:&Vertex) -> bool {
+        if !self.contains(u) {
+            false
+        } else {
+            let N = self.adj.get(u).unwrap().clone();
+            for v in &N {
+                self.adj.get_mut(v).unwrap().remove(u);
+                self.degs.insert(*v, self.degs[&v] - 1);
+                self.m -= 1;
+            }
+
+            self.adj.remove(&u);
+            self.degs.remove(&u);
+
+            true
+        }
+    }
+
+}
+
+impl EditGraph {
     pub fn normalize(&self) -> (EditGraph, FnvHashMap<Vertex, Vertex>) {
         let mut res = EditGraph::new();
         let mut order:Vec<_> = self.vertices().collect();
@@ -160,59 +219,6 @@ impl EditGraph {
     /*
         Basic operations
     */
-    pub fn add_vertex(&mut self, u:&Vertex) {
-        if !self.adj.contains_key(&u) {
-            self.adj.insert(*u, FnvHashSet::default());
-            self.degs.insert(*u, 0);
-        }
-    }
-
-    pub fn add_edge(&mut self, u:&Vertex, v:&Vertex) -> bool {
-        self.add_vertex(u);
-        self.add_vertex(v);
-        if !self.adjacent(u, v) {
-            self.adj.get_mut(u).unwrap().insert(*v);
-            self.adj.get_mut(v).unwrap().insert(*u);
-            self.degs.insert(*u, self.degs[u] + 1);
-            self.degs.insert(*v, self.degs[v] + 1);
-            self.m += 1;
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn remove_edge(&mut self, u:&Vertex, v:&Vertex) -> bool {
-        if self.adjacent(u, v) {
-            self.adj.get_mut(&u).unwrap().remove(&v);
-            self.adj.get_mut(&v).unwrap().remove(&u);
-            self.degs.insert(*u, self.degs[&u] - 1);
-            self.degs.insert(*v, self.degs[&v] - 1);
-            self.m -= 1;
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn remove_vertex(&mut self, u:&Vertex) -> bool {
-        if !self.contains(u) {
-            false
-        } else {
-            let N = self.adj.get(u).unwrap().clone();
-            for v in &N {
-                self.adj.get_mut(v).unwrap().remove(u);
-                self.degs.insert(*v, self.degs[&v] - 1);
-                self.m -= 1;
-            }
-
-            self.adj.remove(&u);
-            self.degs.remove(&u);
-
-            true
-        }
-    }
-
     pub fn remove_loops(&mut self) -> usize {
         let mut cands = Vec::new();
         for u in self.vertices() {

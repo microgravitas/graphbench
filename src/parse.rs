@@ -6,7 +6,7 @@ use std::io::BufRead;
 use std::fs::File;
 use flate2::read::GzDecoder;
 
-use crate::graph::Graph;
+use crate::graph::*;
 
 impl EditGraph {
     pub fn from_txt(filename:&str) -> io::Result<EditGraph> {

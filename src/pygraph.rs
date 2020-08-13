@@ -9,7 +9,7 @@ use pyo3::exceptions;
 
 use std::collections::HashSet;
 
-use crate::graph::Graph;
+use crate::graph::*;
 use crate::editgraph::*;
 
 use std::cell::{Cell, RefCell};

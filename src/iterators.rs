@@ -101,13 +101,13 @@ impl<V, D> DiNeighIterable<V, D> for D where V: Clone, D: Digraph<V> {
 /// we need the vertex type `V` to implement `std::cmp::Ord`.
 /// The associated trait EdgeIterable is implemented for generic graphs
 ///  to provide the method `edges(...)` to create an `EdgeIterator`.
-pub struct EdgeIterator<'a, V, G: Graph<V>> where V: Ord + Clone {
+pub struct EdgeIterator<'a, V, G> where V: Ord + Clone, G: Graph<V> {
     N_it: NeighIterator<'a, V, G>,
     curr_v: Option<V>,
     curr_it: Option<Box<dyn Iterator<Item=&'a V> + 'a>>,
 }
 
-impl<'a, V, G: Graph<V>> EdgeIterator<'a, V, G> where V: Ord, V: Clone {
+impl<'a, V, G> EdgeIterator<'a, V, G> where V: Ord + Clone, G: Graph<V> {
     pub fn new(graph: &'a G) -> EdgeIterator<'a, V, G> {
         let mut res = EdgeIterator {
             N_it: graph.neighbourhoods(),
@@ -165,7 +165,66 @@ impl<V, G> EdgeIterable<V,G> for G where V: Ord + Clone, G: Graph<V> {
 }
 
 
+/// Similar to `EdgeIterator`, but for directed graphs.
+pub struct ArcIterator<'a, V, D> where V: Ord + Clone, D: Digraph<V> {
+    N_it: DiNeighIterator<'a, V, D>,
+    curr_v: Option<V>,
+    curr_it: Option<Box<dyn Iterator<Item=&'a V> + 'a>>,
+}
 
+impl<'a, V, D> ArcIterator<'a, V, D> where V: Ord + Clone, D: Digraph<V> {
+    pub fn new(graph: &'a D) -> ArcIterator<'a, V, D> {
+        let mut res = ArcIterator {
+            N_it: graph.in_neighbourhoods(),
+            curr_v: None,
+            curr_it: None,
+        };
+        res.advance();
+        res
+    }
+
+    fn advance(&mut self) {
+        if let Some((v, it)) = self.N_it.next() {
+            self.curr_v = Some(v);
+            self.curr_it = Some(it);
+        } else {
+            self.curr_it = None;
+        }
+    }
+}
+
+impl<'a, V, D> Iterator for ArcIterator<'a, V, D> where V: Ord + Clone, D: Digraph<V> {
+    type Item = (V, V);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.curr_it.is_some() {
+            let uu = {
+                let uu = self.curr_it.as_mut().unwrap().next();
+                if uu.is_none() {
+                    self.advance();
+                    continue;
+                }
+                uu.clone()
+            };
+
+            // Tie-breaking so we only return every edge once
+            let u = uu.unwrap().clone();
+            return Some((self.curr_v.as_ref().unwrap().clone(), u));
+        }
+
+        return None;
+    }
+}
+
+pub trait ArcIterable<V, D> where V: Clone + Ord, D: Digraph<V> {
+    fn arcs(&self) -> ArcIterator<V, D>;
+}
+
+impl<V, D> ArcIterable<V, D> for D where V: Ord + Clone, D: Digraph<V> {
+    fn arcs(&self) -> ArcIterator<V, D> {
+        ArcIterator::<V, D>::new(self)
+    }
+}
 
 /*
     Neighbourhood iterator for dtf graphs. At each step,

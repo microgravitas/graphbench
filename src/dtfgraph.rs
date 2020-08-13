@@ -138,12 +138,6 @@ impl DTFNode {
     }
 
     pub fn in_neighbours(&self) -> Box<dyn Iterator<Item=&Vertex> + '_> {
-        // let mut res = VertexSet::default();
-        // for N in &self.in_arcs {
-        //     res.extend(N.iter());
-        // }
-        // res
-
         Box::new(self.in_arcs.iter().flat_map(|N| N.iter()))
     }
 
@@ -222,8 +216,30 @@ impl Digraph<Vertex> for DTFGraph {
 }
 
 impl DTFGraph {
-    pub fn new() -> DTFGraph {
+    fn new() -> DTFGraph {
         DTFGraph { nodes: FnvHashMap::default(), depth: 1, ms: vec![0] }
+    }
+
+    pub fn to_undirected<G>(&self) -> G where G: MutableGraph<Vertex> {
+        let mut res = G::new();
+        for u in self.vertices() {
+            res.add_vertex(u);
+        }
+
+        for (u,v) in self.arcs() {
+            res.add_edge(&u, &v);
+        }
+
+        res
+    }
+
+    pub fn arcs<'a>(&'a mut self) -> Box<dyn Iterator<Item=(Vertex, Vertex)> + 'a> {
+        let mut its = Vec::new();
+        for i in 1..self.depth {
+            its.push(self.layer(i).arcs())
+        };
+        // its
+        Box::new(its.iter().flatten())
     }
 
     pub fn layer(&mut self, depth:usize) -> DTFLayer {
@@ -242,6 +258,36 @@ impl DTFGraph {
     pub fn add_vertex(&mut self, u: Vertex) {
         let d = self.depth;
         self.nodes.entry(u).or_insert_with(||  DTFNode::new(d));
+    }
+
+    pub fn orient_deep<G>(graph: &G, depth:usize) -> DTFGraph where G: Graph<Vertex> {
+        let mut augg = DTFGraph::orient(graph);
+        if depth <= 1 {
+            return augg;
+        };
+
+        augg.augment(depth, 0); // FratDepth must be <=1, otherwise we recurse endlessly
+
+        let reoriented = DTFGraph::orient(&augg.to_undirected::<EditGraph>());
+        reoriented.edge_subgraph(graph.edges())
+    }
+
+    pub fn edge_subgraph<'a, I>(&'a self, it: I ) -> DTFGraph where I: Iterator<Item=(Vertex,Vertex)> {
+        let mut res = DTFGraph::new();
+        for v in self.vertices() {
+            res.add_vertex(*v);
+        }
+
+        for (u,v) in it {
+            if self.has_arc(&u, &v) {
+                res.add_arc(&u, &v, 1);
+            }
+            if self.has_arc(&v, &u) {
+                res.add_arc(&v, &u, 1);
+            }
+        }
+
+        res
     }
 
     pub fn orient<G>(graph: &G) -> DTFGraph where G: Graph<Vertex> {
@@ -312,7 +358,7 @@ impl DTFGraph {
                 deg_dict.entry(*u).and_modify(|e| *e -= 1);
 
                 // Orient edge towards v
-                H.add_arc(*u, v, 1);
+                H.add_arc(u, &v, 1);
             }
             seen.insert(v);
         }
@@ -330,13 +376,13 @@ impl DTFGraph {
         self.depth = depth;
     }
 
-    pub fn add_arc(&mut self, u:Vertex, v:Vertex, depth:usize) {
+    pub fn add_arc(&mut self, u:&Vertex, v:&Vertex, depth:usize) {
         self.reserve_depth(depth);
 
         let d = self.depth;
         let inserted = {
-            let nodeV = self.nodes.entry(v).or_insert_with(||  DTFNode::new(d));
-            if nodeV.in_arcs.get_mut(depth-1).unwrap().insert(u) {
+            let nodeV = self.nodes.entry(*v).or_insert_with(||  DTFNode::new(d));
+            if nodeV.in_arcs.get_mut(depth-1).unwrap().insert(*u) {
                 nodeV.in_degs[depth-1] += 1;
                 true
             } else {
@@ -344,7 +390,7 @@ impl DTFGraph {
             }
         };
         if inserted {
-            let nodeU = self.nodes.entry(u).or_insert_with(||  DTFNode::new(d));
+            let nodeU = self.nodes.entry(*u).or_insert_with(||  DTFNode::new(d));
             nodeU.out_degs[depth-1] += 1;
             self.ms[depth-1] += 1
         }
@@ -411,7 +457,7 @@ impl DTFGraph {
         Some(dist)
     }
 
-    pub fn augment(&mut self, depth:usize) {
+    pub fn augment(&mut self, depth:usize, frat_depth:usize) {
         while self.depth < depth {
             let mut fGraph = EditGraph::new();
             let mut tArcs = FnvHashSet::<Arc>::default();
@@ -436,16 +482,14 @@ impl DTFGraph {
             }
 
             for (s, t) in &tArcs {
-                self.add_arc(*s, *t, self.depth);
+                self.add_arc(s, t, self.depth);
                 fGraph.remove_edge(s, t);
             }
 
-            // TODO: implement depth-2 ldo
-            // fratDigraph = fratGraph.deep_ldo(ldo_depth)
-            let fratDigraph = DTFGraph::orient(&fGraph);
+            let fratDigraph = DTFGraph::orient_deep(&fGraph, frat_depth);
 
             for (s,t) in fratDigraph.arcs_at(1) {
-                self.add_arc(s, t, self.depth);
+                self.add_arc(&s, &t, self.depth);
             }
         }
     }
@@ -509,7 +553,8 @@ impl DTFGraph {
     }
 
     fn domset(&mut self, radius:u32) -> VertexSet {
-        self.augment(radius as usize);
+        // A fraternal lookahead of 2 seems good accross the board.
+        self.augment(radius as usize, 2);
 
         let mut domset = VertexSet::default();
         let mut dom_distance = FnvHashMap::<Vertex, u32>::default();
@@ -579,15 +624,31 @@ mod test {
     use super::*;
     use crate::parse;
 
-    // #[test]
+    #[test]
     fn iteration() {
         let mut H = DTFGraph::new();
-        H.add_arc(1, 0, 1);
-        H.add_arc(2, 0, 1);
-        H.add_arc(3, 0, 1);
+        H.add_arc(&1, &0, 1);
+        H.add_arc(&2, &0, 1);
+        H.add_arc(&3, &0, 1);
 
         assert_eq!(H.in_neighbours_at(&0, 1).cloned().collect::<FnvHashSet<Vertex>>(),
                    [1,2,3].iter().cloned().collect::<FnvHashSet<Vertex>>());
+    }
+
+    #[test]
+    fn edge_subgraph() {
+        let mut H = DTFGraph::new();
+        let mut G = EditGraph::new();
+
+        G.add_edge(&0, &1);
+        G.add_edge(&0, &2);
+        H.add_arc(&0, &1, 1);
+        H.add_arc(&0, &3, 1);
+
+        let HH = H.edge_subgraph(G.edges());
+        assert_eq!(HH.num_edges(), 1);
+        assert!(HH.has_arc_at(&0, &1, 1));
+        assert!(!HH.has_arc_at(&1, &0, 1));
     }
 
     #[test]
@@ -613,7 +674,7 @@ mod test {
 
         let mut H = DTFGraph::orient(&G);
 
-        H.augment(4);
+        H.augment(4, 2);
         assert_eq!(H.small_distance(&0,&1), Some(1));
         assert_eq!(H.small_distance(&1,&2), Some(1));
         assert_eq!(H.small_distance(&2,&3), Some(1));
