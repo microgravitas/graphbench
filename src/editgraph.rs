@@ -1,21 +1,13 @@
 use fnv::{FnvHashMap, FnvHashSet};
 
 use crate::iterators::*;
-
-use crate::graph::{Graph, MutableGraph};
-
-pub type Vertex = u32;
-pub type Edge = (Vertex, Vertex);
-pub type Arc = (Vertex, Vertex);
-pub type VertexSet = FnvHashSet<Vertex>;
-pub type VertexSetRef<'a> = FnvHashSet<&'a Vertex>;
-pub type EdgeSet = FnvHashSet<Edge>;
+use crate::graph::*;
 
 #[derive(Debug)]
 pub struct EditGraph {
     adj: FnvHashMap<Vertex, VertexSet>,
     degs: FnvHashMap<Vertex, u32>,
-    m: u64
+    m: usize
 }
 
 impl PartialEq for EditGraph {

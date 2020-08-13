@@ -1,5 +1,5 @@
 use crate::editgraph::EditGraph;
-use crate::editgraph::Vertex;
+use crate::graph::Vertex;
 
 use std::io;
 use std::io::BufRead;

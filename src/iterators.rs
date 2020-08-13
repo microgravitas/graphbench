@@ -2,9 +2,7 @@ use fnv::{FnvHashMap, FnvHashSet};
 
 use crate::graph::*;
 
-use crate::editgraph::{Vertex, Edge, Arc};
 use crate::editgraph::EditGraph;
-use crate::editgraph::VertexSet;
 
 use crate::dtfgraph::DTFGraph;
 use crate::dtfgraph::DTFVertexIterator;

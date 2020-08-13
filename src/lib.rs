@@ -10,6 +10,7 @@ use std::iter::Map;
 pub mod graph;
 pub mod editgraph;
 pub mod dtfgraph;
+pub mod ordgraph;
 
 pub mod iterators;
 pub mod parse;

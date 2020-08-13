@@ -3,8 +3,8 @@ use fnv::{FnvHashMap, FnvHashSet};
 use itertools::Itertools;
 
 use crate::graph::*;
-use crate::editgraph::{EditGraph, Vertex, VertexSet, Arc, EdgeSet};
 use crate::iterators::*;
+use crate::editgraph::EditGraph;
 
 use std::cmp::{max, min};
 
