@@ -23,8 +23,8 @@ pub struct DTFLayer<'a> {
 }
 
 impl<'a> DTFLayer<'a> {
-    pub fn new(graph: &'a DTFGraph, depth: usize) {
-        DTFLayer{ graph, depth };
+    pub fn new(graph: &'a DTFGraph, depth: usize) -> Self {
+        DTFLayer{ graph, depth }
     }
 }
 
@@ -134,7 +134,7 @@ impl DTFNode {
                 return Some((i+1) as u32)
             }
         }
-        return None
+        None
     }
 
     pub fn in_neighbours(&self) -> Box<dyn Iterator<Item=&Vertex> + '_> {
@@ -263,7 +263,7 @@ impl DTFGraph {
         reoriented.edge_subgraph(graph.edges())
     }
 
-    pub fn edge_subgraph<'a, I>(&'a self, it: I ) -> DTFGraph where I: Iterator<Item=(Vertex,Vertex)> {
+    pub fn edge_subgraph<I>(&'_ self, it: I ) -> DTFGraph where I: Iterator<Item=(Vertex,Vertex)> {
         let mut res = DTFGraph::new();
         for v in self.vertices() {
             res.add_vertex(*v);
@@ -304,7 +304,7 @@ impl DTFGraph {
             deg_dict.insert(*v, d);
             buckets
                 .entry(calc_index(d) as i32)
-                .or_insert_with(|| VertexSet::default())
+                .or_insert_with(VertexSet::default)
                 .insert(*v);
         }
 
@@ -314,7 +314,7 @@ impl DTFGraph {
             // Find non-empty bucket. If this loop executes, we
             // know that |G| > 0 so a non-empty bucket must exist.
             let mut d = 0;
-            while !buckets.contains_key(&d) || buckets[&d].len() == 0 {
+            while !buckets.contains_key(&d) || buckets[&d].is_empty() {
                 d += 1
             }
 
@@ -322,7 +322,7 @@ impl DTFGraph {
                 break;
             }
 
-            let v = buckets[&d].iter().next().unwrap().clone();
+            let v = *buckets[&d].iter().next().unwrap();
             buckets.get_mut(&d).unwrap().remove(&v);
 
             for u in graph.neighbours(&v) {
@@ -341,7 +341,7 @@ impl DTFGraph {
                     });
                     buckets
                         .entry(new_index)
-                        .or_insert_with(|| VertexSet::default())
+                        .or_insert_with(VertexSet::default)
                         .insert(*u);
                 }
 
@@ -431,14 +431,12 @@ impl DTFGraph {
     pub fn small_distance(&self, u:&Vertex, v:&Vertex) -> Option<u32> {
         let mut dist = std::u32::MAX;
 
-        match self.get_arc_depth(u, v) {
-            Some(i) => {dist = i},
-            None => {}
+        if let Some(i) = self.get_arc_depth(u, v) {
+            dist = i;
         }
 
-        match self.get_arc_depth(v, u) {
-            Some(i) => {dist = i},
-            None => {}
+        if let Some(i) = self.get_arc_depth(v, u) {
+            dist = i;
         }
 
         let Nv = self.in_neighbours_with_weights(v);

@@ -23,8 +23,7 @@ impl EditGraph {
 
     fn parse<R: BufRead>(reader: &mut R) -> io::Result<EditGraph> {
         let mut G = EditGraph::new();
-        let mut i = 0;
-        for line in reader.lines() {
+        for (i, line) in reader.lines().enumerate() {
             let l = line.unwrap();
             let tokens:Vec<&str> = l.split_whitespace().collect();
             if tokens.len() != 2 {
@@ -36,7 +35,6 @@ impl EditGraph {
             let v = EditGraph::parse_vertex(tokens[1])?;
 
             G.add_edge(&u,&v);
-            i += 1;
         }
 
         Ok(G)

@@ -21,7 +21,7 @@ impl PartialEq for EditGraph {
         if self.degs != other.degs {
             return false
         }
-        return self.adj == other.adj;
+        self.adj == other.adj
     }
 }
 impl Eq for EditGraph {}
@@ -36,7 +36,7 @@ impl Clone for EditGraph {
             }
         }
 
-        return G
+        G
     }
 }
 
@@ -182,7 +182,7 @@ impl EditGraph {
         }
 
         res.retain(|&u| !centers.contains(&u));
-        return res
+        res
     }
 
     pub fn closed_neighbourhood<'a, I>(&self, it:I) -> VertexSet where I: Iterator<Item=&'a Vertex> {
@@ -191,11 +191,11 @@ impl EditGraph {
             res.extend(self.neighbours(v));
         }
 
-        return res
+        res
     }
 
     pub fn r_neighbours(&self, u:Vertex, r:usize) -> VertexSet {
-        return self.r_neighbourhood([u].iter(), r)
+        self.r_neighbourhood([u].iter(), r)
     }
 
     pub fn r_neighbourhood<'a,I>(&self, it:I, r:usize) -> VertexSet where I: Iterator<Item=&'a Vertex> {
@@ -205,7 +205,7 @@ impl EditGraph {
             let ext = self.closed_neighbourhood(res.iter());
             res.extend(ext);
         }
-        return res
+        res
     }
 
     /*
@@ -224,7 +224,7 @@ impl EditGraph {
             self.remove_edge(&u, &u);
         }
 
-        return c
+        c
     }
 
     pub fn remove_isolates(&mut self) -> usize {
@@ -234,7 +234,7 @@ impl EditGraph {
             self.remove_vertex(&u);
         }
 
-        return c
+        c
     }
 
     /*
@@ -244,7 +244,7 @@ impl EditGraph {
         // TODO: handle case when I is empty
         let u = vertices.next().unwrap();
         self.contract_into(u, vertices);
-        return *u;
+        *u
     }
 
     pub fn contract_into<'a, I>(&mut self, center:&Vertex, vertices:I) where I: Iterator<Item=&'a Vertex> {
@@ -274,13 +274,13 @@ impl EditGraph {
             }
         }
 
-        return G
+        G
     }
 
     pub fn components(&self) -> Vec<VertexSet> {
         let mut vertices:VertexSet = self.vertices().cloned().collect();
         let mut comps = Vec::new();
-        while vertices.len() > 0 {
+        while !vertices.is_empty() {
             let mut comp = VertexSet::default();
             let u = vertices.iter().cloned().next().unwrap();
             vertices.remove(&u);

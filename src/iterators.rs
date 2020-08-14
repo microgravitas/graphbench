@@ -1,6 +1,7 @@
 use fnv::{FnvHashMap, FnvHashSet};
 
 use crate::graph::*;
+use std::hash::Hash;
 
 use crate::editgraph::EditGraph;
 
@@ -13,18 +14,18 @@ pub type NVertexIterator<'a> = std::collections::hash_set::Iter<'a, Vertex>;
 
 /// Neighbourhood iterators for graphs and digraphs. At each step, the iterator
 /// returns a pair `(v,N(v))` (or `(v,N^-(v))` or `(v,N^+(V))` for digraphs).
-pub struct NeighIterator<'a, V, G: Graph<V>> where V: Clone {
+pub struct NeighIterator<'a, V, G: Graph<V>> where V: Clone + Hash + Eq {
     graph: &'a G,
     v_it: Box<dyn Iterator<Item=&'a V> + 'a>
 }
 
-impl<'a, V, G> NeighIterator<'a, V, G> where V: Clone, G: Graph<V> {
+impl<'a, V, G> NeighIterator<'a, V, G> where V:  Clone + Hash + Eq, G: Graph<V> {
     pub fn new(graph: &'a G) -> NeighIterator<'a, V, G> {
         NeighIterator { graph, v_it: graph.vertices() }
     }
 }
 
-impl<'a, V, G> Iterator for NeighIterator<'a, V, G> where V: Clone, G: Graph<V> {
+impl<'a, V, G> Iterator for NeighIterator<'a, V, G> where V:  Clone + Hash + Eq, G: Graph<V> {
     type Item = (V, Box<dyn Iterator<Item=&'a V> + 'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -37,7 +38,7 @@ impl<'a, V, G> Iterator for NeighIterator<'a, V, G> where V: Clone, G: Graph<V> 
 
 // Note: It would be nice if we could just re-use NeighItertor here, but stable Rust
 // currently does not support overlapping `impl` blocks.
-pub struct DiNeighIterator<'a, V, G: Graph<V>> where V: Clone {
+pub struct DiNeighIterator<'a, V, G: Graph<V>> where V:  Clone + Hash + Eq {
     graph: &'a G,
     v_it: Box<dyn Iterator<Item=&'a V> + 'a>,
     mode: DiNeighIteratorMode
@@ -45,7 +46,7 @@ pub struct DiNeighIterator<'a, V, G: Graph<V>> where V: Clone {
 
 enum DiNeighIteratorMode {IN, OUT}
 
-impl<'a, V, D> DiNeighIterator<'a, V, D> where V: Clone, D: Digraph<V> {
+impl<'a, V, D> DiNeighIterator<'a, V, D> where V:  Clone + Hash + Eq, D: Digraph<V> {
     pub fn new_in(graph: &'a D) -> DiNeighIterator<'a, V, D> {
         DiNeighIterator { graph, mode: DiNeighIteratorMode::IN, v_it: graph.vertices() }
     }
@@ -55,7 +56,7 @@ impl<'a, V, D> DiNeighIterator<'a, V, D> where V: Clone, D: Digraph<V> {
     }
 }
 
-impl<'a, V, D> Iterator for DiNeighIterator<'a, V, D> where V: Clone, D: Digraph<V> {
+impl<'a, V, D> Iterator for DiNeighIterator<'a, V, D> where V:  Clone + Hash + Eq, D: Digraph<V> {
     type Item = (V, Box<dyn Iterator<Item=&'a V> + 'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -69,22 +70,22 @@ impl<'a, V, D> Iterator for DiNeighIterator<'a, V, D> where V: Clone, D: Digraph
     }
 }
 
-pub trait NeighIterable<V, G> where V: Clone, G: Graph<V> {
+pub trait NeighIterable<V, G> where V:  Clone + Hash + Eq, G: Graph<V> {
     fn neighbourhoods(&self) -> NeighIterator<V,G>;
 }
 
-impl<V, G> NeighIterable<V,G> for G where V: Clone, G: Graph<V> {
+impl<V, G> NeighIterable<V,G> for G where V:  Clone + Hash + Eq, G: Graph<V> {
     fn neighbourhoods(&self) -> NeighIterator<V, G> {
         NeighIterator::<V, G>::new(self)
     }
 }
 
-pub trait DiNeighIterable<V, D> where V: Clone, D: Digraph<V> {
+pub trait DiNeighIterable<V, D> where V:  Clone + Hash + Eq, D: Digraph<V> {
     fn in_neighbourhoods(&self) -> DiNeighIterator<V, D>;
     fn out_neighbourhoods(&self) -> DiNeighIterator<V, D>;
 }
 
-impl<V, D> DiNeighIterable<V, D> for D where V: Clone, D: Digraph<V> {
+impl<V, D> DiNeighIterable<V, D> for D where V:  Clone + Hash + Eq, D: Digraph<V> {
     fn in_neighbourhoods(&self) -> DiNeighIterator<V, D> {
         DiNeighIterator::<V, D>::new_in(self)
     }
@@ -99,13 +100,13 @@ impl<V, D> DiNeighIterable<V, D> for D where V: Clone, D: Digraph<V> {
 /// we need the vertex type `V` to implement `std::cmp::Ord`.
 /// The associated trait EdgeIterable is implemented for generic graphs
 ///  to provide the method `edges(...)` to create an `EdgeIterator`.
-pub struct EdgeIterator<'a, V, G> where V: Ord + Clone, G: Graph<V> {
+pub struct EdgeIterator<'a, V, G> where V: Ord + Clone + Hash + Eq, G: Graph<V> {
     N_it: NeighIterator<'a, V, G>,
     curr_v: Option<V>,
     curr_it: Option<Box<dyn Iterator<Item=&'a V> + 'a>>,
 }
 
-impl<'a, V, G> EdgeIterator<'a, V, G> where V: Ord + Clone, G: Graph<V> {
+impl<'a, V, G> EdgeIterator<'a, V, G> where V: Ord + Clone + Hash + Eq, G: Graph<V> {
     pub fn new(graph: &'a G) -> EdgeIterator<'a, V, G> {
         let mut res = EdgeIterator {
             N_it: graph.neighbourhoods(),
@@ -126,7 +127,7 @@ impl<'a, V, G> EdgeIterator<'a, V, G> where V: Ord + Clone, G: Graph<V> {
     }
 }
 
-impl<'a, V, G> Iterator for EdgeIterator<'a, V, G> where V: Ord + Clone, G: Graph<V> {
+impl<'a, V, G> Iterator for EdgeIterator<'a, V, G> where V: Ord + Clone + Hash + Eq, G: Graph<V> {
     type Item = (V, V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -137,7 +138,7 @@ impl<'a, V, G> Iterator for EdgeIterator<'a, V, G> where V: Ord + Clone, G: Grap
                     self.advance();
                     continue;
                 }
-                uu.clone()
+                uu
             };
 
             // Tie-breaking so we only return every edge once
@@ -145,18 +146,18 @@ impl<'a, V, G> Iterator for EdgeIterator<'a, V, G> where V: Ord + Clone, G: Grap
             if self.curr_v.as_ref().unwrap() > &u {
                 continue;
             }
-            return Some((self.curr_v.as_ref().unwrap().clone(), u.clone()));
+            return Some((self.curr_v.as_ref().unwrap().clone(), u));
         }
 
-        return None;
+        None
     }
 }
 
-pub trait EdgeIterable<V: Ord, G: Graph<V>> where V: Clone {
+pub trait EdgeIterable<V, G> where V: Ord + Clone + Hash + Eq, G: Graph<V> {
     fn edges(&self) -> EdgeIterator<V,G>;
 }
 
-impl<V, G> EdgeIterable<V,G> for G where V: Ord + Clone, G: Graph<V> {
+impl<V, G> EdgeIterable<V,G> for G where V: Ord + Clone + Hash + Eq, G: Graph<V> {
     fn edges(&self) -> EdgeIterator<V,G> {
         EdgeIterator::<V,G>::new(self)
     }
@@ -164,13 +165,13 @@ impl<V, G> EdgeIterable<V,G> for G where V: Ord + Clone, G: Graph<V> {
 
 
 /// Similar to `EdgeIterator`, but for directed graphs.
-pub struct ArcIterator<'a, V, D> where V: Ord + Clone, D: Digraph<V> {
+pub struct ArcIterator<'a, V, D> where V: Ord + Clone + Hash + Eq, D: Digraph<V> {
     N_it: DiNeighIterator<'a, V, D>,
     curr_v: Option<V>,
     curr_it: Option<Box<dyn Iterator<Item=&'a V> + 'a>>,
 }
 
-impl<'a, V, D> ArcIterator<'a, V, D> where V: Ord + Clone, D: Digraph<V> {
+impl<'a, V, D> ArcIterator<'a, V, D> where V: Ord + Clone + Hash + Eq, D: Digraph<V> {
     pub fn new(graph: &'a D) -> ArcIterator<'a, V, D> {
         let mut res = ArcIterator {
             N_it: graph.in_neighbourhoods(),
@@ -191,7 +192,7 @@ impl<'a, V, D> ArcIterator<'a, V, D> where V: Ord + Clone, D: Digraph<V> {
     }
 }
 
-impl<'a, V, D> Iterator for ArcIterator<'a, V, D> where V: Ord + Clone, D: Digraph<V> {
+impl<'a, V, D> Iterator for ArcIterator<'a, V, D> where V: Ord + Clone + Hash + Eq, D: Digraph<V> {
     type Item = (V, V);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -202,7 +203,7 @@ impl<'a, V, D> Iterator for ArcIterator<'a, V, D> where V: Ord + Clone, D: Digra
                     self.advance();
                     continue;
                 }
-                uu.clone()
+                uu
             };
 
             // Tie-breaking so we only return every edge once
@@ -210,15 +211,15 @@ impl<'a, V, D> Iterator for ArcIterator<'a, V, D> where V: Ord + Clone, D: Digra
             return Some((self.curr_v.as_ref().unwrap().clone(), u));
         }
 
-        return None;
+        None
     }
 }
 
-pub trait ArcIterable<V, D> where V: Clone + Ord, D: Digraph<V> {
+pub trait ArcIterable<V, D> where V: Ord + Clone + Hash + Eq, D: Digraph<V> {
     fn arcs(&self) -> ArcIterator<V, D>;
 }
 
-impl<V, D> ArcIterable<V, D> for D where V: Ord + Clone, D: Digraph<V> {
+impl<V, D> ArcIterable<V, D> for D where V: Ord + Clone + Hash + Eq, D: Digraph<V> {
     fn arcs(&self) -> ArcIterator<V, D> {
         ArcIterator::<V, D>::new(self)
     }
@@ -329,6 +330,6 @@ impl<'a> Iterator for DTFArcIterator<'a> {
             return Some((self.curr_v, u));
         }
 
-        return None;
+        None
     }
 }

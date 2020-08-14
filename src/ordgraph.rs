@@ -14,8 +14,8 @@ pub struct OrdNode {
     out_arcs: VertexSet
 }
 
-impl OrdNode {
-    pub fn new() -> OrdNode {
+impl Default for OrdNode {
+    fn default() -> Self {
         OrdNode{ in_arcs: VertexSet::default(), out_arcs: VertexSet::default() }
     }
 }
@@ -31,7 +31,7 @@ impl OrdGraph {
         let mut nodes:Vec<_> = Vec::new();
 
         for _ in &order {
-            nodes.push(OrdNode::new());
+            nodes.push(OrdNode::default());
         }
 
         for (u,v) in graph.edges() {
