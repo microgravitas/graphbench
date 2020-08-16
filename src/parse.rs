@@ -11,18 +11,31 @@ use crate::graph::*;
 impl EditGraph {
     pub fn from_txt(filename:&str) -> io::Result<EditGraph> {
         let file = File::open(filename)?;
-        EditGraph::parse(&mut io::BufReader::new(file))
+        let metadata = file.metadata()?;
+        let size = metadata.len(); // Size in bytes
+
+        // This is a rought estimate of n given the number of bytes,
+        // obtained from the my network collection.
+        let n_estimate = 0.007*(size as f32);
+
+        EditGraph::parse(&mut io::BufReader::new(file), n_estimate as usize)
     }
 
     pub fn from_gzipped(filename:&str) -> io::Result<EditGraph> {
         let file = File::open(filename)?;
+        let metadata = file.metadata()?;
+        let size = metadata.len();
         let gz = GzDecoder::new(file);
 
-        EditGraph::parse(&mut io::BufReader::new(gz))
+        // This is a rought estimate of n given the number of bytes in
+        // the compresed file, obtained from the my network collection.
+        let n_estimate = 0.025*(size as f32);
+
+        EditGraph::parse(&mut io::BufReader::new(gz), n_estimate as usize)
     }
 
-    fn parse<R: BufRead>(reader: &mut R) -> io::Result<EditGraph> {
-        let mut G = EditGraph::new();
+    fn parse<R: BufRead>(reader: &mut R, n_estimate:usize) -> io::Result<EditGraph> {
+        let mut G = EditGraph::with_capacity(n_estimate);
         for (i, line) in reader.lines().enumerate() {
             let l = line.unwrap();
             let tokens:Vec<&str> = l.split_whitespace().collect();

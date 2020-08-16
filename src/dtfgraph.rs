@@ -1,4 +1,5 @@
 use fnv::{FnvHashMap, FnvHashSet};
+use std::collections::HashMap;
 
 use itertools::Itertools;
 
@@ -220,6 +221,14 @@ impl DTFGraph {
         DTFGraph { nodes: FnvHashMap::default(), depth: 1, ms: vec![0] }
     }
 
+    fn with_capacity(n_guess:usize) -> DTFGraph {
+        DTFGraph {
+            nodes: FnvHashMap::with_capacity_and_hasher(n_guess, Default::default()),
+            depth: 1,
+            ms: vec![0]
+        }
+    }
+
     pub fn to_undirected<G>(&self) -> G where G: MutableGraph<Vertex> {
         let mut res = G::new();
         for u in self.vertices() {
@@ -282,76 +291,26 @@ impl DTFGraph {
     }
 
     pub fn orient<G>(graph: &G) -> DTFGraph where G: Graph<Vertex> {
-        let mut H = DTFGraph::new();
+        let mut H = DTFGraph::with_capacity(graph.num_vertices());
 
-        // This index function defines buckets of exponentially increasing
-        // size, but all values below `small` (here 32) are put in their own
-        // buckets.
-        fn calc_index(i: usize) -> usize {
-            let small = 2_i32.pow(5);
-            min(i, small as usize)
-                + (max(0, (i as i32) - small + 1) as u32)
-                    .next_power_of_two()
-                    .trailing_zeros() as usize
+        let ord = graph.degeneracy_ordering();
+        let indices:FnvHashMap<Vertex, usize> = ord.iter().enumerate()
+                                                .map(|(i,u)| (*u,i)).collect();
+
+        for v in ord {
+            H.add_vertex(v);
         }
 
-        let mut deg_dict = FnvHashMap::<Vertex, usize>::default();
-        let mut buckets = FnvHashMap::<i32, VertexSet>::default();
-
-        for v in graph.vertices() {
-            H.add_vertex(*v);
-            let d = graph.degree(v);
-            deg_dict.insert(*v, d);
-            buckets
-                .entry(calc_index(d) as i32)
-                .or_insert_with(VertexSet::default)
-                .insert(*v);
-        }
-
-        let mut seen = FnvHashSet::<Vertex>::default();
-
-        for _ in 0..graph.num_vertices() {
-            // Find non-empty bucket. If this loop executes, we
-            // know that |G| > 0 so a non-empty bucket must exist.
-            let mut d = 0;
-            while !buckets.contains_key(&d) || buckets[&d].is_empty() {
-                d += 1
-            }
-
-            if !buckets.contains_key(&d) {
-                break;
-            }
-
-            let v = *buckets[&d].iter().next().unwrap();
-            buckets.get_mut(&d).unwrap().remove(&v);
-
-            for u in graph.neighbours(&v) {
-                if seen.contains(u) {
-                    continue;
+        for (v,N) in graph.neighbourhoods() {
+            let iv = indices[&v];
+            for u in N {
+                let iu = indices[&u];
+                if iu < iv {
+                    H.add_arc(u, &v, 1);
+                } else {
+                    H.add_arc(&v, u, 1);
                 }
-
-                // Update bucket
-                let du = deg_dict[u];
-                let old_index = calc_index(du) as i32;
-                let new_index = calc_index(du - 1) as i32;
-
-                if old_index != new_index {
-                    buckets.entry(old_index).and_modify(|S| {
-                        (*S).remove(u);
-                    });
-                    buckets
-                        .entry(new_index)
-                        .or_insert_with(VertexSet::default)
-                        .insert(*u);
-                }
-
-                // Updated degree
-                deg_dict.entry(*u).and_modify(|e| *e -= 1);
-
-                // Orient edge towards v
-                H.add_arc(u, &v, 1);
             }
-            seen.insert(v);
         }
 
         H

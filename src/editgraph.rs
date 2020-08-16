@@ -150,8 +150,16 @@ impl MutableGraph<Vertex> for EditGraph {
 }
 
 impl EditGraph {
+    pub fn with_capacity(n_guess:usize) -> EditGraph {
+        EditGraph {
+            adj: FnvHashMap::with_capacity_and_hasher(n_guess, Default::default()),
+            degs: FnvHashMap::with_capacity_and_hasher(n_guess, Default::default()),
+            m :0
+        }
+    }
+
     pub fn normalize(&self) -> (EditGraph, FnvHashMap<Vertex, Vertex>) {
-        let mut res = EditGraph::new();
+        let mut res = EditGraph::with_capacity(self.num_vertices());
         let mut order:Vec<_> = self.vertices().collect();
         order.sort_unstable();
 
@@ -264,8 +272,8 @@ impl EditGraph {
     }
 
     pub fn subgraph<'a, I>(&self, vertices:I) -> EditGraph where I: Iterator<Item=&'a Vertex> {
-        let mut G = EditGraph::new();
         let selected:VertexSet = vertices.cloned().collect();
+        let mut G = EditGraph::with_capacity(selected.len());
         for v in &selected {
             G.add_vertex(v);
             let Nv:VertexSet = self.neighbours(v).cloned().collect();

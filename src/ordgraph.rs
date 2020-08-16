@@ -22,12 +22,17 @@ impl Default for OrdNode {
 
 
 impl OrdGraph {
-    pub fn with_order<G, I>(graph: &G, order:I) -> OrdGraph
-        where G: Graph<Vertex>, I: Iterator<Item=Vertex>
+    pub fn with_degeneracy_order<G>(graph: &G) -> OrdGraph where G: Graph<Vertex> {
+        let ord = graph.degeneracy_ordering();
+        OrdGraph::with_order(graph, ord.iter())
+    }
+
+    pub fn with_order<'a, G, I>(graph: &G, order:I) -> OrdGraph
+        where G: Graph<Vertex>, I: Iterator<Item=&'a Vertex>
     {
         let order:Vec<_> = order.collect();
         let indices:FnvHashMap<_,_> = order.iter().cloned()
-                .enumerate().map(|(i,u)| (u,i)).collect();
+                .enumerate().map(|(i,u)| (*u,i)).collect();
         let mut nodes:Vec<_> = Vec::new();
 
         for _ in &order {
