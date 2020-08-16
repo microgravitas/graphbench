@@ -297,12 +297,9 @@ impl DTFGraph {
         let indices:FnvHashMap<Vertex, usize> = ord.iter().enumerate()
                                                 .map(|(i,u)| (*u,i)).collect();
 
-        for v in ord {
-            H.add_vertex(v);
-        }
-
         for (v,N) in graph.neighbourhoods() {
             let iv = indices[&v];
+            H.add_vertex(v);
             for u in N {
                 let iu = indices[&u];
                 if iu < iv {
