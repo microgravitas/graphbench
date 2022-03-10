@@ -52,6 +52,24 @@ impl OrdGraph {
 
         OrdGraph {nodes, indices, m: graph.num_edges()}
     }
+
+    fn left_degree(&self, u:&Vertex) -> usize {
+        if let Some(iu) = self.indices.get(u) {
+            let node_u = &self.nodes[*iu];
+            node_u.left.len()
+        } else {
+            0
+        }
+    }
+    
+    fn right_degree(&self, u:&Vertex) -> usize {
+        if let Some(iu) = self.indices.get(u) {
+            let node_u = &self.nodes[*iu];
+            node_u.right.len()
+        } else {
+            0
+        }
+    }      
 }
 
 impl Graph<Vertex> for OrdGraph {

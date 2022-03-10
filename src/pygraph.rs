@@ -10,11 +10,14 @@ use pyo3::exceptions;
 use std::collections::HashSet;
 
 use crate::graph::*;
+use crate::ordgraph::OrdGraph;
 use crate::editgraph::*;
 
 use std::cell::{Cell, RefCell};
 
 use crate::iterators::*;
+
+use crate::pyordgraph::PyOrdGraph;
 
 /*
     TODO:
@@ -45,6 +48,10 @@ impl PyGraph {
     #[new]
     pub fn new() -> PyGraph {
         PyGraph{G: EditGraph::new()}
+    }
+
+    pub fn to_ordered(&self) -> PyResult<PyOrdGraph> {
+        Ok(PyOrdGraph{G: OrdGraph::with_degeneracy_order(&self.G)})
     }
 
     pub fn normalize(&mut self) -> FnvHashMap<Vertex, Vertex>{
@@ -174,7 +181,7 @@ impl PyGraph {
 }
 
 #[cfg(not(test))] // pyclass and pymethods break `cargo test`
-#[pyclass(name=Graph)]
+#[pyclass(name=EditGraph)]
 pub struct PyGraph {
     G: EditGraph
 }

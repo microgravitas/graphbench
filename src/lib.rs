@@ -16,11 +16,13 @@ pub mod iterators;
 pub mod parse;
 
 pub mod pygraph;
+pub mod pyordgraph;
 
 #[cfg(not(test))] // pyclass and pymethods break `cargo test`
 #[pymodule]
 fn graphbench(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<pygraph::PyGraph>()?;
+    m.add_class::<pyordgraph::PyOrdGraph>()?;
     // m.add_wrapped(wrap_pyfunction!(from_pid))?;
 
     Ok(())
