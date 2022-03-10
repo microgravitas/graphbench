@@ -22,6 +22,44 @@ pub trait Graph<V> where V: Hash + Eq + Clone {
     fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&V> + 'a>;
     fn neighbours<'a>(&'a self, u:&V) -> Box<dyn Iterator<Item=&V> + 'a>;
 
+    fn neighbourhood<'a, I>(&self, it:I) -> FnvHashSet<V> 
+                where I: Iterator<Item=&'a V>, V: 'a {
+        let mut res:FnvHashSet<V> = FnvHashSet::default();
+        let centers:FnvHashSet<V> = it.cloned().collect();
+
+        for v in &centers {
+            res.extend(self.neighbours(v).cloned());
+        }
+
+        res.retain(|u| !centers.contains(&u));
+        res
+    }
+
+    fn closed_neighbourhood<'a, I>(&self, it:I) -> FnvHashSet<V> 
+                where I: Iterator<Item=&'a V>, V: 'a {
+        let mut res:FnvHashSet<V> = FnvHashSet::default();
+        for v in it {
+            res.extend(self.neighbours(v).cloned());
+        }
+
+        res
+    }
+
+    fn r_neighbours(&self, u:&V, r:usize) -> FnvHashSet<V>  {
+        self.r_neighbourhood([u.clone()].iter(), r)
+    }
+
+    fn r_neighbourhood<'a,I>(&self, it:I, r:usize) -> FnvHashSet<V>  
+                where I: Iterator<Item=&'a V>, V: 'a {
+        let mut res:FnvHashSet<V> = FnvHashSet::default();
+        res.extend(it.cloned());
+        for _ in 0..r {
+            let ext = self.closed_neighbourhood(res.iter());
+            res.extend(ext);
+        }
+        res
+    }    
+
     fn degeneracy_ordering(&self) -> Vec<V> {
         let mut res:Vec<_> = Vec::new();
 
@@ -102,6 +140,33 @@ pub trait MutableGraph<V>: Graph<V> where V: Hash + Eq + Clone {
     fn remove_vertex(&mut self, u: &V) -> bool;
     fn add_edge(&mut self, u: &V, v: &V) -> bool;
     fn remove_edge(&mut self, u: &V, v: &V) -> bool;
+
+    fn remove_loops(&mut self) -> usize {
+        let mut cands = Vec::new();
+        for u in self.vertices() {
+            if self.adjacent(u, u) {
+                cands.push(u.clone())
+            }
+        }
+
+        let res = cands.len();
+        for u in cands.into_iter() {
+            self.remove_edge(&u, &u);
+        }
+
+        res
+    }    
+
+    fn remove_isolates(&mut self) -> usize {
+        let cands:Vec<_> = self.vertices().filter(|&u| self.degree(u) == 0).cloned().collect();
+        let res = cands.len();
+        for u in cands.into_iter() {
+            self.remove_vertex(&u);
+        }
+
+        res
+    }
+
 }
 
 pub trait Digraph<V>: Graph<V> where V: Hash + Eq + Clone {

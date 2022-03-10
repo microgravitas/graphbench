@@ -179,73 +179,6 @@ impl EditGraph {
     }
 
     /*
-        Neighbourhood methods
-    */
-    pub fn neighbourhood<'a, I>(&self, it:I) -> VertexSet where I: Iterator<Item=&'a Vertex> {
-        let mut res = FnvHashSet::default();
-        let centers:VertexSet = it.cloned().collect();
-
-        for v in &centers {
-            res.extend(self.neighbours(v));
-        }
-
-        res.retain(|&u| !centers.contains(&u));
-        res
-    }
-
-    pub fn closed_neighbourhood<'a, I>(&self, it:I) -> VertexSet where I: Iterator<Item=&'a Vertex> {
-        let mut res = FnvHashSet::default();
-        for v in it {
-            res.extend(self.neighbours(v));
-        }
-
-        res
-    }
-
-    pub fn r_neighbours(&self, u:Vertex, r:usize) -> VertexSet {
-        self.r_neighbourhood([u].iter(), r)
-    }
-
-    pub fn r_neighbourhood<'a,I>(&self, it:I, r:usize) -> VertexSet where I: Iterator<Item=&'a Vertex> {
-        let mut res:VertexSet = FnvHashSet::default();
-        res.extend(it);
-        for _ in 0..r {
-            let ext = self.closed_neighbourhood(res.iter());
-            res.extend(ext);
-        }
-        res
-    }
-
-    /*
-        Basic operations
-    */
-    pub fn remove_loops(&mut self) -> usize {
-        let mut cands = Vec::new();
-        for u in self.vertices() {
-            if self.adjacent(u, u) {
-                cands.push(*u)
-            }
-        }
-
-        let c = cands.len();
-        for u in cands.into_iter() {
-            self.remove_edge(&u, &u);
-        }
-
-        c
-    }
-
-    pub fn remove_isolates(&mut self) -> usize {
-        let cands:Vec<Vertex> = self.vertices().filter(|&u| self.degree(u) == 0).cloned().collect();
-        let c = cands.len();
-        for u in cands.into_iter() {
-            self.remove_vertex(&u);
-        }
-
-        c
-    }
-
-    /*
         Advanced operations
     */
     pub fn contract<'a, I>(&mut self, mut vertices:I) -> Vertex where I: Iterator<Item=&'a Vertex> {
@@ -331,6 +264,20 @@ mod test {
     }
 
     #[test]
+    fn neighbourhoods() {
+        let mut G = EditGraph::new();
+        // 0 -- 1 -- 2 -- 3 -- 4
+        G.add_edge(&0, &1);
+        G.add_edge(&1, &2);
+        G.add_edge(&2, &3);
+        G.add_edge(&3, &4);
+
+        assert_eq!( G.neighbourhood([2].iter()), [1,3].iter().cloned().collect());
+        assert_eq!( G.neighbourhood([1,2].iter()), [0,3].iter().cloned().collect());
+        assert_eq!( G.neighbourhood([1,3].iter()), [0,2,4].iter().cloned().collect());
+    }
+
+    #[test]
     fn equality() {
         let mut G = EditGraph::new();
         G.add_edge(&0, &1);
@@ -391,17 +338,6 @@ mod test {
 
     #[test]
     fn edge_iteration() {
-        // {
-        //     let mut G = EditGraph::new();
-        //     let n:u32 = 10;
-        //     for i in 0..(n/2) {
-        //         G.add_edge(i, 5+i);
-        //     }
-        //
-        //     assert_eq!(G.edges().count(), (n/2) as usize);
-        //     assert_eq!(G.edges().count(), G.num_edges() as usize);
-        // }
-
         let mut G = EditGraph::new();
         G.add_edge(&0, &1);
         G.add_edge(&0, &2);
