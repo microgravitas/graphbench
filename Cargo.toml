@@ -2,7 +2,7 @@
 name = "graphbench"
 version = "0.1.2"
 authors = ["felix <felix.reidl@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 fnv = "1.0.7"

@@ -10,16 +10,15 @@ pub struct OrdGraph {
 }
 
 pub struct OrdNode {
-    in_arcs: VertexSet,
-    out_arcs: VertexSet
+    left: VertexSet,
+    right: VertexSet
 }
 
 impl Default for OrdNode {
     fn default() -> Self {
-        OrdNode{ in_arcs: VertexSet::default(), out_arcs: VertexSet::default() }
+        OrdNode{ left: VertexSet::default(), right: VertexSet::default() }
     }
 }
-
 
 impl OrdGraph {
     pub fn with_degeneracy_order<G>(graph: &G) -> OrdGraph where G: Graph<Vertex> {
@@ -43,14 +42,70 @@ impl OrdGraph {
             // let nU = nodes.get_mut(indices[&u]).unwrap();
             // let nV = nodes.get_mut(indices[&v]).unwrap();
             if u < v {
-                {nodes.get_mut(indices[&u]).unwrap().out_arcs.insert(v); }
-                {nodes.get_mut(indices[&v]).unwrap().in_arcs.insert(u); }
+                {nodes.get_mut(indices[&u]).unwrap().right.insert(v); }
+                {nodes.get_mut(indices[&v]).unwrap().left.insert(u); }
             } else {
-                {nodes.get_mut(indices[&v]).unwrap().out_arcs.insert(u); }
-                {nodes.get_mut(indices[&u]).unwrap().in_arcs.insert(v); }
+                {nodes.get_mut(indices[&v]).unwrap().right.insert(u); }
+                {nodes.get_mut(indices[&u]).unwrap().left.insert(v); }
             }
         }
 
         OrdGraph {nodes, indices, m: graph.num_edges()}
+    }
+}
+
+impl Graph<Vertex> for OrdGraph {
+    fn num_vertices(&self) -> usize {
+        self.nodes.len()
+    }
+
+    fn num_edges(&self) -> usize {
+        self.m
+    }
+
+    fn contains(&self, u:&Vertex) -> bool {
+        self.indices.contains_key(u)
+    }
+
+    fn adjacent(&self, u:&Vertex, v:&Vertex) -> bool {
+        if let Some(iu) = self.indices.get(u) {
+            let node_u = &self.nodes[*iu];
+            node_u.left.contains(v) || node_u.right.contains(v)
+        } else {
+            false
+        }
+    }
+
+    fn degree(&self, u:&Vertex) -> usize {
+        if let Some(iu) = self.indices.get(u) {
+            let node_u = &self.nodes[*iu];
+            node_u.left.len() + node_u.right.len()
+        } else {
+            0
+        }
+    }
+
+    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+        Box::new( self.indices.keys() )
+    }
+
+    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+        if let Some(iu) = self.indices.get(u) {
+            let node_u = &self.nodes[*iu];
+            Box::new(node_u.left.iter().chain(node_u.right.iter()))
+        } else {
+            Box::new(std::iter::empty::<&Vertex>())
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+
+    #[test] 
+    fn basic_operations() {
+
     }
 }

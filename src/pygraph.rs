@@ -68,6 +68,10 @@ impl PyGraph {
         }
     }
 
+    pub fn degeneracy_ordering(&self) -> PyResult<Vec<Vertex>> {
+        Ok(self.G.degeneracy_ordering())
+    }
+
     pub fn num_vertices(&self) -> PyResult<usize> {
         Ok(self.G.num_vertices())
     }
