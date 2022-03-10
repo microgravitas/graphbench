@@ -117,7 +117,7 @@ impl PyGraph {
     }
 
     pub fn r_neighbours(&self, u:Vertex, r:usize) -> PyResult<VertexSet> {
-        Ok(self.G.r_neighbours(u, r))
+        Ok(self.G.r_neighbours(&u, r))
     }
 
     pub fn add_vertex(&mut self, u:Vertex) -> PyResult<()> {

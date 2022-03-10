@@ -91,6 +91,14 @@ impl MutableGraph<Vertex> for EditGraph {
               m: 0}
     }
 
+    fn with_capacity(n_guess:usize) -> Self {
+        EditGraph {
+            adj: FnvHashMap::with_capacity_and_hasher(n_guess, Default::default()),
+            degs: FnvHashMap::with_capacity_and_hasher(n_guess, Default::default()),
+            m :0
+        }
+    }
+
     fn add_vertex(&mut self, u:&Vertex) -> bool {
         if !self.adj.contains_key(&u) {
             self.adj.insert(*u, FnvHashSet::default());
@@ -150,14 +158,6 @@ impl MutableGraph<Vertex> for EditGraph {
 }
 
 impl EditGraph {
-    pub fn with_capacity(n_guess:usize) -> EditGraph {
-        EditGraph {
-            adj: FnvHashMap::with_capacity_and_hasher(n_guess, Default::default()),
-            degs: FnvHashMap::with_capacity_and_hasher(n_guess, Default::default()),
-            m :0
-        }
-    }
-
     pub fn normalize(&self) -> (EditGraph, FnvHashMap<Vertex, Vertex>) {
         let mut res = EditGraph::with_capacity(self.num_vertices());
         let mut order:Vec<_> = self.vertices().collect();

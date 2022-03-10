@@ -136,6 +136,8 @@ pub trait Graph<V> where V: Hash + Eq + Clone {
 
 pub trait MutableGraph<V>: Graph<V> where V: Hash + Eq + Clone {
     fn new() -> Self;
+    fn with_capacity(n: usize) -> Self;
+
     fn add_vertex(&mut self, u: &V) -> bool;
     fn remove_vertex(&mut self, u: &V) -> bool;
     fn add_edge(&mut self, u: &V, v: &V) -> bool;
