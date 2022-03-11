@@ -59,8 +59,8 @@ impl Graph for EditGraph {
         }
     }
 
-    fn degree(&self, u:&Vertex) -> usize {
-        *self.degs.get(u).unwrap_or(&0) as usize
+    fn degree(&self, u:&Vertex) -> u32 {
+        *self.degs.get(u).unwrap_or(&0) 
     }
 
     /*

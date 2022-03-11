@@ -93,7 +93,7 @@ impl PyGraph {
         Ok(self.G.adjacent(&u, &v))
     }
 
-    pub fn degree(&self, u:Vertex) -> PyResult<usize> {
+    pub fn degree(&self, u:Vertex) -> PyResult<u32> {
         Ok(self.G.degree(&u))
     }
 

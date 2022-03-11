@@ -19,7 +19,15 @@ pub trait Graph {
     fn contains(&self, u:&Vertex) -> bool;
 
     fn adjacent(&self, u:&Vertex, v:&Vertex) -> bool;
-    fn degree(&self, u:&Vertex) -> usize;
+    fn degree(&self, u:&Vertex) -> u32;
+
+    fn degrees(&self) -> VertexMap<u32> {
+        let mut res = VertexMap::default();
+        for v in self.vertices() {
+            res.insert(*v, self.degree(v));
+        }
+        res
+    }
 
     fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
     fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
@@ -68,15 +76,15 @@ pub trait Graph {
         // This index function defines buckets of exponentially increasing
         // size, but all values below `small` (here 32) are put in their own
         // buckets.
-        fn calc_index(i: usize) -> usize {
+        fn calc_index(i: u32) -> usize {
             let small = 2_i32.pow(5);
-            min(i, small as usize)
+            min(i, small as u32) as usize
                 + (max(0, (i as i32) - small + 1) as u32)
                     .next_power_of_two()
                     .trailing_zeros() as usize
         }
 
-        let mut deg_dict = FnvHashMap::<Vertex, usize>::default();
+        let mut deg_dict = FnvHashMap::<Vertex, u32>::default();
         let mut buckets = FnvHashMap::<i32, FnvHashSet<Vertex>>::default();
 
         for v in self.vertices() {
@@ -176,12 +184,12 @@ pub trait MutableGraph: Graph{
 pub trait Digraph: Graph {
     fn has_arc(&self, u:&Vertex, v:&Vertex) -> bool;
 
-    fn in_degree(&self, u:&Vertex) -> usize {
-        self.in_neighbours(&u).count()
+    fn in_degree(&self, u:&Vertex) -> u32 {
+        self.in_neighbours(&u).count() as u32
     }
 
-    fn out_degree(&self, u:&Vertex) -> usize {
-        self.out_neighbours(&u).count()
+    fn out_degree(&self, u:&Vertex) -> u32 {
+        self.out_neighbours(&u).count() as u32
     }
 
     fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {

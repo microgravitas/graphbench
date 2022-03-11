@@ -94,10 +94,10 @@ impl Graph for OrdGraph {
         }
     }
 
-    fn degree(&self, u:&Vertex) -> usize {
+    fn degree(&self, u:&Vertex) -> u32 {
         if let Some(iu) = self.indices.get(u) {
             let node_u = &self.nodes[*iu];
-            node_u.left.len() + node_u.right.len()
+            (node_u.left.len() + node_u.right.len()) as u32
         } else {
             0
         }

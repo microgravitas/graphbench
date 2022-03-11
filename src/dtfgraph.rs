@@ -46,7 +46,7 @@ impl<'a> Graph for DTFLayer<'a> {
         self.graph.adjacent(u, v)
     }
 
-    fn degree(&self, u:&Vertex) -> usize {
+    fn degree(&self, u:&Vertex) -> u32 {
         self.graph.degree(u)
     }
 
@@ -66,11 +66,11 @@ impl<'b> Digraph for DTFLayer<'b> {
         self.graph.has_arc_at(u, v, self.depth)
     }
 
-    fn in_degree(&self, u:&Vertex) -> usize {
+    fn in_degree(&self, u:&Vertex) -> u32 {
         self.graph.in_degree(u)
     }
 
-    fn out_degree(&self, u:&Vertex) -> usize {
+    fn out_degree(&self, u:&Vertex) -> u32 {
         self.graph.out_degree(u)
     }
 
@@ -147,15 +147,15 @@ impl DTFNode {
         Box::new(self.in_arcs.get(depth-1).unwrap().iter())
     }
 
-    pub fn in_degree(&self) -> usize {
-        self.in_degs.iter().sum1::<u32>().unwrap() as usize
+    pub fn in_degree(&self) -> u32 {
+        self.in_degs.iter().sum1::<u32>().unwrap() 
     }
 
-    pub fn out_degree(&self) -> usize {
-        self.out_degs.iter().sum1::<u32>().unwrap() as usize
+    pub fn out_degree(&self) -> u32 {
+        self.out_degs.iter().sum1::<u32>().unwrap() 
     }
 
-    pub fn degree(&self) -> usize {
+    pub fn degree(&self) -> u32 {
         self.out_degree()+self.in_degree()
     }
 }
@@ -187,7 +187,7 @@ impl Graph for DTFGraph {
         unimplemented!("DTFGraph does not implement DiGraph::neighbours");
     }
 
-    fn degree(&self, u:&Vertex) -> usize {
+    fn degree(&self, u:&Vertex) -> u32 {
         self.nodes.get(&u).unwrap().degree()
     }
 }
@@ -200,11 +200,11 @@ impl Digraph for DTFGraph {
         self.nodes.get(&v).unwrap().has_in_neighbour(u)
     }
 
-    fn in_degree(&self, u:&Vertex) -> usize {
+    fn in_degree(&self, u:&Vertex) -> u32 {
         self.nodes.get(&u).unwrap().in_degree()
     }
 
-    fn out_degree(&self, u:&Vertex) -> usize {
+    fn out_degree(&self, u:&Vertex) -> u32 {
         self.nodes.get(&u).unwrap().out_degree()
     }
 
