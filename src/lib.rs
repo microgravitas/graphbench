@@ -22,6 +22,8 @@ pub mod pyordgraph;
 #[pymodule]
 fn graphbench(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<pygraph::PyGraph>()?;
+    m.add_class::<pygraph::PyVertexMapDegree>()?;
+    m.add_class::<pygraph::PyVertexMapBool>()?;
     m.add_class::<pyordgraph::PyOrdGraph>()?;
     // m.add_wrapped(wrap_pyfunction!(from_pid))?;
 

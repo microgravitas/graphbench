@@ -1,12 +1,9 @@
 use fnv::{FnvHashSet, FnvHashMap};
 
 use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
-use pyo3::PyIterProtocol;
-use pyo3::PyObjectProtocol;
-use pyo3::PyClass;
+use pyo3::exceptions::{KeyError, ValueError};
 use pyo3::class::iter::IterNextOutput;
-use pyo3::exceptions;
+use pyo3::*;
 
 use std::collections::HashSet;
 
@@ -21,21 +18,82 @@ use crate::iterators::*;
 
 use crate::pyordgraph::*;
 
-
+/*
+    Helper methods
+*/
 fn to_vertex_list(obj:&PyAny) -> PyResult<Vec<u32>>  {
     let vec:Vec<_> = obj.iter()?.map(|i| i.and_then(PyAny::extract::<u32>).unwrap()).collect();
     Ok(vec)
 }
 
 
-/*
-    TODO:
-    - Lazy iteration. Right now everything has to be cloned :/
-*/
+#[cfg(not(test))] // pyclass and pymethods break `cargo test`
+#[pyclass(name=VertexMapDegree)]
+pub struct PyVertexMapDegree {
+    content: VertexMap<u32>
+}
+
+#[cfg(not(test))] // pyclass and pymethods break `cargo test`
+#[pyclass(name=VertexMapBool)]
+pub struct PyVertexMapBool {
+    content: VertexMap<bool>
+}
+
+
+#[cfg(not(test))] // pyclass and pymethods break `cargo test`
+#[pyclass(name=EditGraph)]
+pub struct PyGraph {
+    G: EditGraph
+}
+
+
 
 /*
-    Python-specific methods
+    Python-specific methods 
 */
+#[cfg(not(test))] // pyclass and pymethods break `cargo test`
+#[pyproto]
+impl PyObjectProtocol for PyVertexMapDegree {
+    fn __str__(&self) -> PyResult<String> {
+        self.__repr__()
+    }
+
+    fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("VertexMap {:?}", self.content))
+    }
+}
+
+#[cfg(not(test))] // pyclass and pymethods break `cargo test`
+#[pyproto]
+impl PyMappingProtocol<'a> for PyVertexMapDegree {
+    fn __getitem__(&self, key:u32) -> PyResult<u32> {
+        self.content.get(&key).copied().ok_or(KeyError::py_err(key))
+    }
+}
+
+/*
+    Python-specific methods 
+*/
+#[cfg(not(test))] // pyclass and pymethods break `cargo test`
+#[pyproto]
+impl PyObjectProtocol for PyVertexMapBool{
+    fn __str__(&self) -> PyResult<String> {
+        self.__repr__()
+    }
+
+    fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("VertexMap {:?}", self.content))
+    }
+}
+
+#[cfg(not(test))] // pyclass and pymethods break `cargo test`
+#[pyproto]
+impl PyMappingProtocol<'a> for PyVertexMapBool {
+    fn __getitem__(&self, key:u32) -> PyResult<bool> {
+        self.content.get(&key).copied().ok_or(KeyError::py_err(key))
+    }
+}
+
 #[cfg(not(test))] // pyclass and pymethods break `cargo test`
 #[pyproto]
 impl PyObjectProtocol for PyGraph {
@@ -102,6 +160,10 @@ impl PyGraph {
 
     pub fn degree(&self, u:Vertex) -> PyResult<u32> {
         Ok(self.G.degree(&u))
+    }
+
+    pub fn degrees(&self) -> PyResult<PyVertexMapDegree> {
+        Ok(PyVertexMapDegree{content: self.G.degrees()})
     }
 
     pub fn contains(&mut self, u:Vertex) -> PyResult<bool> {
@@ -195,8 +257,4 @@ impl PyGraph {
     }
 }
 
-#[cfg(not(test))] // pyclass and pymethods break `cargo test`
-#[pyclass(name=EditGraph)]
-pub struct PyGraph {
-    G: EditGraph
-}
+
