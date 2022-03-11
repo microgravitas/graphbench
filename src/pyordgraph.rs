@@ -87,7 +87,7 @@ impl PyOrdGraph {
 }
 
 #[cfg(not(test))] // pyclass and pymethods break `cargo test`
-#[pyclass(name=OrdGraph)]
+#[pyclass(name="OrdGraph")]
 pub struct PyOrdGraph {
     pub(crate) G: OrdGraph
 }

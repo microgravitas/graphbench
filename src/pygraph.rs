@@ -1,7 +1,7 @@
 use fnv::{FnvHashSet, FnvHashMap};
 
 use pyo3::prelude::*;
-use pyo3::exceptions::{KeyError, ValueError};
+use pyo3::exceptions::{PyKeyError, PyValueError};
 use pyo3::class::iter::IterNextOutput;
 use pyo3::*;
 
@@ -28,20 +28,20 @@ fn to_vertex_list(obj:&PyAny) -> PyResult<Vec<u32>>  {
 
 
 #[cfg(not(test))] // pyclass and pymethods break `cargo test`
-#[pyclass(name=VertexMapDegree)]
+#[pyclass(name="VertexMapDegree")]
 pub struct PyVertexMapDegree {
     content: VertexMap<u32>
 }
 
 #[cfg(not(test))] // pyclass and pymethods break `cargo test`
-#[pyclass(name=VertexMapBool)]
+#[pyclass(name="VertexMapBool")]
 pub struct PyVertexMapBool {
     content: VertexMap<bool>
 }
 
 
 #[cfg(not(test))] // pyclass and pymethods break `cargo test`
-#[pyclass(name=EditGraph)]
+#[pyclass(name="EditGraph")]
 pub struct PyGraph {
     G: EditGraph
 }
@@ -52,8 +52,8 @@ pub struct PyGraph {
     Python-specific methods 
 */
 #[cfg(not(test))] // pyclass and pymethods break `cargo test`
-#[pyproto]
-impl PyObjectProtocol for PyVertexMapDegree {
+#[pymethods]
+impl PyVertexMapDegree {
     fn __str__(&self) -> PyResult<String> {
         self.__repr__()
     }
@@ -61,22 +61,22 @@ impl PyObjectProtocol for PyVertexMapDegree {
     fn __repr__(&self) -> PyResult<String> {
         Ok(format!("VertexMap {:?}", self.content))
     }
-}
 
-#[cfg(not(test))] // pyclass and pymethods break `cargo test`
-#[pyproto]
-impl PyMappingProtocol<'a> for PyVertexMapDegree {
+    fn __contains__(&self, key:u32) -> bool {
+        self.content.contains_key(&key)
+    }    
+
     fn __getitem__(&self, key:u32) -> PyResult<u32> {
-        self.content.get(&key).copied().ok_or(KeyError::py_err(key))
-    }
+        self.content.get(&key).copied().ok_or(PyKeyError::new_err(key))
+    }    
 }
 
 /*
     Python-specific methods 
 */
 #[cfg(not(test))] // pyclass and pymethods break `cargo test`
-#[pyproto]
-impl PyObjectProtocol for PyVertexMapBool{
+#[pymethods]
+impl PyVertexMapBool{
     fn __str__(&self) -> PyResult<String> {
         self.__repr__()
     }
@@ -84,27 +84,16 @@ impl PyObjectProtocol for PyVertexMapBool{
     fn __repr__(&self) -> PyResult<String> {
         Ok(format!("VertexMap {:?}", self.content))
     }
-}
 
-#[cfg(not(test))] // pyclass and pymethods break `cargo test`
-#[pyproto]
-impl PyMappingProtocol<'a> for PyVertexMapBool {
+    fn __contains__(&self, key:u32) -> bool {
+        self.content.contains_key(&key)
+    }    
+
     fn __getitem__(&self, key:u32) -> PyResult<bool> {
-        self.content.get(&key).copied().ok_or(KeyError::py_err(key))
-    }
+        self.content.get(&key).copied().ok_or(PyKeyError::new_err(key))
+    }      
 }
 
-#[cfg(not(test))] // pyclass and pymethods break `cargo test`
-#[pyproto]
-impl PyObjectProtocol for PyGraph {
-    fn __str__(&self) -> PyResult<String> {
-        self.__repr__()
-    }
-
-    fn __repr__(&self) -> PyResult<String> {
-        Ok(format!("EditGraph (n={},m={})]", self.G.num_vertices(), self.G.num_edges() ))
-    }
-}
 
 /*
     Delegation methods
@@ -116,6 +105,14 @@ impl PyGraph {
     pub fn new() -> PyGraph {
         PyGraph{G: EditGraph::new()}
     }
+
+    fn __str__(&self) -> PyResult<String> {
+        self.__repr__()
+    }
+
+    fn __repr__(&self) -> PyResult<String> {
+        Ok(format!("EditGraph (n={},m={})]", self.G.num_vertices(), self.G.num_edges() ))
+    }    
 
     pub fn to_ordered(&self) -> PyResult<PyOrdGraph> {
         Ok(PyOrdGraph{G: OrdGraph::with_degeneracy_order(&self.G)})
@@ -132,12 +129,12 @@ impl PyGraph {
         if &filename[filename.len()-3..] == ".gz" {
             match EditGraph::from_gzipped(filename) {
                 Ok(G) => Ok(PyGraph{G}),
-                Err(_) => Err(PyErr::new::<exceptions::IOError, _>("IO-Error"))
+                Err(_) => Err(PyErr::new::<exceptions::PyIOError, _>("IO-Error"))
             }
         } else {
             match EditGraph::from_txt(filename) {
                 Ok(G) => Ok(PyGraph{G}),
-                Err(_) => Err(PyErr::new::<exceptions::IOError, _>("IO-Error"))
+                Err(_) => Err(PyErr::new::<exceptions::PyIOError, _>("IO-Error"))
             }
         }
     }
