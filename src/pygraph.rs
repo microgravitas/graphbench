@@ -4,6 +4,7 @@ use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use pyo3::PyIterProtocol;
 use pyo3::PyObjectProtocol;
+use pyo3::PyClass;
 use pyo3::class::iter::IterNextOutput;
 use pyo3::exceptions;
 
@@ -14,11 +15,17 @@ use crate::ordgraph::OrdGraph;
 use crate::editgraph::*;
 
 use std::cell::{Cell, RefCell};
+use std::iter::IntoIterator;
 
 use crate::iterators::*;
 
 use crate::pyordgraph::*;
 
+
+fn to_vertex_list(obj:&PyAny) -> PyResult<Vec<u32>>  {
+    let vec:Vec<_> = obj.iter()?.map(|i| i.and_then(PyAny::extract::<u32>).unwrap()).collect();
+    Ok(vec)
+}
 
 
 /*
@@ -117,12 +124,14 @@ impl PyGraph {
         Ok(self.G.neighbours(&u).cloned().collect())
     }
 
-    pub fn neighbourhood(&self, c:HashSet<u32>) -> PyResult<VertexSet> {
-        Ok(self.G.neighbourhood(c.iter()))
+    pub fn neighbourhood(&self, vertices:&PyAny) -> PyResult<VertexSet> {
+        let vertices = to_vertex_list(vertices)?;
+        Ok(self.G.neighbourhood(vertices.iter()))
     }
 
-    pub fn closed_neighbourhood(&self, c:HashSet<u32>) -> PyResult<VertexSet> {
-        Ok(self.G.closed_neighbourhood(c.iter()))
+    pub fn closed_neighbourhood(&self, vertices:&PyAny) -> PyResult<VertexSet> {
+        let vertices = to_vertex_list(vertices)?;
+        Ok(self.G.closed_neighbourhood(vertices.iter()))
     }
 
     pub fn r_neighbours(&self, u:Vertex, r:usize) -> PyResult<VertexSet> {
@@ -158,12 +167,15 @@ impl PyGraph {
         Advanced operations
     */
 
-    pub fn contract(&mut self, vertices:HashSet<u32>) -> PyResult<Vertex> {
+    pub fn contract(&mut self, vertices:&PyAny) -> PyResult<Vertex> {
+        let vertices = to_vertex_list(vertices)?;
         Ok( self.G.contract(vertices.iter()) )
     }
 
-    pub fn contract_into(&mut self, center:Vertex, vertices:HashSet<u32>) {
+    pub fn contract_into(&mut self, center:Vertex, vertices:&PyAny) -> PyResult<()> {
+        let vertices = to_vertex_list(vertices)?;
         self.G.contract_into(&center, vertices.iter());
+        Ok(())
     }
 
     /*
@@ -173,7 +185,8 @@ impl PyGraph {
         Ok(PyGraph{G: self.G.clone()})
     }
 
-    pub fn subgraph(&self, vertices:HashSet<u32>) -> PyResult<PyGraph> {
+    pub fn subgraph(&self, vertices:&PyAny) -> PyResult<PyGraph> {
+        let vertices = to_vertex_list(vertices)?;
         Ok(PyGraph{G: self.G.subgraph(vertices.iter())})
     }
 
