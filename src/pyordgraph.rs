@@ -17,11 +17,6 @@ use std::cell::{Cell, RefCell};
 use crate::iterators::*;
 
 /*
-    TODO:
-    - Lazy iteration. Right now everything has to be cloned :/
-*/
-
-/*
     Python-specific methods
 */
 #[cfg(not(test))] // pyclass and pymethods break `cargo test`

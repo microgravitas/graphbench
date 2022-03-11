@@ -17,7 +17,9 @@ use std::cell::{Cell, RefCell};
 
 use crate::iterators::*;
 
-use crate::pyordgraph::PyOrdGraph;
+use crate::pyordgraph::*;
+
+
 
 /*
     TODO:

@@ -40,7 +40,7 @@ impl Clone for EditGraph {
     }
 }
 
-impl Graph<Vertex> for EditGraph {
+impl Graph for EditGraph {
     /*
         Basic properties and queries
     */
@@ -84,7 +84,7 @@ impl Graph<Vertex> for EditGraph {
     }
 }
 
-impl MutableGraph<Vertex> for EditGraph {
+impl MutableGraph for EditGraph {
     fn new() -> EditGraph {
         EditGraph{adj: FnvHashMap::default(),
               degs: FnvHashMap::default(),

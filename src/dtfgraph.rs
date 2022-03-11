@@ -29,7 +29,7 @@ impl<'a> DTFLayer<'a> {
     }
 }
 
-impl<'a> Graph<Vertex> for DTFLayer<'a> {
+impl<'a> Graph for DTFLayer<'a> {
     fn num_vertices(&self) -> usize {
         self.graph.num_vertices()
     }
@@ -60,7 +60,8 @@ impl<'a> Graph<Vertex> for DTFLayer<'a> {
     }
 }
 
-impl<'b> Digraph<Vertex> for DTFLayer<'b> {
+impl<'b> Digraph for DTFLayer<'b> {
+  
     fn has_arc(&self, u:&Vertex, v:&Vertex) -> bool {
         self.graph.has_arc_at(u, v, self.depth)
     }
@@ -160,7 +161,7 @@ impl DTFNode {
 }
 
 
-impl Graph<Vertex> for DTFGraph {
+impl Graph for DTFGraph {
     fn num_vertices(&self) -> usize {
         self.nodes.len()
     }
@@ -191,7 +192,7 @@ impl Graph<Vertex> for DTFGraph {
     }
 }
 
-impl Digraph<Vertex> for DTFGraph {
+impl Digraph for DTFGraph {
     fn has_arc(&self, u:&Vertex, v:&Vertex) -> bool {
         if !self.nodes.contains_key(&v) {
             return false
@@ -229,7 +230,7 @@ impl DTFGraph {
         }
     }
 
-    pub fn to_undirected<G>(&self) -> G where G: MutableGraph<Vertex> {
+    pub fn to_undirected<G>(&self) -> G where G: MutableGraph {
         let mut res = G::new();
         for u in self.vertices() {
             res.add_vertex(u);
@@ -260,7 +261,7 @@ impl DTFGraph {
         self.nodes.entry(u).or_insert_with(||  DTFNode::new(d));
     }
 
-    pub fn orient_deep<G>(graph: &G, depth:usize) -> DTFGraph where G: Graph<Vertex> {
+    pub fn orient_deep<G>(graph: &G, depth:usize) -> DTFGraph where G: Graph {
         let mut augg = DTFGraph::orient(graph);
         if depth <= 1 {
             return augg;
@@ -290,7 +291,7 @@ impl DTFGraph {
         res
     }
 
-    pub fn orient<G>(graph: &G) -> DTFGraph where G: Graph<Vertex> {
+    pub fn orient<G>(graph: &G) -> DTFGraph where G: Graph {
         let mut H = DTFGraph::with_capacity(graph.num_vertices());
 
         let ord = graph.degeneracy_ordering();
@@ -303,9 +304,9 @@ impl DTFGraph {
             for u in N {
                 let iu = indices[&u];
                 if iu < iv {
-                    H.add_arc(u, &v, 1);
+                    H.add_arc(&u, &v, 1);
                 } else {
-                    H.add_arc(&v, u, 1);
+                    H.add_arc(&v, &u, 1);
                 }
             }
         }

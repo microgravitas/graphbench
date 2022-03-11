@@ -21,13 +21,13 @@ impl Default for OrdNode {
 }
 
 impl OrdGraph {
-    pub fn with_degeneracy_order<G>(graph: &G) -> OrdGraph where G: Graph<Vertex> {
+    pub fn with_degeneracy_order<G>(graph: &G) -> OrdGraph where G: Graph {
         let ord = graph.degeneracy_ordering();
         OrdGraph::with_order(graph, ord.iter())
     }
 
     pub fn with_order<'a, G, I>(graph: &G, order:I) -> OrdGraph
-        where G: Graph<Vertex>, I: Iterator<Item=&'a Vertex>
+        where G: Graph, I: Iterator<Item=&'a Vertex>
     {
         let order:Vec<_> = order.collect();
         let indices:FnvHashMap<_,_> = order.iter().cloned()
@@ -72,7 +72,7 @@ impl OrdGraph {
     }      
 }
 
-impl Graph<Vertex> for OrdGraph {
+impl Graph for OrdGraph {
     fn num_vertices(&self) -> usize {
         self.nodes.len()
     }

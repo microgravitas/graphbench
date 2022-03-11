@@ -1,31 +1,33 @@
 use fnv::{FnvHashMap, FnvHashSet};
 
-use std::cmp::{max, min, Eq};
+use std::cmp::{max, min, Eq, };
 use std::hash::Hash;
 
 pub type Vertex = u32;
 pub type Edge = (Vertex, Vertex);
 pub type Arc = (Vertex, Vertex);
 pub type VertexSet = FnvHashSet<Vertex>;
+pub type VertexMap<T> = FnvHashMap<Vertex, T>;
 pub type VertexSetRef<'a> = FnvHashSet<&'a Vertex>;
 pub type EdgeSet = FnvHashSet<Edge>;
 
-pub trait Graph<V> where V: Hash + Eq + Clone {
+
+pub trait Graph {
     fn num_vertices(&self) -> usize;
     fn num_edges(&self) -> usize;
 
-    fn contains(&self, u:&V) -> bool;
+    fn contains(&self, u:&Vertex) -> bool;
 
-    fn adjacent(&self, u:&V, v:&V) -> bool;
-    fn degree(&self, u:&V) -> usize;
+    fn adjacent(&self, u:&Vertex, v:&Vertex) -> bool;
+    fn degree(&self, u:&Vertex) -> usize;
 
-    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&V> + 'a>;
-    fn neighbours<'a>(&'a self, u:&V) -> Box<dyn Iterator<Item=&V> + 'a>;
+    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
+    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
 
-    fn neighbourhood<'a, I>(&self, it:I) -> FnvHashSet<V> 
-                where I: Iterator<Item=&'a V>, V: 'a {
-        let mut res:FnvHashSet<V> = FnvHashSet::default();
-        let centers:FnvHashSet<V> = it.cloned().collect();
+    fn neighbourhood<'a, I>(&self, it:I) -> FnvHashSet<Vertex> 
+                where I: Iterator<Item=&'a Vertex>, Vertex: 'a {
+        let mut res:FnvHashSet<Vertex> = FnvHashSet::default();
+        let centers:FnvHashSet<Vertex> = it.cloned().collect();
 
         for v in &centers {
             res.extend(self.neighbours(v).cloned());
@@ -35,9 +37,9 @@ pub trait Graph<V> where V: Hash + Eq + Clone {
         res
     }
 
-    fn closed_neighbourhood<'a, I>(&self, it:I) -> FnvHashSet<V> 
-                where I: Iterator<Item=&'a V>, V: 'a {
-        let mut res:FnvHashSet<V> = FnvHashSet::default();
+    fn closed_neighbourhood<'a, I>(&self, it:I) -> FnvHashSet<Vertex> 
+                where I: Iterator<Item=&'a Vertex>, Vertex: 'a {
+        let mut res:FnvHashSet<Vertex> = FnvHashSet::default();
         for v in it {
             res.extend(self.neighbours(v).cloned());
         }
@@ -45,13 +47,13 @@ pub trait Graph<V> where V: Hash + Eq + Clone {
         res
     }
 
-    fn r_neighbours(&self, u:&V, r:usize) -> FnvHashSet<V>  {
+    fn r_neighbours(&self, u:&Vertex, r:usize) -> FnvHashSet<Vertex>  {
         self.r_neighbourhood([u.clone()].iter(), r)
     }
 
-    fn r_neighbourhood<'a,I>(&self, it:I, r:usize) -> FnvHashSet<V>  
-                where I: Iterator<Item=&'a V>, V: 'a {
-        let mut res:FnvHashSet<V> = FnvHashSet::default();
+    fn r_neighbourhood<'a,I>(&self, it:I, r:usize) -> FnvHashSet<Vertex>  
+                where I: Iterator<Item=&'a Vertex>, Vertex: 'a {
+        let mut res:FnvHashSet<Vertex> = FnvHashSet::default();
         res.extend(it.cloned());
         for _ in 0..r {
             let ext = self.closed_neighbourhood(res.iter());
@@ -60,7 +62,7 @@ pub trait Graph<V> where V: Hash + Eq + Clone {
         res
     }    
 
-    fn degeneracy_ordering(&self) -> Vec<V> {
+    fn degeneracy_ordering(&self) -> Vec<Vertex> {
         let mut res:Vec<_> = Vec::new();
 
         // This index function defines buckets of exponentially increasing
@@ -74,8 +76,8 @@ pub trait Graph<V> where V: Hash + Eq + Clone {
                     .trailing_zeros() as usize
         }
 
-        let mut deg_dict = FnvHashMap::<V, usize>::default();
-        let mut buckets = FnvHashMap::<i32, FnvHashSet<V>>::default();
+        let mut deg_dict = FnvHashMap::<Vertex, usize>::default();
+        let mut buckets = FnvHashMap::<i32, FnvHashSet<Vertex>>::default();
 
         for v in self.vertices() {
             let d = self.degree(v);
@@ -86,7 +88,7 @@ pub trait Graph<V> where V: Hash + Eq + Clone {
                 .insert(v.clone());
         }
 
-        let mut seen = FnvHashSet::<V>::default();
+        let mut seen = FnvHashSet::<Vertex>::default();
 
         for _ in 0..self.num_vertices() {
             // Find non-empty bucket. If this loop executes, we
@@ -134,14 +136,14 @@ pub trait Graph<V> where V: Hash + Eq + Clone {
     }
 }
 
-pub trait MutableGraph<V>: Graph<V> where V: Hash + Eq + Clone {
+pub trait MutableGraph: Graph{
     fn new() -> Self;
     fn with_capacity(n: usize) -> Self;
 
-    fn add_vertex(&mut self, u: &V) -> bool;
-    fn remove_vertex(&mut self, u: &V) -> bool;
-    fn add_edge(&mut self, u: &V, v: &V) -> bool;
-    fn remove_edge(&mut self, u: &V, v: &V) -> bool;
+    fn add_vertex(&mut self, u: &Vertex) -> bool;
+    fn remove_vertex(&mut self, u: &Vertex) -> bool;
+    fn add_edge(&mut self, u: &Vertex, v: &Vertex) -> bool;
+    fn remove_edge(&mut self, u: &Vertex, v: &Vertex) -> bool;
 
     fn remove_loops(&mut self) -> usize {
         let mut cands = Vec::new();
@@ -171,29 +173,29 @@ pub trait MutableGraph<V>: Graph<V> where V: Hash + Eq + Clone {
 
 }
 
-pub trait Digraph<V>: Graph<V> where V: Hash + Eq + Clone {
-    fn has_arc(&self, u:&V, v:&V) -> bool;
+pub trait Digraph: Graph {
+    fn has_arc(&self, u:&Vertex, v:&Vertex) -> bool;
 
-    fn in_degree(&self, u:&V) -> usize {
+    fn in_degree(&self, u:&Vertex) -> usize {
         self.in_neighbours(&u).count()
     }
 
-    fn out_degree(&self, u:&V) -> usize {
+    fn out_degree(&self, u:&Vertex) -> usize {
         self.out_neighbours(&u).count()
     }
 
-    fn neighbours<'a>(&'a self, u:&V) -> Box<dyn Iterator<Item=&V> + 'a> {
+    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
         Box::new(self.in_neighbours(u).chain(self.out_neighbours(u)))
     }
 
-    fn out_neighbours<'a>(&'a self, u:&V) -> Box<dyn Iterator<Item=&V> + 'a>;
-    fn in_neighbours<'a>(&'a self, u:&V) -> Box<dyn Iterator<Item=&V> + 'a>;
+    fn out_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
+    fn in_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
 }
 
-pub trait MutableDigraph<V>: Digraph<V> where V: Ord + Clone + Hash + Eq {
+pub trait MutableDigraph: Digraph  {
     fn new() -> Self;
-    fn add_vertex(&mut self, u: &V) -> bool;
-    fn remove_vertex(&mut self, u: &V) -> bool;
-    fn add_arc(&mut self, u: &V, v: &V) -> bool;
-    fn remove_arc(&mut self, u: &V, v: &V) -> bool;
+    fn add_vertex(&mut self, u: &Vertex) -> bool;
+    fn remove_vertex(&mut self, u: &Vertex) -> bool;
+    fn add_arc(&mut self, u: &Vertex, v: &Vertex) -> bool;
+    fn remove_arc(&mut self, u: &Vertex, v: &Vertex) -> bool;
 }
