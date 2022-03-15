@@ -60,7 +60,7 @@ impl OrdGraph {
         OrdGraph {nodes, indices, m: graph.num_edges()}
     }
 
-    fn swap(&mut self, u:&Vertex, v:&Vertex) {
+    pub fn swap(&mut self, u:&Vertex, v:&Vertex) {
         if u == v {
             return;
         }
@@ -92,7 +92,7 @@ impl OrdGraph {
         self.nodes.swap(iu, iv);
     }
 
-    fn left_degree(&self, u:&Vertex) -> usize {
+    pub fn left_degree(&self, u:&Vertex) -> usize {
         if let Some(iu) = self.indices.get(u) {
             let node_u = &self.nodes[*iu];
             node_u.left.len()
@@ -101,18 +101,30 @@ impl OrdGraph {
         }
     }
 
-    // fn left_degrees(&self) -> VertexMap<u32> {
-    //     self.nodes.
-    // }
+    pub fn left_degrees(&self) -> VertexMap<u32> {
+        let mut res = VertexMap::default();
+        for n in &self.nodes {
+            res.insert(n.v, n.left.len() as u32);
+        }
+        res
+    }
     
-    fn right_degree(&self, u:&Vertex) -> usize {
+    pub fn right_degree(&self, u:&Vertex) -> usize {
         if let Some(iu) = self.indices.get(u) {
             let node_u = &self.nodes[*iu];
             node_u.right.len()
         } else {
             0
         }
-    }      
+    }    
+    
+    pub fn right_degrees(&self) -> VertexMap<u32> {
+        let mut res = VertexMap::default();
+        for n in &self.nodes {
+            res.insert(n.v, n.right.len() as u32);
+        }
+        res
+    }
 }
 
 impl Graph for OrdGraph {
