@@ -219,6 +219,7 @@ impl EditGraph {
     }
 
     pub fn components(&self) -> Vec<VertexSet> {
+        // TODO: Replace by faster implementation using Union-Find
         let mut vertices:VertexSet = self.vertices().cloned().collect();
         let mut comps = Vec::new();
         while !vertices.is_empty() {
