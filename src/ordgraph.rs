@@ -32,7 +32,7 @@ impl OrdGraph {
         let ord = graph.degeneracy_ordering();
         OrdGraph::with_ordering(graph, ord.iter())
     }
-
+    
     pub fn with_ordering<'a, G, I>(graph: &G, order:I) -> OrdGraph
         where G: Graph, I: Iterator<Item=&'a Vertex>
     {
@@ -131,6 +131,7 @@ impl OrdGraph {
 
     pub fn right_bfs(&self, root:&Vertex, dist:u32) -> Vec<VertexSet> {
         let mut seen:VertexSet = VertexSet::default();
+        let iroot = *self.indices.get(root).unwrap();
         let root = *root;
 
         let mut res = vec![VertexSet::default(); (dist+1) as usize];
@@ -143,7 +144,8 @@ impl OrdGraph {
             for u in part1[d-1].iter().cloned() {
                 let iu = *self.indices.get(&u).unwrap();
                 for v in self.nodes[iu].neighbours() {
-                    if *v > root && !seen.contains(v) {
+                    let iv = *self.indices.get(&v).unwrap();
+                    if iv > iroot && !seen.contains(v) {
                         part2[0].insert(*v);
                         seen.insert(*v);
                     }
