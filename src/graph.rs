@@ -70,8 +70,8 @@ pub trait Graph {
         res
     }    
 
-    fn degeneracy_ordering(&self) -> Vec<Vertex> {
-        let mut res:Vec<_> = Vec::new();
+    fn degeneracy(&self) -> (Vec<Vertex>,VertexMap<u32>) {
+        let mut order:Vec<_> = Vec::new();
 
         // This index function defines buckets of exponentially increasing
         // size, but all values below `small` (here 32) are put in their own
@@ -84,7 +84,8 @@ pub trait Graph {
                     .trailing_zeros() as usize
         }
 
-        let mut deg_dict = FnvHashMap::<Vertex, u32>::default();
+        let mut deg_dict = VertexMap::default();
+        let mut core_numbers = VertexMap::default();        
         let mut buckets = FnvHashMap::<i32, FnvHashSet<Vertex>>::default();
 
         for v in self.vertices() {
@@ -95,8 +96,6 @@ pub trait Graph {
                 .or_insert_with(FnvHashSet::default)
                 .insert(v.clone());
         }
-
-        let mut seen = FnvHashSet::<Vertex>::default();
 
         for _ in 0..self.num_vertices() {
             // Find non-empty bucket. If this loop executes, we
@@ -113,10 +112,13 @@ pub trait Graph {
             let v = buckets[&d].iter().next().unwrap().clone();
             buckets.get_mut(&d).unwrap().remove(&v);
 
+            let mut core_num = 0;
             for u in self.neighbours(&v) {
-                if seen.contains(u) {
+                if core_numbers.contains_key(u) {
+                    // Vertex u has already been removed
                     continue;
                 }
+                core_num += 1;
 
                 // Update bucket
                 let du = deg_dict[u];
@@ -136,12 +138,12 @@ pub trait Graph {
                 // Updated degree
                 deg_dict.entry(u.clone()).and_modify(|e| *e -= 1);
             }
-            seen.insert(v.clone());
-            res.push(v);
+            core_numbers.insert(v, core_num);
+            order.push(v);
         }
 
-        res.reverse(); // The reverse order is more natural to us (small left-degree)
-        res
+        order.reverse(); // The reverse order is more natural to us (small left-degree)
+        (order, core_numbers)
     }
 }
 

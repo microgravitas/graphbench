@@ -294,7 +294,7 @@ impl DTFGraph {
     pub fn orient<G>(graph: &G) -> DTFGraph where G: Graph {
         let mut H = DTFGraph::with_capacity(graph.num_vertices());
 
-        let ord = graph.degeneracy_ordering();
+        let (ord, _) = graph.degeneracy();
         let indices:FnvHashMap<Vertex, usize> = ord.iter().enumerate()
                                                 .map(|(i,u)| (*u,i)).collect();
 
