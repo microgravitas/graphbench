@@ -125,6 +125,46 @@ impl OrdGraph {
         }
         res
     }
+
+    pub fn right_bfs(&self, root:&Vertex, dist:usize) -> Vec<VertexSet> {
+        let mut seen:VertexSet = VertexSet::default();
+        let root = *root;
+
+        let mut res = vec![VertexSet::default(); dist+1];
+        res[0].insert(root);
+        seen.insert(root);
+
+        for d in 1..=dist {
+            let (part1, part2) = res.split_at_mut(d);
+
+            for u in part1[d-1].iter().cloned() {
+                for v in self.nodes[u as usize].neighbours() {
+                    if *v > root && !seen.contains(v) {
+                        part2[0].insert(*v);
+                        seen.insert(*v);
+                    }
+                }
+            }
+        }
+
+        res
+    }
+
+    pub fn wreach_sets(&self, depth:usize) -> VertexMap<VertexSet> {
+        let mut res = VertexMap::default();
+        for n in &self.nodes {
+            res.insert(n.v, VertexSet::default());
+        }
+        for u in self.vertices() {
+            for (d, layer) in self.right_bfs(u, depth).iter().skip(1).enumerate() {
+                for v in layer {
+                    assert!(*v != *u);
+                    res.get_mut(v).unwrap().insert(*u); // Depth d+1
+                }
+            }
+        }
+        res
+    }    
 }
 
 impl Graph for OrdGraph {
@@ -159,7 +199,8 @@ impl Graph for OrdGraph {
     }
 
     fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
-        Box::new( self.indices.keys() )
+        let it = self.nodes.iter();
+        Box::new( it.map(|n| &n.v) )
     }
 
     fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
