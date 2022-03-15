@@ -138,7 +138,8 @@ impl OrdGraph {
             let (part1, part2) = res.split_at_mut(d as usize);
 
             for u in part1[d-1].iter().cloned() {
-                for v in self.nodes[u as usize].neighbours() {
+                let iu = *self.indices.get(&u).unwrap();
+                for v in self.nodes[iu].neighbours() {
                     if *v > root && !seen.contains(v) {
                         part2[0].insert(*v);
                         seen.insert(*v);
