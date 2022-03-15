@@ -39,13 +39,16 @@ impl OrdGraph {
         let order:Vec<_> = order.collect();
         let indices:FnvHashMap<_,_> = order.iter().cloned()
                 .enumerate().map(|(i,u)| (*u,i)).collect();
-        let mut nodes:Vec<_> = Vec::new();
+        let mut nodes:Vec<_> = Vec::with_capacity(order.len());
 
         for v in &order {
             nodes.push(OrdNode::new(v));
+            assert!(indices[v] == nodes.len()-1);
         }
 
         for (u,v) in graph.edges() {
+            assert!(indices.contains_key(&u), "Vertex {} not contained in provided ordering", u);
+            assert!(indices.contains_key(&v), "Vertex {} not contained in provided ordering", v);
             // let nU = nodes.get_mut(indices[&u]).unwrap();
             // let nV = nodes.get_mut(indices[&v]).unwrap();
             if u < v {
