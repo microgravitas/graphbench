@@ -126,16 +126,16 @@ impl OrdGraph {
         res
     }
 
-    pub fn right_bfs(&self, root:&Vertex, dist:usize) -> Vec<VertexSet> {
+    pub fn right_bfs(&self, root:&Vertex, dist:u32) -> Vec<VertexSet> {
         let mut seen:VertexSet = VertexSet::default();
         let root = *root;
 
-        let mut res = vec![VertexSet::default(); dist+1];
+        let mut res = vec![VertexSet::default(); (dist+1) as usize];
         res[0].insert(root);
         seen.insert(root);
 
-        for d in 1..=dist {
-            let (part1, part2) = res.split_at_mut(d);
+        for d in 1..=(dist as usize) {
+            let (part1, part2) = res.split_at_mut(d as usize);
 
             for u in part1[d-1].iter().cloned() {
                 for v in self.nodes[u as usize].neighbours() {
@@ -150,21 +150,37 @@ impl OrdGraph {
         res
     }
 
-    pub fn wreach_sets(&self, depth:usize) -> VertexMap<VertexSet> {
+    pub fn wreach_sets(&self, depth:u32) -> VertexMap<VertexMap<u32>> {
         let mut res = VertexMap::default();
         for n in &self.nodes {
-            res.insert(n.v, VertexSet::default());
+            res.insert(n.v, VertexMap::default());
         }
         for u in self.vertices() {
             for (d, layer) in self.right_bfs(u, depth).iter().skip(1).enumerate() {
                 for v in layer {
                     assert!(*v != *u);
-                    res.get_mut(v).unwrap().insert(*u); // Depth d+1
+                    res.get_mut(v).unwrap().insert(*u, (d+1) as u32); 
                 }
             }
         }
         res
     }    
+
+    pub fn wreach_sizes(&self, depth:u32) -> VertexMap<u32> {
+        let mut res = VertexMap::default();
+        for n in &self.nodes {
+            res.insert(n.v, 0);
+        }
+        for u in self.vertices() {
+            for layer in self.right_bfs(u, depth).iter().skip(1) {
+                for v in layer {
+                    let count = res.entry(*v).or_insert(0);
+                    *count += 1;
+                }
+            }
+        }
+        res
+    }     
 }
 
 impl Graph for OrdGraph {
