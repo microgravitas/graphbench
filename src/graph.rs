@@ -140,6 +140,7 @@ pub trait Graph {
             res.push(v);
         }
 
+        res.reverse(); // The reverse order is more natural to us (small left-degree)
         res
     }
 }
