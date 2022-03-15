@@ -61,7 +61,7 @@ impl OrdGraph {
     }
 
     fn swap(&mut self, u:&Vertex, v:&Vertex) {
-        if (u == v) {
+        if u == v {
             return;
         }
 
@@ -70,37 +70,21 @@ impl OrdGraph {
             _ => return
         };
 
-        let (nu, nv) = (&self.nodes[iu], &self.nodes[iv]);
-
         // Recompute left/right neighbours for u when moved to iv
-        {
-            let mut nu = &mut self.nodes[iu];
+        // and for v when moved to iu.
+        for (old_i,new_i) in vec![(iu,iv), (iv,iu)]{
+            let mut n = &mut self.nodes[old_i];
             let (mut new_left, mut new_right) = (VertexSet::default(), VertexSet::default());
-            for x in nu.neighbours() {
+            for x in n.neighbours() {
                 let ix = self.indices.get(x).unwrap();
-                if ix < &iv {
+                if ix < &new_i {
                     new_left.insert(*x);
                 } else {
                     new_right.insert(*x);
                 }
             }
-            (nu.left, nu.right) = (new_left, new_right);
+            (n.left, n.right) = (new_left, new_right);
         }
-
-        // Recompute left/right neighbours for v when moved to iu
-        {
-            let mut nv = &mut self.nodes[iv];
-            let (mut new_left, mut new_right) = (VertexSet::default(), VertexSet::default());
-            for x in nv.neighbours() {
-                let ix = self.indices.get(x).unwrap();
-                if ix < &iu {
-                    new_left.insert(*x);
-                } else {
-                    new_right.insert(*x);
-                }
-            }
-            (nv.left, nv.right) = (new_left, new_right);
-        }        
 
         // Finally, swap u and v
         self.indices.insert(*u, iv);
