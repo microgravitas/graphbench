@@ -9,12 +9,8 @@ fnv = "1.0.7"
 flate2 = "1.0.16"
 itertools = "0.9.0"
 
-[dependencies.pyo3]
-version = "0.15.1"
-features = ["extension-module"]
-
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["lib"]
 
 [package.metadata.maturin]
 classifier = [
