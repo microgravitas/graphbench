@@ -97,6 +97,7 @@ pub trait Graph {
                 .insert(v.clone());
         }
 
+        let mut core_num = 0;
         for _ in 0..self.num_vertices() {
             // Find non-empty bucket. If this loop executes, we
             // know that |G| > 0 so a non-empty bucket must exist.
@@ -105,6 +106,8 @@ pub trait Graph {
                 d += 1
             }
 
+            core_num = max(core_num, d as u32);
+
             if !buckets.contains_key(&d) {
                 break;
             }
@@ -112,13 +115,11 @@ pub trait Graph {
             let v = buckets[&d].iter().next().unwrap().clone();
             buckets.get_mut(&d).unwrap().remove(&v);
 
-            let mut core_num = 0;
             for u in self.neighbours(&v) {
                 if core_numbers.contains_key(u) {
                     // Vertex u has already been removed
                     continue;
                 }
-                core_num += 1;
 
                 // Update bucket
                 let du = deg_dict[u];
