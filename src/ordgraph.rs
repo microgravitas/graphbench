@@ -1,3 +1,4 @@
+use crate::algorithms::GraphAlgorithms;
 use fnv::{FnvHashMap, FnvHashSet};
 
 use crate::graph::*;

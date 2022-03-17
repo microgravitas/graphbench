@@ -1,6 +1,5 @@
 use fnv::{FnvHashMap, FnvHashSet};
 
-use std::cmp::{max, min, Eq, };
 use std::hash::Hash;
 
 pub type Vertex = u32;
@@ -70,82 +69,6 @@ pub trait Graph {
         res
     }    
 
-    fn degeneracy(&self) -> (Vec<Vertex>,VertexMap<u32>) {
-        let mut order:Vec<_> = Vec::new();
-
-        // This index function defines buckets of exponentially increasing
-        // size, but all values below `small` (here 32) are put in their own
-        // buckets.
-        fn calc_index(i: u32) -> usize {
-            let small = 2_i32.pow(5);
-            min(i, small as u32) as usize
-                + (max(0, (i as i32) - small + 1) as u32)
-                    .next_power_of_two()
-                    .trailing_zeros() as usize
-        }
-
-        let mut deg_dict = VertexMap::default();
-        let mut core_numbers = VertexMap::default();        
-        let mut buckets = FnvHashMap::<i32, FnvHashSet<Vertex>>::default();
-
-        for v in self.vertices() {
-            let d = self.degree(v);
-            deg_dict.insert(v.clone(), d);
-            buckets
-                .entry(calc_index(d) as i32)
-                .or_insert_with(FnvHashSet::default)
-                .insert(v.clone());
-        }
-
-        let mut core_num = 0;
-        for _ in 0..self.num_vertices() {
-            // Find non-empty bucket. If this loop executes, we
-            // know that |G| > 0 so a non-empty bucket must exist.
-            let mut d = 0;
-            while !buckets.contains_key(&d) || buckets[&d].is_empty() {
-                d += 1
-            }
-
-            core_num = max(core_num, d as u32);
-
-            if !buckets.contains_key(&d) {
-                break;
-            }
-
-            let v = buckets[&d].iter().next().unwrap().clone();
-            buckets.get_mut(&d).unwrap().remove(&v);
-
-            for u in self.neighbours(&v) {
-                if core_numbers.contains_key(u) {
-                    // Vertex u has already been removed
-                    continue;
-                }
-
-                // Update bucket
-                let du = deg_dict[u];
-                let old_index = calc_index(du) as i32;
-                let new_index = calc_index(du - 1) as i32;
-
-                if old_index != new_index {
-                    buckets.entry(old_index).and_modify(|S| {
-                        (*S).remove(u);
-                    });
-                    buckets
-                        .entry(new_index)
-                        .or_insert_with(FnvHashSet::default)
-                        .insert(u.clone());
-                }
-
-                // Updated degree
-                deg_dict.entry(u.clone()).and_modify(|e| *e -= 1);
-            }
-            core_numbers.insert(v, core_num);
-            order.push(v);
-        }
-
-        order.reverse(); // The reverse order is more natural to us (small left-degree)
-        (order, core_numbers)
-    }
 }
 
 pub trait MutableGraph: Graph{
