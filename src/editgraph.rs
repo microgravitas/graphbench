@@ -217,37 +217,12 @@ impl EditGraph {
 
         G
     }
-
-    pub fn components(&self) -> Vec<VertexSet> {
-        // TODO: Replace by faster implementation using Union-Find
-        let mut vertices:VertexSet = self.vertices().cloned().collect();
-        let mut comps = Vec::new();
-        while !vertices.is_empty() {
-            let mut comp = VertexSet::default();
-            let u = vertices.iter().cloned().next().unwrap();
-            vertices.remove(&u);
-            comp.insert(u);
-
-            loop {
-                let ext = self.neighbourhood(comp.iter());
-                if ext.is_empty() {
-                    break;
-                }
-                comp.extend(ext);
-            }
-            vertices.retain(|&u| !comp.contains(&u));
-
-            comps.push(comp);
-        }
-        comps
-    }
-
-
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::algorithms::GraphAlgorithms;
 
     // #[test]
     fn components() {
