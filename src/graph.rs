@@ -1,14 +1,14 @@
-use fnv::{FnvHashMap, FnvHashSet};
+use fxhash::{FxHashMap, FxHashSet};
 
 use std::hash::Hash;
 
 pub type Vertex = u32;
 pub type Edge = (Vertex, Vertex);
 pub type Arc = (Vertex, Vertex);
-pub type VertexSet = FnvHashSet<Vertex>;
-pub type VertexMap<T> = FnvHashMap<Vertex, T>;
-pub type VertexSetRef<'a> = FnvHashSet<&'a Vertex>;
-pub type EdgeSet = FnvHashSet<Edge>;
+pub type VertexSet = FxHashSet<Vertex>;
+pub type VertexMap<T> = FxHashMap<Vertex, T>;
+pub type VertexSetRef<'a> = FxHashSet<&'a Vertex>;
+pub type EdgeSet = FxHashSet<Edge>;
 
 
 pub trait Graph {
@@ -31,10 +31,10 @@ pub trait Graph {
     fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
     fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
 
-    fn neighbourhood<'a, I>(&self, it:I) -> FnvHashSet<Vertex> 
+    fn neighbourhood<'a, I>(&self, it:I) -> FxHashSet<Vertex> 
                 where I: Iterator<Item=&'a Vertex>, Vertex: 'a {
-        let mut res:FnvHashSet<Vertex> = FnvHashSet::default();
-        let centers:FnvHashSet<Vertex> = it.cloned().collect();
+        let mut res:FxHashSet<Vertex> = FxHashSet::default();
+        let centers:FxHashSet<Vertex> = it.cloned().collect();
 
         for v in &centers {
             res.extend(self.neighbours(v).cloned());
@@ -44,9 +44,9 @@ pub trait Graph {
         res
     }
 
-    fn closed_neighbourhood<'a, I>(&self, it:I) -> FnvHashSet<Vertex> 
+    fn closed_neighbourhood<'a, I>(&self, it:I) -> FxHashSet<Vertex> 
                 where I: Iterator<Item=&'a Vertex>, Vertex: 'a {
-        let mut res:FnvHashSet<Vertex> = FnvHashSet::default();
+        let mut res:FxHashSet<Vertex> = FxHashSet::default();
         for v in it {
             res.extend(self.neighbours(v).cloned());
         }
@@ -54,13 +54,13 @@ pub trait Graph {
         res
     }
 
-    fn r_neighbours(&self, u:&Vertex, r:usize) -> FnvHashSet<Vertex>  {
+    fn r_neighbours(&self, u:&Vertex, r:usize) -> FxHashSet<Vertex>  {
         self.r_neighbourhood([u.clone()].iter(), r)
     }
 
-    fn r_neighbourhood<'a,I>(&self, it:I, r:usize) -> FnvHashSet<Vertex>  
+    fn r_neighbourhood<'a,I>(&self, it:I, r:usize) -> FxHashSet<Vertex>  
                 where I: Iterator<Item=&'a Vertex>, Vertex: 'a {
-        let mut res:FnvHashSet<Vertex> = FnvHashSet::default();
+        let mut res:FxHashSet<Vertex> = FxHashSet::default();
         res.extend(it.cloned());
         for _ in 0..r {
             let ext = self.closed_neighbourhood(res.iter());

@@ -1,11 +1,11 @@
 use crate::algorithms::GraphAlgorithms;
-use fnv::{FnvHashMap, FnvHashSet};
+use fxhash::{FxHashMap, FxHashSet};
 
 use crate::graph::*;
 use crate::iterators::*;
 
 pub struct OrdGraph {
-    indices: FnvHashMap<Vertex, usize>,
+    indices: FxHashMap<Vertex, usize>,
     nodes: Vec<OrdNode>,
     m: usize
 }
@@ -38,7 +38,7 @@ impl OrdGraph {
         where G: Graph, I: Iterator<Item=&'a Vertex>
     {
         let order:Vec<_> = order.collect();
-        let indices:FnvHashMap<_,_> = order.iter().cloned()
+        let indices:FxHashMap<_,_> = order.iter().cloned()
                 .enumerate().map(|(i,u)| (*u,i)).collect();
         let mut nodes:Vec<_> = Vec::with_capacity(order.len());
 

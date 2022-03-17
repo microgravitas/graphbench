@@ -1,4 +1,4 @@
-use fnv::{FnvHashMap, FnvHashSet};
+use fxhash::{FxHashMap, FxHashSet};
 
 use std::collections::HashSet;
 use union_find_rs::prelude::*;
@@ -55,14 +55,14 @@ impl<G> GraphAlgorithms for G where G: Graph {
 
         let mut deg_dict = VertexMap::default();
         let mut core_numbers = VertexMap::default();        
-        let mut buckets = FnvHashMap::<i32, FnvHashSet<Vertex>>::default();
+        let mut buckets = FxHashMap::<i32, FxHashSet<Vertex>>::default();
 
         for v in self.vertices() {
             let d = self.degree(v);
             deg_dict.insert(v.clone(), d);
             buckets
                 .entry(calc_index(d) as i32)
-                .or_insert_with(FnvHashSet::default)
+                .or_insert_with(FxHashSet::default)
                 .insert(v.clone());
         }
 
@@ -101,7 +101,7 @@ impl<G> GraphAlgorithms for G where G: Graph {
                     });
                     buckets
                         .entry(new_index)
-                        .or_insert_with(FnvHashSet::default)
+                        .or_insert_with(FxHashSet::default)
                         .insert(u.clone());
                 }
 

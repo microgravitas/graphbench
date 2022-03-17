@@ -1,5 +1,5 @@
 use crate::algorithms::GraphAlgorithms;
-use fnv::{FnvHashMap, FnvHashSet};
+use fxhash::{FxHashMap, FxHashSet};
 use std::collections::HashMap;
 
 use itertools::Itertools;
@@ -14,7 +14,7 @@ pub type InArcIterator<'a> = std::collections::hash_set::Iter<'a, Vertex>;
 pub type DTFVertexIterator<'a> = std::collections::hash_map::Keys<'a, Vertex, DTFNode>;
 
 pub struct DTFGraph {
-    nodes: FnvHashMap<Vertex, DTFNode>,
+    nodes: FxHashMap<Vertex, DTFNode>,
     depth: usize,
     ms: Vec<usize>
 }
@@ -220,12 +220,12 @@ impl Digraph for DTFGraph {
 
 impl DTFGraph {
     fn new() -> DTFGraph {
-        DTFGraph { nodes: FnvHashMap::default(), depth: 1, ms: vec![0] }
+        DTFGraph { nodes: FxHashMap::default(), depth: 1, ms: vec![0] }
     }
 
     fn with_capacity(n_guess:usize) -> DTFGraph {
         DTFGraph {
-            nodes: FnvHashMap::with_capacity_and_hasher(n_guess, Default::default()),
+            nodes: FxHashMap::with_capacity_and_hasher(n_guess, Default::default()),
             depth: 1,
             ms: vec![0]
         }
@@ -296,7 +296,7 @@ impl DTFGraph {
         let mut H = DTFGraph::with_capacity(graph.num_vertices());
 
         let (ord, _) = graph.degeneracy();
-        let indices:FnvHashMap<Vertex, usize> = ord.iter().enumerate()
+        let indices:FxHashMap<Vertex, usize> = ord.iter().enumerate()
                                                 .map(|(i,u)| (*u,i)).collect();
 
         for (v,N) in graph.neighbourhoods() {
@@ -376,8 +376,8 @@ impl DTFGraph {
         self.nodes.get(&u).unwrap().in_neighbours_at(depth)
     }
 
-    pub fn in_neighbours_with_weights(&self, u:&Vertex) -> FnvHashMap<Vertex, u32> {
-        let mut res:FnvHashMap<Vertex, u32> = FnvHashMap::default();
+    pub fn in_neighbours_with_weights(&self, u:&Vertex) -> FxHashMap<Vertex, u32> {
+        let mut res:FxHashMap<Vertex, u32> = FxHashMap::default();
         for d in 1..(self.depth+1) {
             for v in self.in_neighbours_at(&u, d) {
                 res.insert(*v, d as u32);
@@ -415,7 +415,7 @@ impl DTFGraph {
     pub fn augment(&mut self, depth:usize, frat_depth:usize) {
         while self.depth < depth {
             let mut fGraph = EditGraph::new();
-            let mut tArcs = FnvHashSet::<Arc>::default();
+            let mut tArcs = FxHashSet::<Arc>::default();
 
             // This updates self.depth!
             self.reserve_depth(self.depth+1);
@@ -512,8 +512,8 @@ impl DTFGraph {
         self.augment(radius as usize, 2);
 
         let mut domset = VertexSet::default();
-        let mut dom_distance = FnvHashMap::<Vertex, u32>::default();
-        let mut dom_counter = FnvHashMap::<Vertex, u32>::default();
+        let mut dom_distance = FxHashMap::<Vertex, u32>::default();
+        let mut dom_counter = FxHashMap::<Vertex, u32>::default();
 
         let cutoff = (2*radius).pow(2);
         let n = self.num_vertices() as i64;
@@ -586,8 +586,8 @@ mod test {
         H.add_arc(&2, &0, 1);
         H.add_arc(&3, &0, 1);
 
-        assert_eq!(H.in_neighbours_at(&0, 1).cloned().collect::<FnvHashSet<Vertex>>(),
-                   [1,2,3].iter().cloned().collect::<FnvHashSet<Vertex>>());
+        assert_eq!(H.in_neighbours_at(&0, 1).cloned().collect::<FxHashSet<Vertex>>(),
+                   [1,2,3].iter().cloned().collect::<FxHashSet<Vertex>>());
     }
 
     #[test]
