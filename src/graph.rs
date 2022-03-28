@@ -29,6 +29,11 @@ pub trait Graph {
         res
     }
 
+    /// Alias for Graph::num_vertices()
+    fn len(&self) -> usize {
+        self.num_vertices()
+    }
+
     fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
     fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
 
