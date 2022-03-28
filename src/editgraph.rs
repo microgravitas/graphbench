@@ -1,12 +1,12 @@
-use fnv::{FnvHashMap, FnvHashSet};
+use fxhash::{FxHashMap, FxHashSet};
 
 use crate::iterators::*;
 use crate::graph::*;
 
 #[derive(Debug)]
 pub struct EditGraph {
-    adj: FnvHashMap<Vertex, VertexSet>,
-    degs: FnvHashMap<Vertex, u32>,
+    adj: FxHashMap<Vertex, VertexSet>,
+    degs: FxHashMap<Vertex, u32>,
     m: usize
 }
 
@@ -86,22 +86,22 @@ impl Graph for EditGraph {
 
 impl MutableGraph for EditGraph {
     fn new() -> EditGraph {
-        EditGraph{adj: FnvHashMap::default(),
-              degs: FnvHashMap::default(),
+        EditGraph{adj: FxHashMap::default(),
+              degs: FxHashMap::default(),
               m: 0}
     }
 
     fn with_capacity(n_guess:usize) -> Self {
         EditGraph {
-            adj: FnvHashMap::with_capacity_and_hasher(n_guess, Default::default()),
-            degs: FnvHashMap::with_capacity_and_hasher(n_guess, Default::default()),
+            adj: FxHashMap::with_capacity_and_hasher(n_guess, Default::default()),
+            degs: FxHashMap::with_capacity_and_hasher(n_guess, Default::default()),
             m :0
         }
     }
 
     fn add_vertex(&mut self, u:&Vertex) -> bool {
         if !self.adj.contains_key(&u) {
-            self.adj.insert(*u, FnvHashSet::default());
+            self.adj.insert(*u, FxHashSet::default());
             self.degs.insert(*u, 0);
             true
         } else {
@@ -158,15 +158,15 @@ impl MutableGraph for EditGraph {
 }
 
 impl EditGraph {
-    pub fn normalize(&self) -> (EditGraph, FnvHashMap<Vertex, Vertex>) {
+    pub fn normalize(&self) -> (EditGraph, FxHashMap<Vertex, Vertex>) {
         let mut res = EditGraph::with_capacity(self.num_vertices());
         let mut order:Vec<_> = self.vertices().collect();
         order.sort_unstable();
 
-        let id2vex:FnvHashMap<Vertex, Vertex> = order.iter()
+        let id2vex:FxHashMap<Vertex, Vertex> = order.iter()
                                 .enumerate().map(|(i,v)| (i as Vertex, **v) )
                                 .collect();
-        let vex2id:FnvHashMap<Vertex, Vertex> = id2vex.iter()
+        let vex2id:FxHashMap<Vertex, Vertex> = id2vex.iter()
                                 .map(|(i,v)| (*v, *i))
                                 .collect();
         for u in self.vertices() {
@@ -217,37 +217,12 @@ impl EditGraph {
 
         G
     }
-
-    pub fn components(&self) -> Vec<VertexSet> {
-        // TODO: Replace by faster implementation using Union-Find
-        let mut vertices:VertexSet = self.vertices().cloned().collect();
-        let mut comps = Vec::new();
-        while !vertices.is_empty() {
-            let mut comp = VertexSet::default();
-            let u = vertices.iter().cloned().next().unwrap();
-            vertices.remove(&u);
-            comp.insert(u);
-
-            loop {
-                let ext = self.neighbourhood(comp.iter());
-                if ext.is_empty() {
-                    break;
-                }
-                comp.extend(ext);
-            }
-            vertices.retain(|&u| !comp.contains(&u));
-
-            comps.push(comp);
-        }
-        comps
-    }
-
-
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::algorithms::GraphAlgorithms;
 
     // #[test]
     fn components() {

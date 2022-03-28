@@ -1,4 +1,4 @@
-use fnv::{FnvHashMap, FnvHashSet};
+use fxhash::{FxHashMap, FxHashSet};
 
 use crate::graph::*;
 use std::hash::Hash;
@@ -9,7 +9,7 @@ use crate::dtfgraph::DTFGraph;
 use crate::dtfgraph::DTFVertexIterator;
 use crate::dtfgraph::InArcIterator;
 
-pub type VertexIterator<'a> = std::collections::hash_map::Keys<'a, Vertex, FnvHashSet<Vertex>>;
+pub type VertexIterator<'a> = std::collections::hash_map::Keys<'a, Vertex, FxHashSet<Vertex>>;
 pub type NVertexIterator<'a> = std::collections::hash_set::Iter<'a, Vertex>;
 
 /// Neighbourhood iterators for graphs and digraphs. At each step, the iterator

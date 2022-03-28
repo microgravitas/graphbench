@@ -10,4 +10,5 @@ pub mod dtfgraph;
 pub mod ordgraph;
 
 pub mod iterators;
+pub mod algorithms;
 pub mod parse;
