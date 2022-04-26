@@ -223,6 +223,10 @@ impl DTFGraph {
         DTFGraph { nodes: FxHashMap::default(), depth: 1, ms: vec![0] }
     }
 
+    fn get_depth(&self) -> usize { 
+        self.depth
+    }
+
     fn with_capacity(n_guess:usize) -> DTFGraph {
         DTFGraph {
             nodes: FxHashMap::with_capacity_and_hasher(n_guess, Default::default()),
