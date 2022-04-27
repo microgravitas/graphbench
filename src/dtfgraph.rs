@@ -223,7 +223,7 @@ impl DTFGraph {
         DTFGraph { nodes: FxHashMap::default(), depth: 1, ms: vec![0] }
     }
 
-    fn get_depth(&self) -> usize { 
+    pub fn get_depth(&self) -> usize { 
         self.depth
     }
 
