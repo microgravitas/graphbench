@@ -511,7 +511,7 @@ impl DTFGraph {
         res
     }
 
-    fn domset(&mut self, radius:u32) -> VertexSet {
+    pub fn domset(&mut self, radius:u32) -> VertexSet {
         // A fraternal lookahead of 2 seems good accross the board.
         self.augment(radius as usize, 2);
 
