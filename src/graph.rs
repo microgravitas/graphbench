@@ -124,6 +124,22 @@ pub trait Digraph: Graph {
         self.out_neighbours(&u).count() as u32
     }
 
+    fn in_degrees(&self) -> VertexMap<u32> {
+        let mut res = VertexMap::default();
+        for v in self.vertices() {
+            res.insert(*v, self.in_degree(v));
+        }
+        res
+    }
+
+    fn out_degrees(&self) -> VertexMap<u32> {
+        let mut res = VertexMap::default();
+        for v in self.vertices() {
+            res.insert(*v, self.out_degree(v));
+        }
+        res
+    }
+
     fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
         Box::new(self.in_neighbours(u).chain(self.out_neighbours(u)))
     }
