@@ -10,7 +10,7 @@ use crate::iterators::*;
 
 pub trait GraphAlgorithms {
     fn components(&self) -> Vec<VertexSet>;
-    fn degeneracy(&self) -> (Vec<Vertex>,VertexMap<u32>);
+    fn degeneracy(&self) -> (u32, u32, Vec<Vertex>,VertexMap<u32>);
 }
 
 impl<G> GraphAlgorithms for G where G: Graph {
@@ -39,7 +39,7 @@ impl<G> GraphAlgorithms for G where G: Graph {
         res
     }
 
-    fn degeneracy(&self) -> (Vec<Vertex>,VertexMap<u32>) {
+    fn degeneracy(&self) -> (u32, u32, Vec<Vertex>, VertexMap<u32>) {
         let mut order:Vec<_> = Vec::new();
 
         // This index function defines buckets of exponentially increasing
@@ -112,8 +112,17 @@ impl<G> GraphAlgorithms for G where G: Graph {
             order.push(v);
         }
 
+        // Compute lower bound for core number. 
+        let ix = calc_index(core_num) as u32; 
+        let lower = if ix <= 33 {       
+            ix
+        } else {
+            32 + (1 << ((ix - 32 - 1) as u32 ))
+        };
+        let upper = core_num;                  
+
         order.reverse(); // The reverse order is more natural to us (small left-degree)
-        (order, core_numbers)
+        (lower, upper, order, core_numbers)
     }    
 }
 

@@ -30,7 +30,7 @@ impl OrdNode {
 
 impl OrdGraph {
     pub fn by_degeneracy<G>(graph: &G) -> OrdGraph where G: Graph {
-        let (ord, _) = graph.degeneracy();
+        let (_, _, ord, _) = graph.degeneracy();
         OrdGraph::with_ordering(graph, ord.iter())
     }
     
