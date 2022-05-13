@@ -105,6 +105,19 @@ impl OrdGraph {
         }
     }
 
+    pub fn left_neighbours(&self, u:&Vertex) -> Vec<Vertex> {
+        if let Some(iu) = self.indices.get(u) {
+            let node_u = &self.nodes[*iu];
+
+            let mut res:Vec<Vertex> = node_u.left.iter().cloned().collect();
+            res.sort_by_cached_key(|v| self.indices.get(v).unwrap());
+            
+            res
+        } else {
+            panic!("Vertex {u} does not exist");
+        }
+    }
+
     pub fn left_degrees(&self) -> VertexMap<u32> {
         let mut res = VertexMap::default();
         for n in &self.nodes {
