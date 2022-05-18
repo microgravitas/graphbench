@@ -74,20 +74,35 @@ impl OrdGraph {
             _ => return
         };
 
-        // Recompute left/right neighbours for u when moved to iv
+        // Recompute left/right neighbours of u and v for u when moved to iv
         // and for v when moved to iu.
-        for (old_i,new_i) in vec![(iu,iv), (iv,iu)]{
-            let mut n = &mut self.nodes[old_i];
-            let (mut new_left, mut new_right) = (VertexSet::default(), VertexSet::default());
-            for x in n.neighbours() {
-                let ix = self.indices.get(x).unwrap();
-                if ix < &new_i {
-                    new_left.insert(*x);
-                } else {
-                    new_right.insert(*x);
+        for (s,old_i,new_i) in vec![(u,iu,iv), (v,iv,iu)]{
+            let mut needs_update:Vec<usize> = Vec::new();            
+            {   // Update vertex itself
+                let mut n = &mut self.nodes[old_i];
+                let (mut new_left, mut new_right) = (VertexSet::default(), VertexSet::default());
+                for x in n.neighbours() {
+                    let ix = self.indices.get(x).unwrap();
+                    needs_update.push(*ix);
+                    if ix < &new_i {
+                        new_left.insert(*x);
+                    } else {
+                        new_right.insert(*x);
+                    }
                 }
+                (n.left, n.right) = (new_left, new_right);
             }
-            (n.left, n.right) = (new_left, new_right);
+            // Now update neighbours
+            for ix in needs_update {
+                let n = &mut self.nodes[ix];
+                if new_i > ix && n.left.contains(s) {
+                    n.left.remove(s);
+                    n.right.insert(*s);
+                } else if new_i < ix && n.right.contains(s) {
+                    n.right.remove(s);
+                    n.left.insert(*s);
+                }
+            }            
         }
 
         // Finally, swap u and v
