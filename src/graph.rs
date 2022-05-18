@@ -1,6 +1,6 @@
 use fxhash::{FxHashMap, FxHashSet};
 
-use std::hash::Hash;
+use std::{hash::Hash, collections::HashMap, ops::Add};
 
 pub type Vertex = u32;
 pub type Edge = (Vertex, Vertex);
@@ -10,6 +10,11 @@ pub type VertexMap<T> = FxHashMap<Vertex, T>;
 pub type VertexSetRef<'a> = FxHashSet<&'a Vertex>;
 pub type EdgeSet = FxHashSet<Edge>;
 
+
+pub enum BipartiteWitness {
+    BIPARTITION(VertexSet, VertexSet),
+    ODD_CYCLE(Vec<Vertex>)
+}
 
 pub trait Graph {
     fn num_vertices(&self) -> usize;
@@ -74,6 +79,58 @@ pub trait Graph {
         res
     }    
 
+    fn is_bipartite(&self) -> BipartiteWitness {
+        let unprocessed:VertexSet = self.vertices().cloned().collect();
+
+        let conflict:Option<(Vertex, Vertex, Vertex)> = None;
+
+        // Stores colouring information and the _parent_ vertex which caused
+        // the colouring. In this way, we can backtrack and find an odd cycle
+        // if the colouring does not work.
+        let mut colours:VertexMap<(bool,Vertex)> = VertexMap::default();
+        while !unprocessed.is_empty() && conflict.is_none() {
+            let u = *unprocessed.iter().next().unwrap();
+            unprocessed.remove(&u);
+
+            let mut col_queue = vec![(true, u, u)];
+            
+            while !col_queue.is_empty() {
+                let (col, v, parent) = col_queue.pop().unwrap();
+                if colours.contains_key(&v) {
+                    // TODO
+                    let (curr_col, other_parent) = colours.get(&v).unwrap();
+                    if *curr_col != col {
+                        conflict = Some((parent, v, *other_parent));
+                        break;
+                    }
+                } else {
+                    colours.insert(v, (col, parent));
+                    // Queue neighbours
+                    for u in self.neighbours(&v) {
+                        col_queue.push((!col, *u, v));
+                    }
+                }
+                unprocessed.remove(&v);
+            }
+        }
+
+        if let conflict = Some((parent1, v, parent2)) {
+            let odd_cycle:Vec<Vertex> = Vec::default();
+            
+            // TODO
+            let path1:Vec<Vertex> = vec![v, parent1];
+            while colours.get(path1.last()).unwrap().1 != path1.last() {
+                path1.push()
+            }
+
+            let path2:Vec<Vertex> = vec![v, parent2];
+
+
+            return BipartiteWitness::ODD_CYCLE(odd_cycle);
+        };
+
+        ()
+    }
 }
 
 pub trait MutableGraph: Graph{
