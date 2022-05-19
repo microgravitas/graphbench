@@ -80,9 +80,9 @@ pub trait Graph {
     }    
 
     fn is_bipartite(&self) -> BipartiteWitness {
-        let unprocessed:VertexSet = self.vertices().cloned().collect();
+        let mut unprocessed:VertexSet = self.vertices().cloned().collect();
 
-        let conflict:Option<(Vertex, Vertex, Vertex)> = None;
+        let mut conflict:Option<(Vertex, Vertex, Vertex)> = None;
 
         // Stores colouring information and the _parent_ vertex which caused
         // the colouring. In this way, we can backtrack and find an odd cycle
@@ -114,22 +114,58 @@ pub trait Graph {
             }
         }
 
-        if let conflict = Some((parent1, v, parent2)) {
-            let odd_cycle:Vec<Vertex> = Vec::default();
-            
-            // TODO
-            let path1:Vec<Vertex> = vec![v, parent1];
-            while colours.get(path1.last()).unwrap().1 != path1.last() {
-                path1.push()
+        // If the colouring failed we construct an odd path witness
+        if let Some((parent1, v, parent2)) = conflict {           
+            // The first path starts at v and follows it until
+            // the 'root' of the colouring via parent1
+            let mut path1:Vec<Vertex> = vec![v, parent1];
+            loop {
+                let last = *path1.last().unwrap();                
+                let par = colours.get(&last).unwrap().1;
+                if par != last {
+                    path1.push(par)
+                } else {
+                    break
+                }
             }
 
-            let path2:Vec<Vertex> = vec![v, parent2];
+            // The first path starts at parent2 and follows it until
+            // the 'root' of the colouring
+            let mut path2:Vec<Vertex> = vec![parent2];
+            loop {
+                let last = *path2.last().unwrap();                
+                let par = colours.get(&last).unwrap().1;
+                if par != last {
+                    path2.push(par)
+                } else {
+                    break
+                }
+            }
 
+            // path1: root ... parent1 v
+            // path1: root ... parent2
+            assert_eq!(path1.first(), path2.first());
+            path2.reverse(); // parent2 ... x root  (for some vertex x, potentially x = parent2)
+            path2.pop();     // parent2 ... x
 
-            return BipartiteWitness::ODD_CYCLE(odd_cycle);
+            // Create odd cycle by concatenating paths
+            path1.append(&mut path2); // root ... parent1 v parent2 ... x
+
+            return BipartiteWitness::ODD_CYCLE(path1);
         };
 
-        ()
+        let mut left = VertexSet::default();
+        let mut right = VertexSet::default();
+
+        for (x, (col, _)) in colours.iter() {
+            if *col {
+                left.insert(*x);
+            } else {
+                right.insert(*x);
+            }
+        }
+
+        return BipartiteWitness::BIPARTITION(left, right)
     }
 }
 
