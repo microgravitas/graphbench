@@ -1,3 +1,4 @@
+use std::iter::Sum;
 use fxhash::{FxHashMap, FxHashSet};
 
 use crate::iterators::*;
@@ -182,7 +183,7 @@ impl EditGraph {
     pub fn clique(n:u32) -> EditGraph {
         let mut res = EditGraph::with_capacity(n as usize);
         for u in 0..n {
-            for v in u..n {
+            for v in (u+1)..n {
                 res.add_edge(&u,&v);
             }
         }
@@ -199,7 +200,42 @@ impl EditGraph {
         }
 
         res        
-    }    
+    }
+
+    pub fn complete_kpartite<'a, I>(sizes:I) -> EditGraph where I: IntoIterator<Item=&'a u32> {
+        let sizes:Vec<u32> = sizes.into_iter().cloned().collect();
+
+        if sizes.len() == 0 { 
+            return EditGraph::new();
+        } else if sizes.len() == 1 {
+            return EditGraph::clique(sizes[0]);
+        }
+        
+        let mut ranges:Vec<(u32,u32)> = Vec::new();
+        let mut left = 0;
+        for size in sizes {
+            ranges.push((left, left+size));
+            left += size;
+        }
+
+        let n = ranges.last().unwrap().1;
+
+        let mut res = EditGraph::with_capacity(n as usize);
+
+        for i in 0..ranges.len() {
+            let (leftA,rightA) = ranges[i];
+            for j in (i+1)..ranges.len() {
+                let (leftB,rightB) = ranges[j];
+                for u in leftA..rightA { 
+                    for v in leftB..rightB {
+                        res.add_edge(&u, &v);
+                    }
+                }
+            }
+        }
+
+        res
+    }
 
     pub fn normalize(&self) -> (EditGraph, FxHashMap<Vertex, Vertex>) {
         let mut res = EditGraph::with_capacity(self.num_vertices());
