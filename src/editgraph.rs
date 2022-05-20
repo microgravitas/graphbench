@@ -158,6 +158,49 @@ impl MutableGraph for EditGraph {
 }
 
 impl EditGraph {
+    pub fn path(n:u32) -> EditGraph {
+        let mut res = EditGraph::with_capacity(n as usize);
+        for u in 0..(n-1) {
+            let v = u+1;
+            res.add_edge(&u,&v);
+        }
+
+        res
+    }
+
+
+    pub fn cycle(n:u32) -> EditGraph {
+        let mut res = EditGraph::with_capacity(n as usize);
+        for u in 0..n {
+            let v = (u+1) % n;
+            res.add_edge(&u,&v);
+        }
+
+        res
+    }
+
+    pub fn clique(n:u32) -> EditGraph {
+        let mut res = EditGraph::with_capacity(n as usize);
+        for u in 0..n {
+            for v in u..n {
+                res.add_edge(&u,&v);
+            }
+        }
+
+        res        
+    }
+
+    pub fn biclique(s:u32, t:u32) -> EditGraph {
+        let mut res = EditGraph::with_capacity((s+t) as usize);
+        for u in 0..s {
+            for v in s..(s+t) {
+                res.add_edge(&u,&v);
+            }
+        }
+
+        res        
+    }    
+
     pub fn normalize(&self) -> (EditGraph, FxHashMap<Vertex, Vertex>) {
         let mut res = EditGraph::with_capacity(self.num_vertices());
         let mut order:Vec<_> = self.vertices().collect();
@@ -218,6 +261,17 @@ impl EditGraph {
         G
     }
 }
+
+
+
+//  #######                            
+//     #    ######  ####  #####  ####  
+//     #    #      #        #   #      
+//     #    #####   ####    #    ####  
+//     #    #           #   #        # 
+//     #    #      #    #   #   #    # 
+//     #    ######  ####    #    ####  
+                                    
 
 #[cfg(test)]
 mod test {
