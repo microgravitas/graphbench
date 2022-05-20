@@ -12,8 +12,8 @@ pub type EdgeSet = FxHashSet<Edge>;
 
 
 pub enum BipartiteWitness {
-    BIPARTITION(VertexSet, VertexSet),
-    ODD_CYCLE(Vec<Vertex>)
+    Bipartition(VertexSet, VertexSet),
+    OddCycle(Vec<Vertex>)
 }
 
 pub trait Graph {
@@ -97,12 +97,12 @@ pub trait Graph {
             while !col_queue.is_empty() {
                 let (col, v, parent) = col_queue.pop().unwrap();
                 if colours.contains_key(&v) {
-                    // TODO
                     let (curr_col, other_parent) = colours.get(&v).unwrap();
                     if *curr_col != col {
                         conflict = Some((parent, v, *other_parent));
                         break;
                     }
+                    // Otherwise the already assigned colour matches and we are done with v
                 } else {
                     colours.insert(v, (col, parent));
                     // Queue neighbours
@@ -115,7 +115,7 @@ pub trait Graph {
         }
 
         // If the colouring failed we construct an odd path witness
-        if let Some((parent1, v, parent2)) = conflict {           
+        if let Some((parent1, v, parent2)) = conflict {       
             // The first path starts at v and follows it until
             // the 'root' of the colouring via parent1
             let mut path1:Vec<Vertex> = vec![v, parent1];
@@ -145,13 +145,26 @@ pub trait Graph {
             // path1: root ... parent1 v
             // path1: root ... parent2
             assert_eq!(path1.first(), path2.first());
+
+            // If v == parent2 then path1 is already an odd cycle
+            if path1.len() > 1 && path1.first() == path1.last() {
+                path1.pop();
+                return BipartiteWitness::OddCycle(path1);   
+            }
+
+            // If v == parent1 then path2 is already an odd cycle
+            if path2.len() > 1 && path2.first() == path2.last() {
+                path2.pop();
+                return BipartiteWitness::OddCycle(path2);   
+            }            
+
             path2.reverse(); // parent2 ... x root  (for some vertex x, potentially x = parent2)
             path2.pop();     // parent2 ... x
 
             // Create odd cycle by concatenating paths
             path1.append(&mut path2); // root ... parent1 v parent2 ... x
 
-            return BipartiteWitness::ODD_CYCLE(path1);
+            return BipartiteWitness::OddCycle(path1);
         };
 
         let mut left = VertexSet::default();
@@ -165,7 +178,7 @@ pub trait Graph {
             }
         }
 
-        return BipartiteWitness::BIPARTITION(left, right)
+        return BipartiteWitness::Bipartition(left, right)
     }
 }
 
@@ -176,6 +189,7 @@ pub trait MutableGraph: Graph{
     fn add_vertex(&mut self, u: &Vertex) -> bool;
     fn remove_vertex(&mut self, u: &Vertex) -> bool;
     fn add_edge(&mut self, u: &Vertex, v: &Vertex) -> bool;
+
     fn remove_edge(&mut self, u: &Vertex, v: &Vertex) -> bool;
 
     fn remove_loops(&mut self) -> usize {
@@ -248,3 +262,47 @@ pub trait MutableDigraph: Digraph  {
     fn add_arc(&mut self, u: &Vertex, v: &Vertex) -> bool;
     fn remove_arc(&mut self, u: &Vertex, v: &Vertex) -> bool;
 }
+
+
+//  #######                            
+//     #    ######  ####  #####  ####  
+//     #    #      #        #   #      
+//     #    #####   ####    #    ####  
+//     #    #           #   #        # 
+//     #    #      #    #   #   #    # 
+//     #    ######  ####    #    ####  
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::matches;
+    use crate::editgraph::EditGraph;
+
+    #[test]
+    fn gbipartite() {
+        let mut G = EditGraph::new();
+
+        G.add_edge(&0,&1);
+        let witness = G.is_bipartite();
+        assert!(matches!(witness, BipartiteWitness::Bipartition(_, _)));
+
+        G.add_edge(&1,&2);
+        let witness = G.is_bipartite();
+        assert!(matches!(witness, BipartiteWitness::Bipartition(_, _)));
+
+
+        G.add_edge(&0,&2);
+        let witness = G.is_bipartite();
+        assert!(matches!(witness, BipartiteWitness::OddCycle(_)));
+
+        let G = EditGraph::cycle(50);
+        let witness = G.is_bipartite();
+        assert!(matches!(witness, BipartiteWitness::Bipartition(left, right) if left.len() == right.len()));
+
+        let G = EditGraph::cycle(51);
+        let witness = G.is_bipartite();
+        assert!(matches!(witness, BipartiteWitness::OddCycle(cycle) if cycle.len() == 51));        
+    }    
+}
+                                    
