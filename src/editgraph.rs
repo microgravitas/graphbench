@@ -1,4 +1,5 @@
 use std::iter::Sum;
+use itertools::max;
 use fxhash::{FxHashMap, FxHashSet};
 
 use crate::iterators::*;
@@ -233,6 +234,20 @@ impl EditGraph {
                 }
             }
         }
+
+        res
+    }
+
+    pub fn disj_union(&self, graph: &impl Graph) -> EditGraph {
+        let mut res = EditGraph::with_capacity(self.len() + graph.len());
+
+        let offset:Vertex = self.vertices().max().unwrap_or(&0) + 1;
+
+        res.add_vertices(self.vertices().cloned());
+        res.add_edges(self.edges());
+
+        res.add_vertices(graph.vertices().map(|v| v+offset));
+        res.add_edges(graph.edges().map(|(u,v)| (u+offset,v+offset) ));
 
         res
     }

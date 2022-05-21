@@ -193,7 +193,7 @@ pub trait MutableGraph: Graph{
     fn remove_edge(&mut self, u: &Vertex, v: &Vertex) -> bool;
 
 
-    fn add_vertices(&mut self, it: impl Iterator<Item=Vertex>) -> u32 {
+    fn add_vertices<'a>(&mut self, it: impl Iterator<Item=Vertex>) -> u32 {
         let mut count = 0;
         for v in it {
             if self.add_vertex(&v) {
@@ -203,7 +203,7 @@ pub trait MutableGraph: Graph{
         count
     }
 
-    fn add_edges(&mut self, it: impl Iterator<Item=Edge>) -> u32 {
+    fn add_edges<'a>(&mut self, it: impl Iterator<Item=Edge>) -> u32 {
         let mut count = 0;
         for (u,v) in it {
             if self.add_edge(&u, &v) {
