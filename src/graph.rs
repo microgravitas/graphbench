@@ -11,6 +11,7 @@ pub type VertexSetRef<'a> = FxHashSet<&'a Vertex>;
 pub type EdgeSet = FxHashSet<Edge>;
 
 
+#[derive(Debug)]
 pub enum BipartiteWitness {
     Bipartition(VertexSet, VertexSet),
     OddCycle(Vec<Vertex>)
@@ -142,9 +143,9 @@ pub trait Graph {
                 }
             }
 
-            // path1: root ... parent1 v
-            // path1: root ... parent2
-            assert_eq!(path1.first(), path2.first());
+            // path1: v parent1 ... root
+            // path1: parent2 ... root
+            assert_eq!(path1.last(), path2.last());
 
             // If v == parent2 then path1 is already an odd cycle
             if path1.len() > 1 && path1.first() == path1.last() {
@@ -158,11 +159,17 @@ pub trait Graph {
                 return BipartiteWitness::OddCycle(path2);   
             }            
 
-            path2.reverse(); // parent2 ... x root  (for some vertex x, potentially x = parent2)
-            path2.pop();     // parent2 ... x
+            // path2 = parent2 ... x root  (for some vertex x, potentially x = parent2)
+            path2.pop();     
+
+            // path2 = parent2 ... x
+            path2.reverse(); 
+            // path2 = x ... parent2
+        
 
             // Create odd cycle by concatenating paths
             path1.append(&mut path2); // root ... parent1 v parent2 ... x
+            println!("Dbg: cycle = {path1:?}");
 
             return BipartiteWitness::OddCycle(path1);
         };
@@ -298,10 +305,15 @@ pub trait MutableDigraph: Digraph  {
 mod test {
     use super::*;
     use std::matches;
-    use crate::editgraph::EditGraph;
+    use crate::{editgraph::EditGraph, iterators::EdgeIterable};
+
+    use rand::{seq::SliceRandom, SeedableRng}; // 0.6.5
+    use rand_chacha::ChaChaRng; // 0.1.1
+
+    use itertools::Itertools;
 
     #[test]
-    fn gbipartite() {
+    fn bipartite() {
         let mut G = EditGraph::new();
 
         G.add_edge(&0,&1);
@@ -324,6 +336,33 @@ mod test {
         let G = EditGraph::cycle(51);
         let witness = G.is_bipartite();
         assert!(matches!(witness, BipartiteWitness::OddCycle(cycle) if cycle.len() == 51));        
+
+
+
+        let karate = EditGraph::from_txt("resources/karate.txt").unwrap();
+
+        let mut edges:Vec<Edge> = karate.edges().collect();
+        
+        let seed = [4; 32];
+        let mut rng = ChaChaRng::from_seed(seed);
+        edges.shuffle(&mut rng);
+
+        let mut G = EditGraph::new();
+        for (u,v) in edges {
+            G.add_edge(&u, &v);
+        }
+
+        let witness = G.is_bipartite();
+        println!("n = {}, m = {}", G.num_vertices(), G.num_edges());
+        println!("Bipartite: {:?}", witness);        
+        assert!(matches!(witness, BipartiteWitness::OddCycle(_)));
+
+        if let BipartiteWitness::OddCycle(cycle) = witness {
+            for (u,v) in cycle.iter().tuple_windows() {
+                assert!(G.adjacent(u, v));
+            }
+            assert!(G.adjacent(cycle.first().unwrap(), cycle.last().unwrap()));
+        }
     }    
 }
                                     
