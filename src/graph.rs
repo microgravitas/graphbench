@@ -169,7 +169,6 @@ pub trait Graph {
 
             // Create odd cycle by concatenating paths
             path1.append(&mut path2); // root ... parent1 v parent2 ... x
-            println!("Dbg: cycle = {path1:?}");
 
             return BipartiteWitness::OddCycle(path1);
         };
