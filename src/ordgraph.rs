@@ -268,10 +268,41 @@ impl Graph for OrdGraph {
 #[cfg(test)]
 mod test {
     use super::*;
-
+    use crate::editgraph::EditGraph;
 
     #[test] 
-    fn basic_operations() {
+    fn consistency() {
+        let mut G = EditGraph::clique(5);
+        let mut O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());
+    
+        assert_eq!(O.left_degree(&0), 0);
+        assert_eq!(O.left_degree(&1), 1);
+        assert_eq!(O.left_degree(&2), 2);
+        assert_eq!(O.left_degree(&3), 3);
+        assert_eq!(O.left_degree(&4), 4);
 
+        assert_eq!(O.left_neighbours(&0), vec![]);
+        assert_eq!(O.left_neighbours(&1), vec![0]);
+        assert_eq!(O.left_neighbours(&2), vec![0,1]);
+        assert_eq!(O.left_neighbours(&3), vec![0,1,2]);
+        assert_eq!(O.left_neighbours(&4), vec![0,1,2,3]);
+
+        let mut G = EditGraph::from_txt("./resources/karate.txt").unwrap();
+        let mut O = OrdGraph::by_degeneracy(&G);
+
+        let mut m = 0;
+        for u in O.vertices() {
+            assert_eq!(O.left_degree(u), O.left_neighbours(u).len());
+            m += O.left_degree(u);
+        }
+        assert_eq!(m, G.num_edges());
+
+        for (u,v) in O.edges() {
+            assert!(G.adjacent(&u, &v));
+        }
+
+        for (u,v) in G.edges() {
+            assert!(O.adjacent(&u, &v));
+        }        
     }
 }
