@@ -1,7 +1,5 @@
-//! Sparse graph analysis library.
-//! 
-//! This library provides various graph datastructures taylored for specific
-//! styles of algorithms.
+#![doc = include_str!("../README.md")]
+
 
 #![allow(dead_code)]
 #![allow(unused_imports)]
@@ -24,6 +22,8 @@ pub mod ordgraph;
 /// Various iterators for graph traits.
 pub mod iterators;
 
-
+/// Graph algorithms.
 pub mod algorithms;
+
+/// File I/O.
 pub mod io;

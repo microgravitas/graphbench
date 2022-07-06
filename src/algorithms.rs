@@ -240,4 +240,77 @@ impl<G> GraphAlgorithms for G where G: Graph {
     }    
 }
 
+//  #######                            
+//     #    ######  ####  #####  ####  
+//     #    #      #        #   #      
+//     #    #####   ####    #    ####  
+//     #    #           #   #        # 
+//     #    #      #    #   #   #    # 
+//     #    ######  ####    #    ####  
 
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::matches;
+    use crate::{editgraph::EditGraph, iterators::EdgeIterable};
+
+    use rand::{seq::SliceRandom, SeedableRng}; // 0.6.5
+    use rand_chacha::ChaChaRng; // 0.1.1
+
+    use itertools::Itertools;
+
+    #[test]
+    fn bipartite() {
+        let mut G = EditGraph::new();
+
+        G.add_edge(&0,&1);
+        let witness = G.is_bipartite();
+        assert!(matches!(witness, BipartiteWitness::Bipartition(_, _)));
+
+        G.add_edge(&1,&2);
+        let witness = G.is_bipartite();
+        assert!(matches!(witness, BipartiteWitness::Bipartition(_, _)));
+
+
+        G.add_edge(&0,&2);
+        let witness = G.is_bipartite();
+        assert!(matches!(witness, BipartiteWitness::OddCycle(_)));
+
+        let G = EditGraph::cycle(50);
+        let witness = G.is_bipartite();
+        assert!(matches!(witness, BipartiteWitness::Bipartition(left, right) if left.len() == right.len()));
+
+        let G = EditGraph::cycle(51);
+        let witness = G.is_bipartite();
+        assert!(matches!(witness, BipartiteWitness::OddCycle(cycle) if cycle.len() == 51));        
+
+
+
+        let karate = EditGraph::from_txt("resources/karate.txt").unwrap();
+
+        let mut edges:Vec<Edge> = karate.edges().collect();
+        
+        let seed = [4; 32];
+        let mut rng = ChaChaRng::from_seed(seed);
+        edges.shuffle(&mut rng);
+
+        let mut G = EditGraph::new();
+        for (u,v) in edges {
+            G.add_edge(&u, &v);
+        }
+
+        let witness = G.is_bipartite();
+        println!("n = {}, m = {}", G.num_vertices(), G.num_edges());
+        println!("Bipartite: {:?}", witness);        
+        assert!(matches!(witness, BipartiteWitness::OddCycle(_)));
+
+        if let BipartiteWitness::OddCycle(cycle) = witness {
+            for (u,v) in cycle.iter().tuple_windows() {
+                assert!(G.adjacent(u, v));
+            }
+            assert!(G.adjacent(cycle.first().unwrap(), cycle.last().unwrap()));
+        }
+    }    
+}
+                                    
