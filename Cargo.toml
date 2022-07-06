@@ -1,6 +1,6 @@
 [package]
 name = "graphbench"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["felix <felix.reidl@gmail.com>"]
 edition = "2021"
 description = "A sparse graph analysis library"
