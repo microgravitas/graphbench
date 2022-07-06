@@ -1,3 +1,18 @@
+//! Data structure used to answer short-distance queries. The data structure has
+//! one central parameter called the "depth" of the augmentation. 
+//! 
+//! Concretely, given a graph $G$ and a depth $d \geq 1$, the augumentation computes an augmentation
+//! $\vec G_d$ in time $O(\\|G\\|)$ (treating $d$ as a constant). This augmentation can answer *small* distance
+//! queries of vertex-pairs in $G$ in constant time, that is, given $u, v \in G$ the augmentation $\vec G_d$
+//! tells us in constant time the distance between $u$ and $v$ in $G$ *if* that distance is $\leq d$. Otherwise
+//! it will correctly tell us that the distance is $> d$.
+//! 
+//! The data structure $\vec G_d$ is itself a weighted digraph. The query described above is based on two
+//! properties:
+//! 1) The in-degree of $\vec G_d$ is small if $G$ has certain good properties, and
+//! 2) for $u,v \in G$ with distance $d' \leq d$ we either have that $u$ and $v$ are joined by an
+//! arc of weight $d'$ in $\vec G_d$, **or** there exists a joint in-neighbour $w$ such that the
+//! weights of the arcs $wv$ and $wv$ sum up to $d'$.
 use crate::algorithms::GraphAlgorithms;
 use fxhash::{FxHashMap, FxHashSet};
 use std::collections::HashMap;
@@ -13,12 +28,14 @@ use std::cmp::{max, min};
 pub type InArcIterator<'a> = std::collections::hash_set::Iter<'a, Vertex>;
 pub type DTFVertexIterator<'a> = std::collections::hash_map::Keys<'a, Vertex, DTFNode>;
 
+/// The augmentation data structure.
 pub struct DTFGraph {
     nodes: FxHashMap<Vertex, DTFNode>,
     depth: usize,
     ms: Vec<usize>
 }
 
+/// A view on an augmentation which contains all arcs of the same specified weight.
 pub struct DTFLayer<'a> {
     graph: &'a DTFGraph,
     depth: usize
@@ -90,6 +107,7 @@ impl<'b> Digraph for DTFLayer<'b> {
     }
 }
 
+/// A single vertex in the augmentation.
 pub struct DTFNode {
     in_arcs: Vec<VertexSet>,
     in_degs: Vec<u32>,
@@ -219,10 +237,12 @@ impl Digraph for DTFGraph {
 }
 
 impl DTFGraph {
+    /// Creates an empty DTFGraph.
     fn new() -> DTFGraph {
         DTFGraph { nodes: FxHashMap::default(), depth: 1, ms: vec![0] }
     }
 
+    /// Returns the depth of augmentation.
     pub fn get_depth(&self) -> usize { 
         self.depth
     }
@@ -390,6 +410,8 @@ impl DTFGraph {
         res
     }
 
+    /// Returns the distance between the vertices `u` and `v` if it
+    /// it smaller than the depth of the augmentation. Otherwise returns `None`.
     pub fn small_distance(&self, u:&Vertex, v:&Vertex) -> Option<u32> {
         let mut dist = std::u32::MAX;
 
@@ -416,6 +438,11 @@ impl DTFGraph {
         Some(dist)
     }
 
+    /// Increases the depth of the augmentation.
+    /// 
+    /// # Arguments
+    /// - `depth` - The target depth of the augmentation
+    /// - `frat_depth` - An optimisation parameter. Larger values increase computation time, recommended values are 2 or 1. 
     pub fn augment(&mut self, depth:usize, frat_depth:usize) {
         while self.depth < depth {
             let mut fGraph = EditGraph::new();
