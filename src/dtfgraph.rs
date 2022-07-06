@@ -581,7 +581,7 @@ impl DTFGraph {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::parse;
+    use crate::io;
 
     #[test]
     fn iteration() {

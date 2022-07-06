@@ -11,4 +11,4 @@ pub mod ordgraph;
 
 pub mod iterators;
 pub mod algorithms;
-pub mod parse;
+pub mod io;
