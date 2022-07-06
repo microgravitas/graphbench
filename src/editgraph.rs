@@ -297,20 +297,6 @@ impl EditGraph {
             self.remove_vertex(&v);
         }
     }
-
-    pub fn subgraph<'a, I>(&self, vertices:I) -> EditGraph where I: Iterator<Item=&'a Vertex> {
-        let selected:VertexSet = vertices.cloned().collect();
-        let mut G = EditGraph::with_capacity(selected.len());
-        for v in &selected {
-            G.add_vertex(v);
-            let Nv:VertexSet = self.neighbours(v).cloned().collect();
-            for u in Nv.intersection(&selected) {
-                G.add_edge(u, v);
-            }
-        }
-
-        G
-    }
 }
 
 

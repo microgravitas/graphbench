@@ -80,6 +80,21 @@ pub trait Graph {
         res
     }    
 
+    fn subgraph<'a, M, I>(&self, vertices:I) -> M 
+                where M: MutableGraph, I: Iterator<Item=&'a Vertex> {
+        let selected:VertexSet = vertices.cloned().collect();
+        let mut G = M::with_capacity(selected.len());
+        for v in &selected {
+            G.add_vertex(v);
+            let Nv:VertexSet = self.neighbours(v).cloned().collect();
+            for u in Nv.intersection(&selected) {
+                G.add_edge(u, v);
+            }
+        }   
+
+        G
+    }    
+
     fn is_bipartite(&self) -> BipartiteWitness {
         let mut unprocessed:VertexSet = self.vertices().cloned().collect();
 
@@ -244,7 +259,6 @@ pub trait MutableGraph: Graph{
 
         res
     }
-
 }
 
 pub trait Digraph: Graph {
