@@ -3,8 +3,11 @@ name = "graphbench"
 version = "0.1.6"
 authors = ["felix <felix.reidl@gmail.com>"]
 edition = "2021"
+repository = "https://github.com/microgravitas/graphbench"
 description = "A sparse graph analysis library"
+readme = "README.md"
 license = "MIT"
+
 
 [dependencies]
 fxhash = "0.2.1"
