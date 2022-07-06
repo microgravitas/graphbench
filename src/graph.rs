@@ -10,13 +10,6 @@ pub type VertexMap<T> = FxHashMap<Vertex, T>;
 pub type VertexSetRef<'a> = FxHashSet<&'a Vertex>;
 pub type EdgeSet = FxHashSet<Edge>;
 
-
-#[derive(Debug)]
-pub enum BipartiteWitness {
-    Bipartition(VertexSet, VertexSet),
-    OddCycle(Vec<Vertex>)
-}
-
 pub trait Graph {
     fn num_vertices(&self) -> usize;
     fn num_edges(&self) -> usize;
@@ -94,113 +87,6 @@ pub trait Graph {
 
         G
     }    
-
-    fn is_bipartite(&self) -> BipartiteWitness {
-        let mut unprocessed:VertexSet = self.vertices().cloned().collect();
-
-        let mut conflict:Option<(Vertex, Vertex, Vertex)> = None;
-
-        // Stores colouring information and the _parent_ vertex which caused
-        // the colouring. In this way, we can backtrack and find an odd cycle
-        // if the colouring does not work.
-        let mut colours:VertexMap<(bool,Vertex)> = VertexMap::default();
-        while !unprocessed.is_empty() && conflict.is_none() {
-            let u = *unprocessed.iter().next().unwrap();
-            unprocessed.remove(&u);
-
-            let mut col_queue = vec![(true, u, u)];
-            
-            while !col_queue.is_empty() {
-                let (col, v, parent) = col_queue.pop().unwrap();
-                if colours.contains_key(&v) {
-                    let (curr_col, other_parent) = colours.get(&v).unwrap();
-                    if *curr_col != col {
-                        conflict = Some((parent, v, *other_parent));
-                        break;
-                    }
-                    // Otherwise the already assigned colour matches and we are done with v
-                } else {
-                    colours.insert(v, (col, parent));
-                    // Queue neighbours
-                    for u in self.neighbours(&v) {
-                        col_queue.push((!col, *u, v));
-                    }
-                }
-                unprocessed.remove(&v);
-            }
-        }
-
-        // If the colouring failed we construct an odd path witness
-        if let Some((parent1, v, parent2)) = conflict {       
-            // The first path starts at v and follows it until
-            // the 'root' of the colouring via parent1
-            let mut path1:Vec<Vertex> = vec![v, parent1];
-            loop {
-                let last = *path1.last().unwrap();                
-                let par = colours.get(&last).unwrap().1;
-                if par != last {
-                    path1.push(par)
-                } else {
-                    break
-                }
-            }
-
-            // The first path starts at parent2 and follows it until
-            // the 'root' of the colouring
-            let mut path2:Vec<Vertex> = vec![parent2];
-            loop {
-                let last = *path2.last().unwrap();                
-                let par = colours.get(&last).unwrap().1;
-                if par != last {
-                    path2.push(par)
-                } else {
-                    break
-                }
-            }
-
-            // path1: v parent1 ... root
-            // path1: parent2 ... root
-            assert_eq!(path1.last(), path2.last());
-
-            // If v == parent2 then path1 is already an odd cycle
-            if path1.len() > 1 && path1.first() == path1.last() {
-                path1.pop();
-                return BipartiteWitness::OddCycle(path1);   
-            }
-
-            // If v == parent1 then path2 is already an odd cycle
-            if path2.len() > 1 && path2.first() == path2.last() {
-                path2.pop();
-                return BipartiteWitness::OddCycle(path2);   
-            }            
-
-            // path2 = parent2 ... x root  (for some vertex x, potentially x = parent2)
-            path2.pop();     
-
-            // path2 = parent2 ... x
-            path2.reverse(); 
-            // path2 = x ... parent2
-        
-
-            // Create odd cycle by concatenating paths
-            path1.append(&mut path2); // root ... parent1 v parent2 ... x
-
-            return BipartiteWitness::OddCycle(path1);
-        };
-
-        let mut left = VertexSet::default();
-        let mut right = VertexSet::default();
-
-        for (x, (col, _)) in colours.iter() {
-            if *col {
-                left.insert(*x);
-            } else {
-                right.insert(*x);
-            }
-        }
-
-        return BipartiteWitness::Bipartition(left, right)
-    }
 }
 
 pub trait MutableGraph: Graph{
