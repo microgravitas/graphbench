@@ -1,12 +1,48 @@
 use crate::editgraph::EditGraph;
 use crate::graph::Vertex;
+use crate::iterators::*;
 
 use std::io;
-use std::io::BufRead;
+use std::io::{BufRead,BufReader,BufWriter,Write};
 use std::fs::File;
+use flate2::Compression;
 use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
 
 use crate::graph::*;
+
+
+pub trait WriteGraph {
+    fn write_txt(&self, filename:&str) -> io::Result<()>;
+    fn write_gzipped(&self, filename:&str) -> io::Result<()>;
+}
+
+impl<G:Graph> WriteGraph for G {
+    fn write_txt(&self, filename:&str) -> io::Result<()> {
+        let file = File::create(filename)?;
+        let mut buf = BufWriter::new(file);
+
+        for (u,v) in self.edges() {
+            buf.write(format!("{u} {v}\n").as_bytes())?;
+        }
+        buf.flush()?;
+
+        Ok(())
+    }
+
+    fn write_gzipped(&self, filename:&str) -> io::Result<()> {
+        let file = File::create(filename)?;
+        let gz = GzEncoder::new(file, Compression::default());
+        let mut buf = BufWriter::new(gz);
+
+        for (u,v) in self.edges() {
+            buf.write(format!("{u} {v}\n").as_bytes())?;
+        }
+        buf.flush()?;
+        
+        Ok(())
+    }
+}
 
 impl EditGraph {
     pub fn from_txt(filename:&str) -> io::Result<EditGraph> {
@@ -18,7 +54,7 @@ impl EditGraph {
         // obtained from the my network collection.
         let n_estimate = 0.007*(size as f32);
 
-        EditGraph::parse(&mut io::BufReader::new(file), n_estimate as usize)
+        EditGraph::parse(&mut BufReader::new(file), n_estimate as usize)
     }
 
     pub fn from_gzipped(filename:&str) -> io::Result<EditGraph> {
@@ -31,7 +67,7 @@ impl EditGraph {
         // the compresed file, obtained from data in my network collection.
         let n_estimate = 0.025*(size as f32);
 
-        EditGraph::parse(&mut io::BufReader::new(gz), n_estimate as usize)
+        EditGraph::parse(&mut BufReader::new(gz), n_estimate as usize)
     }
 
     fn parse<R: BufRead>(reader: &mut R, n_estimate:usize) -> io::Result<EditGraph> {
@@ -67,7 +103,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn import() {
+    fn read_graph() {
         let G = EditGraph::from_gzipped("resources/karate.txt.gz").unwrap();
 
         assert_eq!(G.num_vertices(), 34);
@@ -76,5 +112,17 @@ mod test {
         let H = EditGraph::from_txt("resources/karate.txt").unwrap();
 
         assert_eq!(G, H);
+    }
+
+    #[test]
+    fn write_graph() {
+        let G = EditGraph::biclique(3, 3);
+        G.write_txt("resources/temp.txt");
+        G.write_gzipped("resources/temp.txt.gz");
+        
+        let H1 = EditGraph::from_txt("resources/temp.txt").unwrap();
+        let H2 = EditGraph::from_gzipped("resources/temp.txt.gz").unwrap();
+
+        assert_eq!(H1, H2);
     }
 }
