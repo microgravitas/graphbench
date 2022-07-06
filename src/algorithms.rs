@@ -1,3 +1,21 @@
+//! Various basic graph algorithms which operate on the [Graph]() trait.
+//! 
+//! ## Testing bipartiteness
+//! ```
+//! use graphbench::editgraph::EditGraph;
+//! use graphbench::graph::*;
+//! use graphbench::algorithms::*;
+//! use std::matches;
+//! fn main() {
+//!     let mut graph = EditGraph::biclique(2,4); // Bipartite graph
+//!     let witness = graph.is_bipartite();
+//!     assert!(matches!(witness, BipartiteWitness::Bipartition(_, _)));
+//! 
+//!     graph.add_edge(&0, &1); // Graph is not bipartite anymore
+//!     let witness = graph.is_bipartite(); 
+//!     assert!(matches!(witness, BipartiteWitness::OddCycle(_)));
+//! }
+//! ```
 use fxhash::{FxHashMap, FxHashSet};
 
 use std::collections::HashSet;
@@ -8,15 +26,30 @@ use std::cmp::{max, min, Eq};
 use crate::graph::*;
 use crate::iterators::*;
 
+/// Implements various basic graph algorithms for the [Graph](crate::graph::Graph) trait.
 pub trait GraphAlgorithms {
+    /// Returns the connected components of this graph.
     fn components(&self) -> Vec<VertexSet>;
+
+    /// Computes the degeneracy (approximate), core-numbers and a degeneracy-ordering of this graph.
+    /// The return value contains four values:
+    /// 1) A lower bound on the degeneracy,
+    /// 2) an upper bound on the degeneracy, 
+    /// 3) the computed degeneracy ordering, and
+    /// 4) the core-numbers of each vertex in this ordering.
     fn degeneracy(&self) -> (u32, u32, Vec<Vertex>,VertexMap<u32>);
+
+    /// Tests whether the graph is bipartite and returns a witness. 
     fn is_bipartite(&self) -> BipartiteWitness;
 }
 
+/// A witness which either contains a bipartition of the graph or and odd cycle. 
 #[derive(Debug)]
 pub enum BipartiteWitness {
+    /// A bipartition of the graph.
     Bipartition(VertexSet, VertexSet),
+
+    // An vertes sequence which forms an odd cycle in the graph.
     OddCycle(Vec<Vertex>)
 }
 

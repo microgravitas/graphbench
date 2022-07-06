@@ -60,6 +60,9 @@ fn main() {
 }
 ```
 
+Reading/writing graphs is also possible to gzipped files of the above text format, 
+see the [`graphbench::io`](https://docs.rs/graphbench/latest/graphbench/io/index.html) module.
+
 ## Iteration
 
 Several iterators over the graph contents are provided by the [`graphbench::iterators`](https://docs.rs/graphbench/latest/graphbench/iterators/index.html) module, we recommend `use graphbench::iterators::*` for simplicity. 
@@ -78,13 +81,13 @@ fn main() {
         println!("Vertex {} has {} neighbour(s): {:?}", u, degree, neighs);
     }
 
-    // Needs traits graphbench::iterators::NeighIterable
+    // Needs trait graphbench::iterators::NeighIterable
     for (u,neighs_it) in graph.neighbourhoods() {
         let neighs:Vec<&Vertex> = neighs_it.collect();
         println!("Vertex {} has neighbour(s) {:?}", u, neighs);
     }
 
-    // Needs traits graphbench::iterators::EdgeIterable
+    // Needs trait graphbench::iterators::EdgeIterable
     for (u,v) in graph.edges() {
         println!("Edge {} {}", u, v);
     }
