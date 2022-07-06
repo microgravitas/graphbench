@@ -1,0 +1,3 @@
+[build]
+# Includes docs-header.html in docs to enable latex
+rustdocflags = [ "--html-in-header", "./src/docs-header.html" ]
