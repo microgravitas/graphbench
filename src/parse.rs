@@ -28,7 +28,7 @@ impl EditGraph {
         let gz = GzDecoder::new(file);
 
         // This is a rought estimate of n given the number of bytes in
-        // the compresed file, obtained from the my network collection.
+        // the compresed file, obtained from data in my network collection.
         let n_estimate = 0.025*(size as f32);
 
         EditGraph::parse(&mut io::BufReader::new(gz), n_estimate as usize)
