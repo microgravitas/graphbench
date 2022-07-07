@@ -1,5 +1,9 @@
 # Graphbench
 
+[<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-graphbench-3873ad?style=flat-square&logo=docs.rs"/>](https://docs.rs/graphbench/latest/graphbench/)
+[<img alt="crates.io" src="https://img.shields.io/crates/v/graphbench?style=flat-square"/>](https://crates.io/crates/graphbench)
+[<img alt="github" src="https://img.shields.io/badge/github-graphbench-ffdd55?style=flat-square&logo=github"/>](https://github.com/microgravitas/graphbench)
+
 This library provides various graph datastructures tailored to specific styles of algorithms, as well as a generic graph
 data structure for manipulating graphs.
 
@@ -36,6 +40,9 @@ fn main() {
 }
 ```
 
+<br/>
+
+
 ## File I/O
 
 Graphbench currently supports only one basic file format in which every edge is defined on a single line.
@@ -62,6 +69,9 @@ fn main() {
 
 Reading/writing graphs is also possible to gzipped files of the above text format, 
 see the [`graphbench::io`](https://docs.rs/graphbench/latest/graphbench/io/index.html) module.
+
+<br/>
+
 
 ## Iteration
 
@@ -94,3 +104,4 @@ fn main() {
 }
 ```
 
+<br/>
