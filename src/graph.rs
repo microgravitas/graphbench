@@ -132,6 +132,7 @@ pub trait Graph {
 
 /// Trait for mutable graphs.
 pub trait MutableGraph: Graph{
+    /// Creates an emtpy mutable graph.
     fn new() -> Self;
 
     /// Creates a mutable graph with a hint on how many vertices it will probably contain.
@@ -220,14 +221,17 @@ pub trait MutableGraph: Graph{
 pub trait Digraph: Graph {
     fn has_arc(&self, u:&Vertex, v:&Vertex) -> bool;
 
+    /// Returns the number of arcs which point to `u` in the graph.
     fn in_degree(&self, u:&Vertex) -> u32 {
         self.in_neighbours(&u).count() as u32
     }
 
+    /// Returns the number of arcs which point away from `u` in the graph.
     fn out_degree(&self, u:&Vertex) -> u32 {
         self.out_neighbours(&u).count() as u32
     }
 
+    /// Returns the in-degrees of all vertices in the graph as a map.
     fn in_degrees(&self) -> VertexMap<u32> {
         let mut res = VertexMap::default();
         for v in self.vertices() {
@@ -236,6 +240,7 @@ pub trait Digraph: Graph {
         res
     }
 
+    /// Returns the out-degrees of all vertices in the graph as a map.
     fn out_degrees(&self) -> VertexMap<u32> {
         let mut res = VertexMap::default();
         for v in self.vertices() {
@@ -248,16 +253,36 @@ pub trait Digraph: Graph {
         Box::new(self.in_neighbours(u).chain(self.out_neighbours(u)))
     }
 
+    /// Returns an iterator over the out-neighbours of `u`.
     fn out_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
+
+    /// Returns an iterator over the in-neighbours of `u`.
     fn in_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
 }
 
-/// Trait for mutable digraphs.
+/// Trait for mutable digraphs (currently incomplete).
 pub trait MutableDigraph: Digraph  {
+    /// Creats an empty mutable digraph
     fn new() -> Self;
+
+    /// Adds the vertex `u` to the digraph.
+    /// 
+    /// Returns `true` if the vertex was added and `false` if it was already contained in the graph.    
     fn add_vertex(&mut self, u: &Vertex) -> bool;
+
+    /// Removes the vertex `u` from the digraph. 
+    /// 
+    /// Returns `true` if the vertex was removed and `false` if it was not contained in the graph.    
     fn remove_vertex(&mut self, u: &Vertex) -> bool;
+
+    /// Adds the arc `uv` to the digraph. 
+    /// 
+    /// Returns `true` if the arc was added and `false` if it was already contained in the graph.
     fn add_arc(&mut self, u: &Vertex, v: &Vertex) -> bool;
+
+    /// Removes the arc `uv` from the graph. 
+    /// 
+    /// Returns `true` if the arc was removed and `false` if it was not contained in the graph.        
     fn remove_arc(&mut self, u: &Vertex, v: &Vertex) -> bool;
 }
 
