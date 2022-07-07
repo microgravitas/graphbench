@@ -25,9 +25,6 @@ use crate::editgraph::EditGraph;
 
 use std::cmp::{max, min};
 
-pub type InArcIterator<'a> = std::collections::hash_set::Iter<'a, Vertex>;
-pub type DTFVertexIterator<'a> = std::collections::hash_map::Keys<'a, Vertex, DTFNode>;
-
 /// The augmentation data structure.
 pub struct DTFGraph {
     nodes: FxHashMap<Vertex, DTFNode>,

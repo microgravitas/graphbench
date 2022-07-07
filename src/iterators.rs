@@ -5,12 +5,13 @@ use std::hash::Hash;
 
 use crate::editgraph::EditGraph;
 
-use crate::dtfgraph::DTFGraph;
-use crate::dtfgraph::DTFVertexIterator;
-use crate::dtfgraph::InArcIterator;
-
 pub type VertexIterator<'a> = std::collections::hash_map::Keys<'a, Vertex, FxHashSet<Vertex>>;
 pub type NVertexIterator<'a> = std::collections::hash_set::Iter<'a, Vertex>;
+
+use crate::dtfgraph::{DTFNode, DTFGraph};
+
+pub type InArcIterator<'a> = std::collections::hash_set::Iter<'a, Vertex>;
+pub type DTFVertexIterator<'a> = std::collections::hash_map::Keys<'a, Vertex, DTFNode>;
 
 /// Neighbourhood iterators for graphs and digraphs. At each step, the iterator
 /// returns a pair `(v,N(v))` (or `(v,N^-(v))` or `(v,N^+(V))` for digraphs).
