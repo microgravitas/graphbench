@@ -4,12 +4,25 @@ use fxhash::{FxHashMap, FxHashSet};
 use crate::graph::*;
 use crate::iterators::*;
 
+/// Static graph which has a mutable ordering of its vertices. 
+/// 
+/// The neighbourhood of each vertex $u$ is divided into a *left* neighbourhood,
+/// meaning all members of $N(u)$ which come before $u$ in the ordering, and a
+/// *right* neighbourhood. For $d$-degenerate graphs we can compute such an ordering 
+/// where every left neighbourhood has size at most $d$. 
+/// 
+/// Further allows the computation of r-weakly and r-strongly reachable sets under the
+/// given ordering. This data structure is intended to explore different strategies
+/// for computing orderings with small r-weakly/-strongly reachable sets by
+/// modifying the odering.
+/// 
 pub struct OrdGraph {
     indices: FxHashMap<Vertex, usize>,
     nodes: Vec<OrdNode>,
     m: usize
 }
 
+/// A vertex alongside its left and right neighbourhood.
 pub struct OrdNode {
     v: Vertex,
     left: VertexSet,
@@ -17,6 +30,7 @@ pub struct OrdNode {
 }
 
 impl OrdNode {
+    /// Returns the union of left and right neighbours.
     fn neighbours<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
         Box::new( self.left.iter().chain(self.right.iter()) )
     }
@@ -29,11 +43,13 @@ impl OrdNode {
 }
 
 impl OrdGraph {
+    /// Creates an ordered graph from `graph` by computing a degeneracy ordering.
     pub fn by_degeneracy<G>(graph: &G) -> OrdGraph where G: Graph {
         let (_, _, ord, _) = graph.degeneracy();
         OrdGraph::with_ordering(graph, ord.iter())
     }
     
+    /// Creates an ordered graphs from `graph` using `order`.
     pub fn with_ordering<'a, G, I>(graph: &G, order:I) -> OrdGraph
         where G: Graph, I: Iterator<Item=&'a Vertex>
     {
@@ -64,6 +80,7 @@ impl OrdGraph {
         OrdGraph {nodes, indices, m: graph.num_edges()}
     }
 
+    /// Swaps the positions of `u` and `v` in the ordering.
     pub fn swap(&mut self, u:&Vertex, v:&Vertex) {
         if u == v {
             return;
@@ -111,6 +128,7 @@ impl OrdGraph {
         self.nodes.swap(iu, iv);
     }
 
+    /// Returns the size of `u`'s left neighbourhood
     pub fn left_degree(&self, u:&Vertex) -> usize {
         if let Some(iu) = self.indices.get(u) {
             let node_u = &self.nodes[*iu];
@@ -120,19 +138,18 @@ impl OrdGraph {
         }
     }
 
+    /// Returns a copy of `u`'s left neighbourhood.
     pub fn left_neighbours(&self, u:&Vertex) -> Vec<Vertex> {
-        if let Some(iu) = self.indices.get(u) {
-            let node_u = &self.nodes[*iu];
+        let iu = self.indices.get(u).expect(format!("Vertex {u} does not exist").as_str()); 
+        let node_u = &self.nodes[*iu];
 
-            let mut res:Vec<Vertex> = node_u.left.iter().cloned().collect();
-            res.sort_by_cached_key(|v| self.indices.get(v).unwrap());
-            
-            res
-        } else {
-            panic!("Vertex {u} does not exist");
-        }
+        let mut res:Vec<Vertex> = node_u.left.iter().cloned().collect();
+        res.sort_by_cached_key(|v| self.indices.get(v).unwrap());
+        
+        res
     }
 
+    /// Returns the sizes of all left neighbourhood as a map.
     pub fn left_degrees(&self) -> VertexMap<u32> {
         let mut res = VertexMap::default();
         for n in &self.nodes {
@@ -141,6 +158,7 @@ impl OrdGraph {
         res
     }
     
+    /// Returns the size of `u`'s right neighbourhood.
     pub fn right_degree(&self, u:&Vertex) -> usize {
         if let Some(iu) = self.indices.get(u) {
             let node_u = &self.nodes[*iu];
@@ -149,7 +167,19 @@ impl OrdGraph {
             0
         }
     }    
+
+    /// Returns a copy of `u`'s right neighbourhood. 
+    pub fn right_neighbours(&self, u:&Vertex) -> Vec<Vertex> {
+        let iu = self.indices.get(u).expect(format!("Vertex {u} does not exist").as_str()); 
+        let node_u = &self.nodes[*iu];
+
+        let mut res:Vec<Vertex> = node_u.right.iter().cloned().collect();
+        res.sort_by_cached_key(|v| self.indices.get(v).unwrap());
+        
+        res
+    }    
     
+    /// Returns the sizes of all right neighbourhood as a map.
     pub fn right_degrees(&self) -> VertexMap<u32> {
         let mut res = VertexMap::default();
         for n in &self.nodes {
@@ -158,6 +188,10 @@ impl OrdGraph {
         res
     }
 
+    /// Conducts a bfs from `root` for `dist` steps ignoring all vertices
+    /// left of `root`.
+    /// 
+    /// Returns the bfs as a sequence of layers.
     pub fn right_bfs(&self, root:&Vertex, dist:u32) -> Vec<VertexSet> {
         let mut seen:VertexSet = VertexSet::default();
         let iroot = *self.indices.get(root).unwrap();
@@ -185,13 +219,48 @@ impl OrdGraph {
         res
     }
 
-    pub fn wreach_sets(&self, depth:u32) -> VertexMap<VertexMap<u32>> {
+    pub fn sreach_set(&self, u:&Vertex, r:u32) -> VertexMap<u32> {
+        let bfs = self.right_bfs(u, r-1);
+        let mut res = VertexMap::default();
+        
+        let iu = self.indices.get(u).expect(format!("{u} not contained in this graph").as_str()).clone();
+        for (d, layer) in bfs.iter().enumerate() {
+            for v in layer {
+                for x in self.left_neighbours(v) {
+                    let ix = self.indices[&x];
+                    if ix < iu {
+                        // If x is alyread in `res` then it will be for a smaller
+                        // distance. Therefore we only insert the current distance if 
+                        // no entry exists yet.
+                        res.entry(x).or_insert((d+1) as u32);
+                    }
+                }
+            }
+        }
+
+        res
+    }
+
+    /// Computes all weakly $r$-reachable sets as a map. 
+    /// 
+    /// A vertex $v$ is weakly $r$-rechable from $u$ if there exists a $u$-$v$-path in the graph
+    /// of length at most $r$ whose leftmost vertex is $v$. In particular, $v$ must be left of
+    /// $u$ in the ordering.
+    /// 
+    /// The weakly reachable
+    /// set for a vertex $u$ is encoded in a vertex map whose keys are all
+    /// vertices that are weakly $r$-reachable from $u$, the corresponding values
+    /// encode the respective distances to $u$. 
+    /// 
+    /// If the sizes of the weakly $r$-reachable sets are bounded by a constant the computation 
+    /// takes $O(|G|)$ time. 
+    pub fn wreach_sets(&self, r:u32) -> VertexMap<VertexMap<u32>> {
         let mut res = VertexMap::default();
         for n in &self.nodes {
             res.insert(n.v, VertexMap::default());
         }
         for u in self.vertices() {
-            for (d, layer) in self.right_bfs(u, depth).iter().skip(1).enumerate() {
+            for (d, layer) in self.right_bfs(u, r).iter().skip(1).enumerate() {
                 for v in layer {
                     assert!(*v != *u);
                     res.get_mut(v).unwrap().insert(*u, (d+1) as u32); 
@@ -201,13 +270,15 @@ impl OrdGraph {
         res
     }    
 
-    pub fn wreach_sizes(&self, depth:u32) -> VertexMap<u32> {
+    /// Computes the size of all `r`-weakly reachable sets as a map. This method
+    /// uses less memory than [wreach_sets](OrdGraph::wreach_sets).
+    pub fn wreach_sizes(&self, r:u32) -> VertexMap<u32> {
         let mut res = VertexMap::default();
         for n in &self.nodes {
             res.insert(n.v, 0);
         }
         for u in self.vertices() {
-            for layer in self.right_bfs(u, depth).iter().skip(1) {
+            for layer in self.right_bfs(u, r).iter().skip(1) {
                 for v in layer {
                     let count = res.entry(*v).or_insert(0);
                     *count += 1;
@@ -305,4 +376,25 @@ mod test {
             assert!(O.adjacent(&u, &v));
         }        
     }
+
+    #[test] 
+    fn sreach() {
+        let mut G = EditGraph::path(8);
+        // 0-1-2-3-(4)-5-6-7
+        G.add_edge(&2, &5);
+        G.add_edge(&1, &6);
+        G.add_edge(&0, &7);
+
+        let ord:Vec<_> = (0..=8).collect();
+        let mut O = OrdGraph::with_ordering(&G, ord.iter());
+    
+        let S = O.sreach_set(&4, 5);
+
+        println!("Sreach set {S:?}");
+
+        assert_eq!(S[&3], 1); // 4-3
+        assert_eq!(S[&2], 2); // 4-5-2
+        assert_eq!(S[&1], 3); // 4-5-6-1
+        assert_eq!(S[&0], 4); // 4-5-6-7-0
+    }    
 }
