@@ -217,21 +217,24 @@ pub trait MutableGraph: Graph{
     }
 }
 
-/// Trait for static digraphs.
+/// Trait for static digraphs. The trait inherits the [Graph] trait, all methods from that trait
+/// are treating the digraph as an undirected graph. For example, the (undirected) neighbourhood of 
+/// a vertex is the union of its in-neighbourhood and its out-neighbourhood in the digraph.
 pub trait Digraph: Graph {
+    /// Returns whether the arc `uv` exists in the digraph.
     fn has_arc(&self, u:&Vertex, v:&Vertex) -> bool;
 
-    /// Returns the number of arcs which point to `u` in the graph.
+    /// Returns the number of arcs which point to `u` in the digraph.
     fn in_degree(&self, u:&Vertex) -> u32 {
         self.in_neighbours(&u).count() as u32
     }
 
-    /// Returns the number of arcs which point away from `u` in the graph.
+    /// Returns the number of arcs which point away from `u` in the digraph.
     fn out_degree(&self, u:&Vertex) -> u32 {
         self.out_neighbours(&u).count() as u32
     }
 
-    /// Returns the in-degrees of all vertices in the graph as a map.
+    /// Returns the in-degrees of all vertices in the digraph as a map.
     fn in_degrees(&self) -> VertexMap<u32> {
         let mut res = VertexMap::default();
         for v in self.vertices() {
@@ -240,7 +243,7 @@ pub trait Digraph: Graph {
         res
     }
 
-    /// Returns the out-degrees of all vertices in the graph as a map.
+    /// Returns the out-degrees of all vertices in the digraph as a map.
     fn out_degrees(&self) -> VertexMap<u32> {
         let mut res = VertexMap::default();
         for v in self.vertices() {
@@ -249,6 +252,7 @@ pub trait Digraph: Graph {
         res
     }
 
+    /// Returns the set of all in- and out-neighbours of `u` as an iterator.
     fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
         Box::new(self.in_neighbours(u).chain(self.out_neighbours(u)))
     }

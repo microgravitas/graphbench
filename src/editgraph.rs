@@ -1,3 +1,5 @@
+//! 
+//! Test
 use std::iter::Sum;
 use itertools::max;
 use fxhash::{FxHashMap, FxHashSet};
@@ -5,6 +7,7 @@ use fxhash::{FxHashMap, FxHashSet};
 use crate::iterators::*;
 use crate::graph::*;
 
+/// An implementation of the [MutableGraph] trait with additional convenient editing and generating functions.
 #[derive(Debug)]
 pub struct EditGraph {
     adj: FxHashMap<Vertex, VertexSet>,
@@ -160,6 +163,7 @@ impl MutableGraph for EditGraph {
 }
 
 impl EditGraph {
+    /// Generates a path on `n` vertices.
     pub fn path(n:u32) -> EditGraph {
         let mut res = EditGraph::with_capacity(n as usize);
         for u in 0..(n-1) {
@@ -170,7 +174,7 @@ impl EditGraph {
         res
     }
 
-
+    /// Generates a cycle on `n` vertices.
     pub fn cycle(n:u32) -> EditGraph {
         let mut res = EditGraph::with_capacity(n as usize);
         for u in 0..n {
@@ -181,6 +185,7 @@ impl EditGraph {
         res
     }
 
+    /// Generates a complete graph (clique) on `n` vertices.
     pub fn clique(n:u32) -> EditGraph {
         let mut res = EditGraph::with_capacity(n as usize);
         for u in 0..n {
@@ -192,6 +197,7 @@ impl EditGraph {
         res        
     }
 
+    /// Generates a complete bipartite graph (biclique) on `s`+`t` vertices.
     pub fn biclique(s:u32, t:u32) -> EditGraph {
         let mut res = EditGraph::with_capacity((s+t) as usize);
         for u in 0..s {
@@ -203,6 +209,10 @@ impl EditGraph {
         res        
     }
 
+    /// Generates a complete k-partite graph. 
+    /// 
+    /// # Arguments
+    /// - `sizes` - The sizes of each partite set as a sequence of integers.
     pub fn complete_kpartite<'a, I>(sizes:I) -> EditGraph where I: IntoIterator<Item=&'a u32> {
         let sizes:Vec<u32> = sizes.into_iter().cloned().collect();
 
@@ -238,6 +248,8 @@ impl EditGraph {
         res
     }
 
+    /// Creates a new graph that is the disjoint union of `self` and `graph`.
+    /// The vertices of the second graph are relabelled to avoid index clashes.
     pub fn disj_union(&self, graph: &impl Graph) -> EditGraph {
         let mut res = EditGraph::with_capacity(self.len() + graph.len());
 
@@ -252,6 +264,13 @@ impl EditGraph {
         res
     }
 
+    /// Creates a copy of the graph in which vertices are labelled from $0$ to $n-1$,
+    /// where $n$ is the number of vertices in the graph. The relative order of the indices
+    /// is preserved, e.g. the smallest vertex from the original graph will be labelled $0$ and
+    /// the largest one $n-1$.
+    /// 
+    /// Returns a tuple (`graph`, `map`) where `graph` is the relabelled graph and
+    /// `map` stores the mapping from new vertices to old vertices.
     pub fn normalize(&self) -> (EditGraph, FxHashMap<Vertex, Vertex>) {
         let mut res = EditGraph::with_capacity(self.num_vertices());
         let mut order:Vec<_> = self.vertices().collect();
@@ -272,9 +291,12 @@ impl EditGraph {
         (res, id2vex)
     }
 
-    /*
-        Advanced operations
-    */
+    /// Contracts all `vertices` into the first vertex of the sequence. The contracted vertex has
+    /// as its neighbours all vertices that were adjacent to at least one vertex in `vertices`.
+    /// 
+    /// This function panics if the sequence is empty.
+    /// 
+    /// Returns the contracted vertex.
     pub fn contract<'a, I>(&mut self, mut vertices:I) -> Vertex where I: Iterator<Item=&'a Vertex> {
         // TODO: handle case when I is empty
         let u = vertices.next().unwrap();
@@ -282,6 +304,8 @@ impl EditGraph {
         *u
     }
 
+    /// Contracts all `vertices` into the `center` vertex. The contracted vertex has
+    /// as its neighbours all vertices that were adjacent to at least one vertex in `vertices`.
     pub fn contract_into<'a, I>(&mut self, center:&Vertex, vertices:I) where I: Iterator<Item=&'a Vertex> {
         let mut contract:VertexSet = vertices.cloned().collect();
         contract.remove(&center);

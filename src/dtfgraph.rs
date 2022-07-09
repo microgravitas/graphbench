@@ -39,6 +39,9 @@ pub struct DTFLayer<'a> {
 }
 
 impl<'a> DTFLayer<'a> {
+    /// Creates a static digraph which contains all arcs of the [DTFGraph] `graph` which
+    /// have weight equal to `depth`. This struct internally references the original graph
+    /// and therefore does not copy any data.
     pub fn new(graph: &'a DTFGraph, depth: usize) -> Self {
         DTFLayer{ graph, depth }
     }
