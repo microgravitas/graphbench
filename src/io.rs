@@ -44,7 +44,30 @@ impl<G:Graph> WriteGraph for G {
     }
 }
 
+/// I/O operations for [EditGraph] defined in [crate::io]
 impl EditGraph {
+    /// Loads the graph from a text file which contains edges separated by line breaks.
+    /// Edges must be pairs of integers separated by a space.
+    /// 
+    /// For example, assume the file `edges.txt` contains the following:
+    /// ```text
+    /// 0 1
+    /// 0 2
+    /// 0 3
+    /// ```
+    /// We can then load the file as follows:
+    /// 
+    /// ```rust,no_run
+    /// use graphbench::graph::*;
+    /// use graphbench::editgraph::EditGraph;
+    /// use graphbench::iterators::EdgeIterable;
+    /// 
+    /// fn main() {
+    ///     let graph = EditGraph::from_txt("edges.txt").expect("Could not open edges.txt");
+    ///     println!("Vertices: {:?}", graph.vertices().collect::<Vec<&Vertex>>());
+    ///     println!("Edges: {:?}", graph.edges().collect::<Vec<Edge>>());
+    /// }
+    /// ```
     pub fn from_txt(filename:&str) -> io::Result<EditGraph> {
         let file = File::open(filename)?;
         let metadata = file.metadata()?;
@@ -57,6 +80,8 @@ impl EditGraph {
         EditGraph::parse(&mut BufReader::new(file), n_estimate as usize)
     }
 
+    /// Loads the graph from a gzipped text file which otherwise follows the format
+    /// described in [EditGraph::from_txt].
     pub fn from_gzipped(filename:&str) -> io::Result<EditGraph> {
         let file = File::open(filename)?;
         let metadata = file.metadata()?;

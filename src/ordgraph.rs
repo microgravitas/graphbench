@@ -219,6 +219,10 @@ impl OrdGraph {
         res
     }
 
+    /// Computes all strongly $r$-reachable vertices to $u$. 
+    /// 
+    /// Returns a map whose keys are the strongly $r$-reachable vertices and the
+    /// values is the distance $i < r$ at which it is strongly $i$-rechable from $u$.
     pub fn sreach_set(&self, u:&Vertex, r:u32) -> VertexMap<u32> {
         let bfs = self.right_bfs(u, r-1);
         let mut res = VertexMap::default();

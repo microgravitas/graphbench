@@ -13,8 +13,8 @@ use crate::dtfgraph::{DTFNode, DTFGraph};
 pub type InArcIterator<'a> = std::collections::hash_set::Iter<'a, Vertex>;
 pub type DTFVertexIterator<'a> = std::collections::hash_map::Keys<'a, Vertex, DTFNode>;
 
-/// Neighbourhood iterators for graphs and digraphs. At each step, the iterator
-/// returns a pair `(v,N(v))` (or `(v,N^-(v))` or `(v,N^+(V))` for digraphs).
+/// Neighbourhood iterators for graphs. At each step, the iterator
+/// returns a pair `(v,N(v))`.
 pub struct NeighIterator<'a, G> where G: Graph  {
     graph: &'a G,
     v_it: Box<dyn Iterator<Item=&'a Vertex> + 'a>
@@ -37,8 +37,9 @@ impl<'a, G> Iterator for NeighIterator<'a, G> where G: Graph {
     }
 }
 
-// Note: It would be nice if we could just re-use NeighItertor here, but stable Rust
-// currently does not support overlapping `impl` blocks.
+/// Neighbourhood iterators for digraphs which eithe returns all in- or all 
+/// out-neighbourhoods. At each step, the iterator returns a pair `(v,N^-(v))` when in
+/// in-neighbourhood mode and `(v,N^+(V))` when in out-neighbourhood mode.
 pub struct DiNeighIterator<'a, G> where G: Graph {
     graph: &'a G,
     v_it: Box<dyn Iterator<Item=&'a Vertex> + 'a>,
@@ -72,6 +73,7 @@ impl<'a, D> Iterator for DiNeighIterator<'a, D> where D: Digraph {
 }
 
 pub trait NeighIterable<G> where G: Graph {
+    /// Returns a [NeighIterator] for the graph.
     fn neighbourhoods(&self) -> NeighIterator<G>;
 }
 
@@ -82,7 +84,10 @@ impl<G> NeighIterable<G> for G where G: Graph {
 }
 
 pub trait DiNeighIterable<D> where D: Digraph {
+    /// Returns a [DiNeighIterator] over all in-neighbourhoods of this graph.
     fn in_neighbourhoods(&self) -> DiNeighIterator<D>;
+    
+    /// Returns a [DiNeighIterator] over all out-neighbourhoods of this graph.
     fn out_neighbourhoods(&self) -> DiNeighIterator<D>;
 }
 
@@ -155,6 +160,7 @@ impl<'a, G> Iterator for EdgeIterator<'a, G> where G: Graph {
 }
 
 pub trait EdgeIterable<G> where G: Graph {
+    /// Returns an [EdgeIterator] over the edges of this graph.
     fn edges(&self) -> EdgeIterator<G>;
 }
 
@@ -165,7 +171,7 @@ impl<G> EdgeIterable<G> for G where G: Graph {
 }
 
 
-/// Similar to `EdgeIterator`, but for directed graphs.
+/// Similar to [EdgeIterator] but for arcs of digraphs.
 pub struct ArcIterator<'a, D> where D: Digraph {
     N_it: DiNeighIterator<'a, D>,
     curr_v: Option<Vertex>,
@@ -217,6 +223,7 @@ impl<'a, D> Iterator for ArcIterator<'a, D> where D: Digraph  {
 }
 
 pub trait ArcIterable<D> where D: Digraph {
+    /// Returns an [ArcIterator] over the arcs of this digraph.
     fn arcs(&self) -> ArcIterator<D>;
 }
 
@@ -226,10 +233,11 @@ impl<D> ArcIterable<D> for D where D: Digraph {
     }
 }
 
-/*
-    Neighbourhood iterator for dtf graphs. At each step,
-    the iterator returns a pair (v,N(v)).
-*/
+/// Neighbourhood iterator for [DTFGraph]. At each step, the iterator returns
+/// a pair $(v,X)$ where $X$ is a certain subset of the in-neighbours of $v$.
+/// If the iterator is in 'all depths' mode, $X$ is simply $v$'s in-neighbourhood.
+/// If the iterator operates on one specific depth $d$, then $X$ contains all
+/// vertices that can reach $v$ via an arc of weight $d$.
 pub struct DTFNIterator<'a> {
     G: &'a DTFGraph,
     v_it: Box<dyn Iterator<Item=&'a Vertex> + 'a>,
@@ -237,6 +245,7 @@ pub struct DTFNIterator<'a> {
 }
 
 impl<'a> DTFNIterator<'a> {
+    /// Constructs a [DTFNIterator] in all-depths mode.
     pub fn all_depths(G: &'a DTFGraph) -> DTFNIterator<'a> {
         DTFNIterator {
             G,
@@ -245,6 +254,7 @@ impl<'a> DTFNIterator<'a> {
         }
     }
 
+    /// Constructs a [DTFNIterator] which only returns in-neighbours at `depth`.
     pub fn fixed_depth(G: &'a DTFGraph, depth: usize) -> DTFNIterator<'a> {
         DTFNIterator {
             G,
@@ -272,9 +282,9 @@ impl<'a> Iterator for DTFNIterator<'a> {
     }
 }
 
-/*
-    Arc iterator for DTF graphs.
-*/
+/// Arc iterator for [DTFGraph]. If the iterator is in 'all depths' mode it 
+/// iterates over all arcs of the augmentation. If the iterator operates on one 
+/// specific depth $d$ then it only return arcs with weight (depth) $d$.
 pub struct DTFArcIterator<'a> {
     N_it: DTFNIterator<'a>,
     curr_v: Vertex,
