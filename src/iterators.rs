@@ -181,6 +181,77 @@ impl<G> EdgeIterable<G> for G where G: Graph {
     }
 }
 
+/// An iterator that returns all vertices and edges of the graph.
+/// 
+/// This trait has a default implementation for [Graph].
+pub struct MixedIterator<'a, G> where G: Graph {
+    N_it: NeighIterator<'a, G>,
+    returned_v: bool,
+    curr_v: Option<Vertex>,
+    curr_it: Option<Box<dyn Iterator<Item=&'a Vertex> + 'a>>,
+}
+
+impl<'a, G> MixedIterator<'a, G> where G: Graph {
+    pub fn new(graph: &'a G) -> MixedIterator<'a, G> {
+        let mut res = MixedIterator {
+            N_it: graph.neighbourhoods(),
+            returned_v: false,
+            curr_v: None,
+            curr_it: None,
+        };
+        res.advance();
+        res
+    }
+
+    fn advance(&mut self) {
+        self.returned_v = false;        
+        if let Some((v, it)) = self.N_it.next() {
+            self.curr_v = Some(v);
+            self.curr_it = Some(it);
+        } else {
+            self.curr_v = None;
+            self.curr_it = None;
+        }
+    }
+}
+
+impl<'a, G> Iterator for MixedIterator<'a, G> where G: Graph {
+    type Item = VertexOrEdge;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let (Some(v), Some(it)) = (self.curr_v, &mut self.curr_it) {
+            // Return vertex
+            if !self.returned_v {
+                self.returned_v = true;
+                return Some(VertexOrEdge::V(v));
+            }
+
+            // Otherwise return edge
+            while let Some(u) = it.next() {
+                // Tie-break so we do not return edges multiple times
+                if v < *u {
+                    return Some(VertexOrEdge::E( (v,*u) ));
+                }
+            }
+
+            self.advance();
+        } 
+
+        None
+    }
+}
+
+pub trait MixedIterable<G> where G: Graph {
+    /// Returns an [EdgeIterator] over the edges of this graph.
+    fn vertices_and_edges(&self) -> MixedIterator<G>;
+}
+
+impl<G> MixedIterable<G> for G where G: Graph {
+    fn vertices_and_edges(&self) -> MixedIterator<G> {
+        MixedIterator::<G>::new(self)
+    }
+}
+
 
 /// Similar to [EdgeIterator] but for arcs of digraphs.
 pub struct ArcIterator<'a, D> where D: Digraph {

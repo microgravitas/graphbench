@@ -178,6 +178,16 @@ impl Graph for EditGraph {
     }
 }
 
+impl FromIterator<Edge> for EditGraph {
+    fn from_iter<T: IntoIterator<Item = Edge>>(iter: T) -> Self {
+        let mut res = EditGraph::new();
+        for (u,v) in iter {
+            res.add_edge(&u, &v);
+        }
+        res
+    }
+}
+
 impl MutableGraph for EditGraph {
     fn new() -> EditGraph {
         EditGraph{adj: FxHashMap::default(),

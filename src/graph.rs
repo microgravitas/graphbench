@@ -16,17 +16,28 @@ pub type Vertex = u32;
 /// An edge in a graph.
 pub type Edge = (Vertex, Vertex);
 
+pub enum VertexOrEdge {
+    V(Vertex),
+    E(Edge)
+}
+
 /// An arc in a digraph.
 pub type Arc = (Vertex, Vertex);
 
 /// A set of vertices (implemented as a hashset).
 pub type VertexSet = FxHashSet<Vertex>;
 
+/// A set of vertices and edges (implemented as a hashset).
+pub type MixedSet = FxHashSet<VertexOrEdge>;
+
 /// A hashmap with vertices as keys.
 pub type VertexMap<T> = FxHashMap<Vertex, T>;
 
 /// Alias for a reference to a vertex set.
 pub type VertexSetRef<'a> = FxHashSet<&'a Vertex>;
+
+///  Alias for a reference to a mixed set.
+pub type MixedSetRef<'a> = FxHashSet<&'a VertexOrEdge>;
 
 /// A set of edges (implemented as a hashset).
 pub type EdgeSet = FxHashSet<Edge>;
