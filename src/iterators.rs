@@ -108,11 +108,11 @@ impl<D> DiNeighIterable<D> for D where D: Digraph {
     }
 }
 
-/// Edge iterator for graphs. This iterator uses an `NeighIterator`
-/// internally, so in order to break ties between edge `{u,v}` and `{v,u}`
-/// we need the vertex type `V` to implement `std::cmp::Ord`.
+/// Edge iterator for graphs. Each edge is returned with the smaller
+/// vertex first, so the edge $\{15,3\}$ would be returned as $(3,15)$.
+/// 
 /// The associated trait EdgeIterable is implemented for generic graphs
-///  to provide the method `edges(...)` to create an `EdgeIterator`.
+/// to provide the method `edges(...)` to create an `EdgeIterator`.
 pub struct EdgeIterator<'a, G> where G: Graph {
     N_it: NeighIterator<'a, G>,
     curr_v: Option<Vertex>,
@@ -156,10 +156,11 @@ impl<'a, G> Iterator for EdgeIterator<'a, G> where G: Graph {
 
             // Tie-breaking so we only return every edge once
             let u = uu.unwrap().clone();
-            if self.curr_v.as_ref().unwrap() > &u {
+            let v = self.curr_v.as_ref().unwrap();
+            if v > &u {
                 continue;
             }
-            return Some((self.curr_v.as_ref().unwrap().clone(), u));
+            return Some((*v, u));
         }
 
         None
