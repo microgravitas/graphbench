@@ -19,6 +19,10 @@
 //!     let edges:EdgeSet = vec![(0,1),(1,2),(2,3),(3,4),(0,4)].into_iter().collect();
 //!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
 //! 
+//!     let graph = EditGraph::matching(4);
+//!     let edges:EdgeSet = vec![(0,4),(1,5),(2,6),(3,7)].into_iter().collect();
+//!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
+//! 
 //!     let graph = EditGraph::clique(4);
 //!     let edges:EdgeSet = vec![(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)].into_iter().collect();
 //!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
@@ -32,6 +36,32 @@
 //!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
 //! }
 //! ```
+//! 
+//! 
+//! 
+//! ```rust
+//! use graphbench::graph::*;
+//! use graphbench::iterators::*;
+//! use graphbench::editgraph::EditGraph;
+//! 
+//! fn main() {
+//!     let mut graph = EditGraph::path(4);
+//!     graph.contract_pair(&1, &2);
+//!     assert!(graph.contains(&1));
+//!     assert!(!graph.contains(&2));
+//!     assert_eq!(graph.neighbours(&1).collect::<VertexSetRef>(),
+//!                 [0,3].iter().collect());
+//! 
+//!     let mut graph = EditGraph::matching(3);
+//!     graph.contract_into(&0, vec![1,2].iter());
+//!     assert!(graph.contains(&0));
+//!     assert!(!graph.contains(&1));
+//!     assert!(!graph.contains(&2));
+//!     assert_eq!(graph.neighbours(&0).collect::<VertexSetRef>(),
+//!                 [3,4,5].iter().collect());
+//! }
+//! ```
+//! 
 //! 
 //! ## Editing operations
 //! 
@@ -237,6 +267,17 @@ impl EditGraph {
         res
     }
 
+    /// Generates a matching on `2n` vertices.
+    pub fn matching(n:u32) -> EditGraph {
+        let mut res = EditGraph::with_capacity(n as usize);
+        for u in 0..n {
+            let v = u+n;
+            res.add_edge(&u,&v);
+        }
+
+        res
+    }
+
     /// Generates a complete graph (clique) on `n` vertices.
     pub fn clique(n:u32) -> EditGraph {
         let mut res = EditGraph::with_capacity(n as usize);
@@ -356,13 +397,13 @@ impl EditGraph {
         *u
     }
 
-    /// Contracts the edge $\{u,v\}$ be identifying $v$ with $u$. The operation removes $v$
+    /// Contracts the pair $\{u,v\}$ be identifying $v$ with $u$. The operation removes $v$
     /// from the graph and adds $v$'s neighbours to $u$.
     /// 
-    /// Panics if the edge $\{u,v\}$ or either of the two vertices does not exist.
-    pub fn contract_edge(&mut self, u:&Vertex, v:&Vertex)  {
-        if !self.adjacent(u, v) {
-            panic!("Edge {u} {v} not contained in graph.");
+    /// Panics if either of the two vertices does not exist.
+    pub fn contract_pair(&mut self, u:&Vertex, v:&Vertex)  {
+        if !self.contains(u) || !self.contains(v) {
+            panic!("Pair {u},{v} not contained in graph.");
         }
         let mut N:VertexSet = self.neighbours(v).cloned().collect();
         N.remove(u); // Avoid adding a self-loop
@@ -554,13 +595,13 @@ mod test {
     }
 
     #[test]
-    fn contract_edge() {
+    fn contract_pair() {
         let mut G = EditGraph::new();
         G.add_edge(&0, &1);
         G.add_edge(&1, &2);
         G.add_edge(&2, &3);
 
-        G.contract_edge(&1, &2);
+        G.contract_pair(&1, &2);
         assert!(G.contains(&1));
         assert!(!G.contains(&2));
         assert_eq!(G.neighbours(&1).collect::<VertexSetRef>(),
