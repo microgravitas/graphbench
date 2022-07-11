@@ -72,6 +72,9 @@ impl<'a, D> Iterator for DiNeighIterator<'a, D> where D: Digraph {
     }
 }
 
+/// Allows construction of a [NeighIterator].
+/// 
+/// Has a deafult implementation for [Graph].
 pub trait NeighIterable<G> where G: Graph {
     /// Returns a [NeighIterator] for the graph.
     fn neighbourhoods(&self) -> NeighIterator<G>;
@@ -83,6 +86,10 @@ impl<G> NeighIterable<G> for G where G: Graph {
     }
 }
 
+
+/// Allows construction of a [DiNeighIterator].
+/// 
+/// Has a default implementation for [Digraph].
 pub trait DiNeighIterable<D> where D: Digraph {
     /// Returns a [DiNeighIterator] over all in-neighbourhoods of this graph.
     fn in_neighbourhoods(&self) -> DiNeighIterator<D>;
@@ -159,6 +166,9 @@ impl<'a, G> Iterator for EdgeIterator<'a, G> where G: Graph {
     }
 }
 
+/// Allows construction of [EdgeIterator].
+/// 
+/// This trait has a default implementation for [Graph].
 pub trait EdgeIterable<G> where G: Graph {
     /// Returns an [EdgeIterator] over the edges of this graph.
     fn edges(&self) -> EdgeIterator<G>;
@@ -222,6 +232,9 @@ impl<'a, D> Iterator for ArcIterator<'a, D> where D: Digraph  {
     }
 }
 
+/// Allows construction of [ArcIterator].
+/// 
+/// This trait has a default implementation for [Digraph].
 pub trait ArcIterable<D> where D: Digraph {
     /// Returns an [ArcIterator] over the arcs of this digraph.
     fn arcs(&self) -> ArcIterator<D>;
