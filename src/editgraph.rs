@@ -1,5 +1,38 @@
 //! 
-//! Test
+//! This is a versatile graph data structure that allows various modifications. It uses hash maps
+//! to store adjacency lists internally, therefore it is not very memory- or cash-efficient. 
+//! 
+//! Graphs can either be loaded from file (see [`graphbench::io`](crate::io)) or constructed
+//! by manually adding vertices and edges. The struct offers a few constructors for named graphs:
+//! 
+//! ```rust
+//! use graphbench::graph::*;
+//! use graphbench::iterators::*;
+//! use graphbench::editgraph::EditGraph;
+//! 
+//! fn main() {
+//!     let graph = EditGraph::path(5);
+//!     let edges:EdgeSet = vec![(0,1),(1,2),(2,3),(3,4)].into_iter().collect();
+//!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
+//! 
+//!     let graph = EditGraph::cycle(5);
+//!     let edges:EdgeSet = vec![(0,1),(1,2),(2,3),(3,4),(0,4)].into_iter().collect();
+//!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
+//! 
+//!     let graph = EditGraph::clique(4);
+//!     let edges:EdgeSet = vec![(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)].into_iter().collect();
+//!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
+//! 
+//!     let graph = EditGraph::biclique(2,3);
+//!     let edges:EdgeSet = vec![(0,2),(0,3),(0,4),(1,2),(1,3),(1,4)].into_iter().collect();
+//!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
+//! 
+//!     let graph = EditGraph::complete_kpartite(vec![1,2,2].iter());
+//!     let edges:EdgeSet = vec![(0,1),(0,2),(0,3),(0,4),(1,3),(1,4),(2,3),(2,4)].into_iter().collect();
+//!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
+//! }
+//! ```
+//! 
 use std::iter::Sum;
 use itertools::max;
 use fxhash::{FxHashMap, FxHashSet};
