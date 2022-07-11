@@ -37,6 +37,24 @@
 //! }
 //! ```
 //! 
+//! ## Editing operations
+//! 
+//! Vertices and edges can be added an removed from the graph in $O(1)$ time (see basic example on the [`graphbench`](crate) page).
+//! These operations can also be applied in bulk:
+//! 
+//! ```rust
+//! use graphbench::graph::*;
+//! use graphbench::editgraph::EditGraph;
+//! 
+//! fn main() {
+//!     let mut graph = EditGraph::new();
+//!     graph.add_vertices(vec![0,1,2,3].into_iter());   
+//!     graph.add_edges(vec![(0,1),(1,2),(2,3)].into_iter());
+//! 
+//!     println!("Graph has {} vertices and {} edges", graph.num_vertices(), graph.num_edges());
+//! }
+//! 
+//! ```
 //! The data structure further supports the *contraction* or *identification* of vertices. This operation
 //! takes a set of vertices $X$ and turns it into a single vertex whose neighbourhood are the neighbours
 //! of $X$. In graph-theoretic terms, the difference between a contraction and identification is that for
@@ -70,26 +88,6 @@
 //!     assert_eq!(graph, graph_other);
 //! }
 //! ```
-//! 
-//! 
-//! ## Editing operations
-//! 
-//! Vertices and edges can be added an removed from the graph in $O(1)$ time (see basic example on the [`graphbench`](crate) page).
-//! These operations can also be applied in bulk:
-//! 
-//! ```rust
-//! use graphbench::graph::*;
-//! use graphbench::editgraph::EditGraph;
-//! 
-//! fn main() {
-//!     let mut graph = EditGraph::new();
-//!     graph.add_vertices(vec![0,1,2,3].into_iter());   
-//!     graph.add_edges(vec![(0,1),(1,2),(2,3)].into_iter());
-//! 
-//!     println!("Graph has {} vertices and {} edges", graph.num_vertices(), graph.num_edges());
-//! }
-//! ```
-//! 
 
 use std::iter::Sum;
 use itertools::max;
