@@ -37,7 +37,10 @@
 //! }
 //! ```
 //! 
-//! 
+//! The data structure further supports the *contraction* or *identification* of vertices. This operation
+//! takes a set of vertices $X$ and turns it into a single vertex whose neighbourhood are the neighbours
+//! of $X$. In graph-theoretic terms, the difference between a contraction and identification is that for
+//! a contraction we demand that $G\[X\]$ is connected. The methods offered here will *not* check connectivity.
 //! 
 //! ```rust
 //! use graphbench::graph::*;
@@ -52,6 +55,7 @@
 //!     assert_eq!(graph.neighbours(&1).collect::<VertexSetRef>(),
 //!                 [0,3].iter().collect());
 //! 
+//!     // Identify vertices on left side of a matching
 //!     let mut graph = EditGraph::matching(3);
 //!     graph.contract_into(&0, vec![1,2].iter());
 //!     assert!(graph.contains(&0));
@@ -59,6 +63,11 @@
 //!     assert!(!graph.contains(&2));
 //!     assert_eq!(graph.neighbours(&0).collect::<VertexSetRef>(),
 //!                 [3,4,5].iter().collect());
+//! 
+//!     // The following is equivalent
+//!     let mut graph_other = EditGraph::matching(3);
+//!     graph_other.contract(vec![0,1,2].iter());
+//!     assert_eq!(graph, graph_other);
 //! }
 //! ```
 //! 
@@ -276,6 +285,11 @@ impl EditGraph {
         }
 
         res
+    }
+
+    /// Generates a star with `n` leaves, so `n+1` vertices total.
+    pub fn star(n:u32) -> EditGraph {
+        EditGraph::biclique(1, n)
     }
 
     /// Generates a complete graph (clique) on `n` vertices.
