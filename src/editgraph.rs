@@ -33,6 +33,25 @@
 //! }
 //! ```
 //! 
+//! ## Editing operations
+//! 
+//! Vertices and edges can be added an removed from the graph in $O(1)$ time (see basic example on the [`graphbench`](crate) page).
+//! These operations can also be applied in bulk:
+//! 
+//! ```rust
+//! use graphbench::graph::*;
+//! use graphbench::editgraph::EditGraph;
+//! 
+//! fn main() {
+//!     let mut graph = EditGraph::new();
+//!     graph.add_vertices(vec![0,1,2,3].into_iter());   
+//!     graph.add_edges(vec![(0,1),(1,2),(2,3)].into_iter());
+//! 
+//!     println!("Graph has {} vertices and {} edges", graph.num_vertices(), graph.num_edges());
+//! }
+//! ```
+//! 
+
 use std::iter::Sum;
 use itertools::max;
 use fxhash::{FxHashMap, FxHashSet};
@@ -337,6 +356,23 @@ impl EditGraph {
         *u
     }
 
+    /// Contracts the edge $\{u,v\}$ be identifying $v$ with $u$. The operation removes $v$
+    /// from the graph and adds $v$'s neighbours to $u$.
+    /// 
+    /// Panics if the edge $\{u,v\}$ or either of the two vertices does not exist.
+    pub fn contract_edge(&mut self, u:&Vertex, v:&Vertex)  {
+        if !self.adjacent(u, v) {
+            panic!("Edge {u} {v} not contained in graph.");
+        }
+        let mut N:VertexSet = self.neighbours(v).cloned().collect();
+        N.remove(u); // Avoid adding a self-loop
+
+        for x in N {
+            self.add_edge(u, &x);
+        }
+        self.remove_vertex(v);
+    }    
+
     /// Contracts all `vertices` into the `center` vertex. The contracted vertex has
     /// as its neighbours all vertices that were adjacent to at least one vertex in `vertices`.
     pub fn contract_into<'a, I>(&mut self, center:&Vertex, vertices:I) where I: Iterator<Item=&'a Vertex> {
@@ -515,6 +551,20 @@ mod test {
         G.remove_vertex(&0);
         assert_eq!(G.num_vertices(), 0);
         assert_eq!(G.num_edges(), 0);
+    }
+
+    #[test]
+    fn contract_edge() {
+        let mut G = EditGraph::new();
+        G.add_edge(&0, &1);
+        G.add_edge(&1, &2);
+        G.add_edge(&2, &3);
+
+        G.contract_edge(&1, &2);
+        assert!(G.contains(&1));
+        assert!(!G.contains(&2));
+        assert_eq!(G.neighbours(&1).collect::<VertexSetRef>(),
+                    [0,3].iter().collect());
     }
 
     #[test]
