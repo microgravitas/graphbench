@@ -368,7 +368,7 @@ impl EditGraph {
     pub fn disj_union(&self, graph: &impl Graph) -> EditGraph {
         let mut res = EditGraph::with_capacity(self.len() + graph.len());
 
-        let offset:Vertex = self.vertices().max().unwrap_or(&0) + 1;
+        let offset:Vertex = self.vertices().max().and_then(|x| Some(x+1)).unwrap_or(0);
 
         res.add_vertices(self.vertices().cloned());
         res.add_edges(self.edges());
@@ -376,6 +376,15 @@ impl EditGraph {
         res.add_vertices(graph.vertices().map(|v| v+offset));
         res.add_edges(graph.edges().map(|(u,v)| (u+offset,v+offset) ));
 
+        res
+    }
+
+    /// Computes the disjoint unions of all graphs in the iterator `it`.
+    pub fn disj_unions<'a,I,G>(it: I) -> EditGraph where I: Iterator<Item = &'a G>, G: Graph + 'a {
+        let mut res = EditGraph::new();
+        for graph in it {
+            res = res.disj_union(graph);
+        }
         res
     }
 
@@ -471,19 +480,36 @@ mod test {
     use super::*;
     use crate::algorithms::GraphAlgorithms;
 
-    // #[test]
+    #[test]
     fn components() {
-        let mut G = EditGraph::new();
-        let n:u32 = 10;
-        for i in 0..(n/2) {
-            G.add_edge(&i, &(5+i));
-        }
+        let n:u32 = 10;        
+        let mut G = EditGraph::matching(n);
 
         assert_eq!(G.components().len(), G.edges().count());
 
-        for comp in G.components() {
-            println!("{:?}", comp);
-        }
+        assert_eq!(EditGraph::clique(5).components().len(), 1);
+    }
+
+    #[test] 
+    fn disj_union() {
+        // Basic test
+        let mut G = EditGraph::matching(5);
+        G = G.disj_union(&EditGraph::matching(5));
+        assert_eq!(G.components().len(), G.edges().count());
+
+        // Ensure disjoint union with empty graph is a neutral operation
+        // if the first graph has indices 0...n-1.
+        assert_eq!(EditGraph::clique(2),
+                   EditGraph::clique(2).disj_union(&EditGraph::new()) );
+
+        assert_eq!(EditGraph::clique(2),
+                   EditGraph::new().disj_union(&EditGraph::clique(2)) );                   
+
+        // // Ensure consistency between ::disj_union and ::disj_unions
+        let H1 = EditGraph::clique(5);
+        let H2 = EditGraph::clique(6);
+        assert_eq!(H1.disj_union(&H2),
+                  EditGraph::disj_unions(vec![H1,H2].iter()));
     }
 
     #[test]
