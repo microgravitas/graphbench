@@ -47,28 +47,28 @@ pub enum VertexOrEdge {
 }
 
 impl VertexOrEdge {
-    fn as_vertex(self) -> Option<Vertex> {
+    pub fn as_vertex(self) -> Option<Vertex> {
         match self {
             VertexOrEdge::V(v) => Some(v),
             VertexOrEdge::E(_) => None,
         }
     }    
 
-    fn is_vertex(self) -> bool {
+    pub fn is_vertex(self) -> bool {
         match self {
             VertexOrEdge::V(_) => true,
             VertexOrEdge::E(_) => false,
         }
     }
 
-    fn is_edge(self) -> bool {
+    pub fn is_edge(self) -> bool {
         match self {
             VertexOrEdge::V(_) => false,
             VertexOrEdge::E(_) => true,
         }
     }
 
-    fn as_edge(self) -> Option<Edge> {
+    pub fn as_edge(self) -> Option<Edge> {
         match self {
             VertexOrEdge::V(_) => None,
             VertexOrEdge::E(e) => Some(e),
