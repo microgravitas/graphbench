@@ -16,11 +16,6 @@ pub type Vertex = u32;
 /// An edge in a graph.
 pub type Edge = (Vertex, Vertex);
 
-pub enum VertexOrEdge {
-    V(Vertex),
-    E(Edge)
-}
-
 /// An arc in a digraph.
 pub type Arc = (Vertex, Vertex);
 
@@ -41,6 +36,47 @@ pub type MixedSetRef<'a> = FxHashSet<&'a VertexOrEdge>;
 
 /// A set of edges (implemented as a hashset).
 pub type EdgeSet = FxHashSet<Edge>;
+
+
+/// An enum which holds either a vertex or an edge. Used to allow
+/// [mixed-type sets](MixedSet) and [iteration](crate::iterators::MixedIterator). 
+#[derive(Clone, Copy, Hash, PartialEq, Eq)]
+pub enum VertexOrEdge {
+    V(Vertex),
+    E(Edge)
+}
+
+impl VertexOrEdge {
+    fn as_vertex(self) -> Option<Vertex> {
+        match self {
+            VertexOrEdge::V(v) => Some(v),
+            VertexOrEdge::E(_) => None,
+        }
+    }    
+
+    fn is_vertex(self) -> bool {
+        match self {
+            VertexOrEdge::V(_) => true,
+            VertexOrEdge::E(_) => false,
+        }
+    }
+
+    fn is_edge(self) -> bool {
+        match self {
+            VertexOrEdge::V(_) => false,
+            VertexOrEdge::E(_) => true,
+        }
+    }
+
+    fn as_edge(self) -> Option<Edge> {
+        match self {
+            VertexOrEdge::V(_) => None,
+            VertexOrEdge::E(e) => Some(e),
+        }
+    }
+
+  
+}
 
 /// Trait for static graphs.
 pub trait Graph {
