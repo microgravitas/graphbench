@@ -429,3 +429,46 @@ impl<'a> Iterator for DTFArcIterator<'a> {
         None
     }
 }
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::graph::*;
+    use crate::editgraph::EditGraph;
+
+    #[test] 
+    fn edge_iterator() {
+        let G = EditGraph::clique(4);
+        let edges:EdgeSet = G.edges().collect();
+        let test:EdgeSet = vec![(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)].into_iter().collect();
+        assert_eq!(edges,test);
+    }
+
+    #[test] 
+    fn N_iterator() {
+        let G = EditGraph::biclique(2,2);
+        for (v,N) in G.neighbourhoods() {
+            let N:VertexSet = N.cloned().collect();
+            assert_eq!(G.degree(&v) as usize, N.len());
+            for u in N {
+                assert!(G.adjacent(&u, &v));
+            }
+        }
+    }    
+
+    #[test] 
+    fn mixed_iterator() {
+        let G = EditGraph::biclique(4,5);
+        let members:MixedSet = G.vertices_and_edges().collect();
+        let vertices:VertexSet = members.iter()
+                        .cloned()
+                        .filter_map(VertexOrEdge::as_vertex)
+                        .collect();
+        let edges:EdgeSet = members.iter()
+                        .filter_map(|m| if let VertexOrEdge::E((u,v)) = m { Some((*u,*v)) } else { None })
+                        .collect();      
+        assert_eq!(vertices, VertexSet::from_iter(G.vertices().cloned())); 
+        assert_eq!(edges, EdgeSet::from_iter(G.edges().map(|e| e )));                  
+    }        
+}
