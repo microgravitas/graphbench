@@ -505,7 +505,7 @@ mod test {
         assert_eq!(EditGraph::clique(2),
                    EditGraph::new().disj_union(&EditGraph::clique(2)) );                   
 
-        // // Ensure consistency between ::disj_union and ::disj_unions
+        // Ensure consistency between ::disj_union and ::disj_unions
         let H1 = EditGraph::clique(5);
         let H2 = EditGraph::clique(6);
         assert_eq!(H1.disj_union(&H2),
