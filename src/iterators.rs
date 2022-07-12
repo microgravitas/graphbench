@@ -14,7 +14,7 @@ pub type InArcIterator<'a> = std::collections::hash_set::Iter<'a, Vertex>;
 pub type DTFVertexIterator<'a> = std::collections::hash_map::Keys<'a, Vertex, DTFNode>;
 
 /// Neighbourhood iterators for graphs. At each step, the iterator
-/// returns a pair `(v,N(v))`.
+/// returns a pair $(v,N(v))$.
 pub struct NeighIterator<'a, G> where G: Graph  {
     graph: &'a G,
     v_it: Box<dyn Iterator<Item=&'a Vertex> + 'a>
@@ -38,8 +38,8 @@ impl<'a, G> Iterator for NeighIterator<'a, G> where G: Graph {
 }
 
 /// Neighbourhood iterators for digraphs which eithe returns all in- or all 
-/// out-neighbourhoods. At each step, the iterator returns a pair `(v,N^-(v))` when in
-/// in-neighbourhood mode and `(v,N^+(V))` when in out-neighbourhood mode.
+/// out-neighbourhoods. At each step, the iterator returns a pair $(v,N^-(v))$ when in
+/// in-neighbourhood mode and $(v,N^+(V))$ when in out-neighbourhood mode.
 pub struct DiNeighIterator<'a, G> where G: Graph {
     graph: &'a G,
     v_it: Box<dyn Iterator<Item=&'a Vertex> + 'a>,
@@ -109,7 +109,7 @@ impl<D> DiNeighIterable<D> for D where D: Digraph {
 }
 
 /// Edge iterator for graphs. Each edge is returned with the smaller
-/// vertex first, so the edge $\{15,3\}$ would be returned as $(3,15)$.
+/// vertex first, so the edge $\\{15,3\\}$ would be returned as $(3,15)$.
 /// 
 /// The associated trait EdgeIterable is implemented for generic graphs
 /// to provide the method `edges(...)` to create an `EdgeIterator`.
