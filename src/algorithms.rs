@@ -57,7 +57,7 @@ impl<G> GraphAlgorithms for G where G: Graph {
 
     #[allow(unused_must_use)]
     fn components(&self) -> Vec<VertexSet> {
-        let mut dsets:DisjointSets<u32> = DisjointSets::new();
+        let mut dsets:DisjointSets<u32> = DisjointSets::with_capacity(self.len());
 
         for v in self.vertices() {
             // This returns a Result<()> but the potential 'error' (adding
@@ -66,6 +66,14 @@ impl<G> GraphAlgorithms for G where G: Graph {
         }
 
         for (u,v) in self.edges() {
+            // There is a bug in the 0.2.1 version of the crate `union-find-rs`.
+            // I opened an issue here: 
+            //   https://gitlab.com/rustychoi/union_find/-/issues/1
+            // The following check fixes the bug but costs us some performance.            
+            if dsets.find_set(&u).unwrap() == dsets.find_set(&v).unwrap() {
+                continue
+            }
+
             // This returns a Result<()> but the potential 'error' (joining
             // two already joined elements) does not matter to us.
             dsets.union(&u, &v);
@@ -292,6 +300,26 @@ mod test {
     use rand_chacha::ChaChaRng; // 0.1.1
 
     use itertools::Itertools;
+
+    #[test]
+    fn components() {
+        // let mut G = EditGraph::disj_unions(&self, graph)
+    }
+
+    // #[test]
+    fn union_find() {
+        // There is a bug in the 0.2.1 version of the crate `union-find-rs`.
+        // I opened an issue here: 
+        //   https://gitlab.com/rustychoi/union_find/-/issues/1
+        let mut dsets:DisjointSets<u32> = DisjointSets::new();
+        dsets.make_set(0);
+        dsets.make_set(1);
+        dsets.make_set(2);
+
+        dsets.union(&0, &1);
+        dsets.union(&0, &2);
+        dsets.union(&1, &2);
+    }
 
     #[test]
     fn bipartite() {
