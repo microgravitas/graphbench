@@ -538,6 +538,24 @@ impl DTFGraph {
         res
     }
 
+    /// Computes an approximate $r$-dominating set of the underlying graph,
+    /// where $r$ is the provided `radius`.
+    /// 
+    /// Note that if `radius` is larger than the current augmentation depth
+    /// then graph is augmented further until the depth matches the `radius`.
+    /// 
+    /// The approximation ratio is a function of the graph's 'sparseness'. 
+    /// See \[Dvořák13\] and \[Reidl16\] for the underlying theory and \[Brown20\] for the details of this 
+    /// specific version of the algorithm.
+    /// 
+    /// > \[Dvořák13\]
+    /// Dvořák, Z. (2013). Constant-factor approximation of the domination number in sparse graphs. *European Journal of Combinatorics*, 34(5), 833-840.
+    /// >
+    /// > \[Brown20\]
+    /// Brown, C.T., Moritz, D., O’Brien, M.P., Reidl, F., Reiter, T. and Sullivan, B.D., 2020. Exploring neighborhoods in large metagenome assembly graphs using spacegraphcats reveals hidden sequence diversity. *Genome biology*, 21(1), pp.1-16.
+    /// >
+    /// >\[Reidl16\]
+    /// >Reidl, F. (2016). Structural sparseness and complex networks (No. RWTH-2015-07564). Fachgruppe Informatik.
     pub fn domset(&mut self, radius:u32) -> VertexSet {
         // A fraternal lookahead of 2 seems good accross the board.
         self.augment(radius as usize, 2);
