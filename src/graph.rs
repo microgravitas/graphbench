@@ -86,7 +86,7 @@ pub trait Graph {
     /// Returns the number of edges in the graph.
     fn num_edges(&self) -> usize;
 
-    /// Returns whether the given vertex is contained in the graph.
+    /// Returns whether the vertex `u` is contained in the graph.
     fn contains(&self, u:&Vertex) -> bool;
 
     /// Returns whether vertices `u` and `v` are connected by an edge.
