@@ -227,7 +227,7 @@ impl OrdGraph {
     /// 
     /// Returns a map with all vertices that are strongly $r$-reachable
     /// from $u$. For each member $v$ in the map the corresponding values represents
-    /// the distance $d \\leq r$ at which $v$ is reachable from $u$.
+    /// the distance $d \\leq r$ at which $v$ is strongly reachable from $u$.
     pub fn sreach_set(&self, u:&Vertex, r:u32) -> VertexMap<u32> {
         let bfs = self.right_bfs(u, r-1);
         let mut res = VertexMap::default();
@@ -250,19 +250,19 @@ impl OrdGraph {
         res
     }
 
-    /// Computes all weakly $r$-reachable sets as a map. 
+    /// Computes all weakly $r$-reachable sets as a map.. 
     /// 
     /// A vertex $v$ is weakly $r$-rechable from $u$ if there exists a $u$-$v$-path in the graph
-    /// of length at most $r$ whose smallest vertex is $v$. In particular, $v$ must come before
+    /// of length at most $r$ whose leftmost vertex is $v$. In particular, $v$ must be left of
     /// $u$ in the ordering.
     /// 
-    /// The weakly reachable
-    /// set for a vertex $u$ is encoded in a vertex map whose keys are all
-    /// vertices that are weakly $r$-reachable from $u$, the corresponding values
-    /// encode the respective distances to $u$. 
+    /// Returns a [VertexMap] for each vertex. For a vertex $u$ the corresponding [VertexMap] 
+    /// contains all vertices that are weakly $r$-reachable from $u$. For each member $v$ 
+    /// in this [VertexMap] the corresponding values represents the distance $d \\leq r$ at 
+    /// which $v$ is weakly reachable from $u$.
     /// 
     /// If the sizes of the weakly $r$-reachable sets are bounded by a constant the computation 
-    /// takes $O(|G|)$ time. 
+    /// takes $O(|G|)$ time.      
     pub fn wreach_sets(&self, r:u32) -> VertexMap<VertexMap<u32>> {
         let mut res = VertexMap::default();
         for n in &self.nodes {
@@ -279,8 +279,8 @@ impl OrdGraph {
         res
     }    
 
-    /// Computes the size of all `r`-weakly reachable sets as a map. This method
-    /// uses less memory than [wreach_sets](OrdGraph::wreach_sets).
+    /// Returns for each vertex the size of its $r$-weakly reachable set. 
+    /// This method uses less memory than [wreach_sets](OrdGraph::wreach_sets).
     pub fn wreach_sizes(&self, r:u32) -> VertexMap<u32> {
         let mut res = VertexMap::default();
         for n in &self.nodes {
