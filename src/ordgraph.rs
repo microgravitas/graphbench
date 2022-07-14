@@ -221,8 +221,13 @@ impl OrdGraph {
 
     /// Computes all strongly $r$-reachable vertices to $u$. 
     /// 
-    /// Returns a map whose keys are the strongly $r$-reachable vertices and the
-    /// values is the distance $i < r$ at which it is strongly $i$-rechable from $u$.
+    /// A vertex $v$ is strongly $r$-reachable from $u$ if there exists a $u$-$v$-path in the graph
+    /// of length at most $r$ where $v$ is the only vertex of the path that comes before $u$ in the
+    /// ordering.
+    /// 
+    /// Returns a map with all vertices that are strongly $r$-reachable
+    /// from $u$. For each member $v$ in the map the corresponding values represents
+    /// the distance $d \\leq r$ at which $v$ is reachable from $u$.
     pub fn sreach_set(&self, u:&Vertex, r:u32) -> VertexMap<u32> {
         let bfs = self.right_bfs(u, r-1);
         let mut res = VertexMap::default();
@@ -248,7 +253,7 @@ impl OrdGraph {
     /// Computes all weakly $r$-reachable sets as a map. 
     /// 
     /// A vertex $v$ is weakly $r$-rechable from $u$ if there exists a $u$-$v$-path in the graph
-    /// of length at most $r$ whose leftmost vertex is $v$. In particular, $v$ must be left of
+    /// of length at most $r$ whose smallest vertex is $v$. In particular, $v$ must come before
     /// $u$ in the ordering.
     /// 
     /// The weakly reachable
