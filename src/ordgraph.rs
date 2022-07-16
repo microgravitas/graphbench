@@ -1,3 +1,5 @@
+use std::iter;
+
 use crate::algorithms::GraphAlgorithms;
 use fxhash::{FxHashMap, FxHashSet};
 
@@ -78,6 +80,28 @@ impl OrdGraph {
         }
 
         OrdGraph {nodes, indices, m: graph.num_edges()}
+    }
+
+    pub fn to_wreach_graph(&self, r:u32) -> ReachGraph {
+        let mut builder = ReachGraphBuilder::new(r);
+        let wreach_sets = self.wreach_sets(r);
+
+        for (u, W) in wreach_sets.into_iter() {
+            builder.append(&u, &W);
+        }
+
+        builder.build()
+    }
+
+    pub fn to_sreach_graph(&self, r:u32) -> ReachGraph {
+        let mut builder = ReachGraphBuilder::new(r);
+
+        for u in self.vertices() {
+            let S = self.sreach_set(u, r);
+            builder.append(&u, &S);
+        }
+
+        builder.build()
     }
 
     /// Swaps the positions of `u` and `v` in the ordering.
@@ -340,9 +364,169 @@ impl Graph for OrdGraph {
             node_u.neighbours()
             // Box::new(node_u.left.iter().chain(node_u.right.iter()))
         } else {
-            Box::new(std::iter::empty::<&Vertex>())
+            Box::new(iter::empty::<&Vertex>())
         }
     }
+}
+
+
+pub struct ReachGraph {
+    depth: u32,
+    indices:VertexMap<usize>,
+    contents:Vec<u32>
+}
+
+#[derive(Debug)]
+pub struct Reachables<'a> {
+    from: Vertex,
+    reachables: Vec<&'a [u32]>
+}
+
+impl<'a> Reachables<'a> {
+    pub fn len(&self) -> usize {
+        self.reachables.iter().map(|seg| seg.len()).sum()
+    }
+
+    pub fn at(&self, depth:usize) -> &[u32] {
+        assert!(depth >=1 && depth < self.reachables.len()+1);
+        self.reachables[(depth-1)]
+    }
+}
+
+impl ReachGraph {
+    fn new(depth:u32) -> Self {
+        ReachGraph{ depth,
+                    indices: VertexMap::default(),
+                    contents: Vec::default() }
+    }
+
+    pub fn reachables(&self, u:&Vertex) -> Reachables {
+        let index_u = *self.indices.get(u).expect(format!("{u} is not a vertex in this graph.").as_str());
+        let r = self.depth as usize;
+        debug_assert_eq!(*u, self.contents[index_u]);
+
+
+        // Layout:
+        //    | u | next_vertex | index_2 | index_3 | ... | index_r  | index_end | [dist 1 neighbours] [dist 2 neighbours] ... [dist r neigbhours]
+        //  index_u     + 1         +2         + 3          + r          + (r+1)   + (r+2)        
+        let mut left = index_u + r + 2; 
+        let mut reachables = Vec::with_capacity(self.depth as usize);
+        for right in &self.contents[index_u+2..=index_u+r+1] {
+            let right = *right as usize;
+            reachables.push(&self.contents[left..right]);
+            left = right;
+        }
+
+        Reachables { from: *u, reachables }
+    }
+
+    pub fn reachables_all(&self, u:&Vertex) -> &[u32] {
+        let index_u = *self.indices.get(u).expect(format!("{u} is not a vertex in this graph.").as_str());
+        let r = self.depth as usize;
+        debug_assert_eq!(*u, self.contents[index_u]);
+
+        let left = index_u + r + 2;
+        let right = self.contents[left-1] as usize;
+
+        &self.contents[left..right]
+    }
+
+    fn segment(&self, u:&Vertex) -> &[u32] {
+        let index_u = *self.indices.get(u).expect(format!("{u} is not a vertex in this graph.").as_str());
+        let r = self.depth as usize;
+        debug_assert_eq!(*u, self.contents[index_u]);
+
+        let right = self.contents[index_u + r + 1] as usize;
+
+        &self.contents[index_u..right]
+    }    
+}
+
+pub struct ReachGraphBuilder {
+    last_index: Option<u32>,
+    depth: u32,
+    rgraph: ReachGraph
+}
+
+impl ReachGraphBuilder {
+    pub fn new(depth:u32) -> Self {
+        ReachGraphBuilder{ last_index: None, depth: depth, rgraph: ReachGraph::new(depth) }
+    }
+
+    pub fn build(self) -> ReachGraph {
+        self.rgraph
+    }
+
+    pub fn append(&mut self, u:&Vertex, reachable:&VertexMap<u32>) {
+        // Let r be the depth of this data structure. Then for each vertex we layout the data as follows:
+        //    
+        //                                                                          base_offset
+        //    | u | next_vertex | index_2 | index_3 | ... | index_r  | index_end | [dist 1 neighbours] [dist 2 neighbours] ... [dist r neigbhours]
+        //  index_u     + 1         +2         + 3          + r          + (r+1)   + (r+2)
+        //
+        // where index_i points to the first index of the slice [dist i neighbours]. Note that we do not store
+        // index_1 as this position is fixed. `next_vertex` points to the next vertex in the sequence, 
+        // if `u` is the last vertex then `next_vertex` points to `u`.
+
+        let contents = &mut self.rgraph.contents;
+        let indices = &mut self.rgraph.indices;
+        let r = self.depth;
+
+        // Add vertex to contentss
+        contents.push(*u);           // | u |
+        let index_u = (contents.len()-1) as u32;
+        indices.insert(*u, index_u as usize);   
+        contents.push(index_u); // | next_vertex |, points to `u` for now
+        assert_eq!((contents.len()-1) as u32,  index_u + 1);
+
+        // Link up with previous vertex
+        if let Some(last_index) = self.last_index {
+            contents[(last_index+1) as usize] = index_u;
+        }
+
+        // Compute index for reachable neighbours
+        let mut pairs:Vec<_> = reachable.iter().map(|(v,dist)| (*dist,*v)).collect();
+        pairs.sort_unstable();
+    
+        let vertices:Vec<_> = pairs.iter().map(|(_,v)| *v).collect();
+        let dists:Vec<_> = pairs.iter().map(|(dist,_)| *dist).collect();
+        
+        // Push | index_2 | ... | index_r |
+        let mut curr_dist = 1;
+        let base_offset = index_u + r + 2;
+        let mut index = 2; // We start at index 2
+        let mut offset = 0;
+        println!("-----------------------");
+        println!("r = {r:?}");
+        println!("Contents {:?}", &contents[index_u as usize..]);
+        println!("Distances {dists:?}");
+        println!("Base offset {base_offset:?}");
+
+        // We add a guard element at the end so that positions for 
+        // all distances are added to the index. As a result, this 
+        // loop adds the elements 
+        //     | index_2 | ... | index_r | index_end |
+        for dist in dists.iter().chain(iter::once(&(r+1))) {
+            let dist = *dist;
+            while curr_dist < dist {
+                contents.push(base_offset + offset);
+                assert_eq!((contents.len()-1) as u32,  index_u + index);
+                println!("  {curr_dist} {:?}", &contents[index_u as usize..]);
+                curr_dist += 1;
+                index += 1;
+            }
+            offset += 1;            
+        }
+        assert_eq!((contents.len()-1) as u32,  index_u + r + 1);
+
+        // Finally write all neighbours
+        contents.extend(vertices.into_iter());
+
+        println!("-----------------------");
+
+        self.last_index = Some(index_u);
+    }
+    
 }
 
 
@@ -360,10 +544,32 @@ mod test {
     use super::*;
     use crate::editgraph::EditGraph;
 
+    #[test]
+    fn wreach_graph() {
+        let r = 5;
+        let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
+        let O = OrdGraph::by_degeneracy(&G);
+        let W = O.to_wreach_graph(r);
+        
+        let wreach_sets = O.wreach_sets(r);
+
+        for u in G.vertices() {
+            let reachables = W.reachables(&u);
+            let wreach_set = wreach_sets.get(&u).unwrap();
+            assert_eq!(reachables.len(), wreach_set.len());
+
+            for depth in 1..=r {
+                for v in reachables.at(depth as usize) {
+                    assert_eq!(depth, wreach_set[v]);
+                }
+            }
+        }
+    }
+
     #[test] 
     fn consistency() {
-        let mut G = EditGraph::clique(5);
-        let mut O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());
+        let G = EditGraph::clique(5);
+        let O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());
     
         assert_eq!(O.left_degree(&0), 0);
         assert_eq!(O.left_degree(&1), 1);
@@ -377,8 +583,8 @@ mod test {
         assert_eq!(O.left_neighbours(&3), vec![0,1,2]);
         assert_eq!(O.left_neighbours(&4), vec![0,1,2,3]);
 
-        let mut G = EditGraph::from_txt("./resources/karate.txt").unwrap();
-        let mut O = OrdGraph::by_degeneracy(&G);
+        let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
+        let O = OrdGraph::by_degeneracy(&G);
 
         let mut m = 0;
         for u in O.vertices() {
