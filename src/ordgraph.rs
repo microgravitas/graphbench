@@ -373,23 +373,35 @@ impl Graph for OrdGraph {
 pub struct ReachGraph {
     depth: u32,
     indices:VertexMap<usize>,
-    contents:Vec<u32>
+    contents:Vec<u32>,
+    edges: EdgeSet
 }
 
 #[derive(Debug)]
 pub struct Reachables<'a> {
     from: Vertex,
-    reachables: Vec<&'a [u32]>
+    reachables: Vec<&'a [u32]>,
+    boundaries: Vec<(usize, usize)>
 }
 
 impl<'a> Reachables<'a> {
+    /// Returns the total number of reachable vertices at all depths.
     pub fn len(&self) -> usize {
         self.reachables.iter().map(|seg| seg.len()).sum()
     }
 
-    pub fn at(&self, depth:usize) -> &[u32] {
+    /// Returns all vertices that are reachable at `depth` from the
+    /// root vertex.
+    pub fn at(&self, depth:usize) -> &[Vertex] {
         assert!(depth >=1 && depth < self.reachables.len()+1);
         self.reachables[(depth-1)]
+    }
+
+    /// Returns the boundary indices of veritces that are reachable
+    /// at `depth` from the root vertex.
+    fn get_boundaries(&self, depth:usize) -> (usize, usize) {
+        assert!(depth >=1 && depth < self.reachables.len()+1);
+        self.boundaries[depth]
     }
 }
 
@@ -397,6 +409,7 @@ impl ReachGraph {
     fn new(depth:u32) -> Self {
         ReachGraph{ depth,
                     indices: VertexMap::default(),
+                    edges: EdgeSet::default(),
                     contents: Vec::default() }
     }
 
@@ -411,13 +424,15 @@ impl ReachGraph {
         //  index_u     + 1         +2         + 3          + r          + (r+1)   + (r+2)        
         let mut left = index_u + r + 2; 
         let mut reachables = Vec::with_capacity(self.depth as usize);
+        let mut boundaries = Vec::with_capacity(self.depth as usize);
         for right in &self.contents[index_u+2..=index_u+r+1] {
             let right = *right as usize;
             reachables.push(&self.contents[left..right]);
+            boundaries.push((left,right));
             left = right;
         }
 
-        Reachables { from: *u, reachables }
+        Reachables { from: *u, reachables, boundaries }
     }
 
     pub fn reachables_all(&self, u:&Vertex) -> &[u32] {
@@ -440,6 +455,38 @@ impl ReachGraph {
 
         &self.contents[index_u..right]
     }    
+}
+
+impl Graph for ReachGraph {
+    fn num_vertices(&self) -> usize {
+        self.indices.len()
+    }
+
+    fn num_edges(&self) -> usize {
+        self.edges.len()
+    }
+
+    fn contains(&self, u:&Vertex) -> bool {
+        self.indices.contains_key(u)
+    }
+
+    fn adjacent(&self, u:&Vertex, v:&Vertex) -> bool {
+        self.edges.contains(&(*u,*v)) || self.edges.contains(&(*v,*u)) 
+    }
+
+    fn degree(&self, u:&Vertex) -> u32 {
+        let reach = self.reachables(u);
+        reach.at(1).len() as u32
+    }
+
+    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+        Box::new(self.indices.keys())
+    }
+
+    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+        let (left, right) = self.reachables(u).get_boundaries(1);
+        Box::new(self.contents[left..right].iter())
+    }
 }
 
 pub struct ReachGraphBuilder {
@@ -490,17 +537,20 @@ impl ReachGraphBuilder {
     
         let vertices:Vec<_> = pairs.iter().map(|(_,v)| *v).collect();
         let dists:Vec<_> = pairs.iter().map(|(dist,_)| *dist).collect();
+
+        // Add edges
+        let edges_it = reachable.iter()
+            .filter_map(|(v,dist)| if *dist == 1 {Some((*u,*v))} else {None} )
+            .map(|(u,v)| if u < v {(u,v)} else {(v,u)} );
+
+        self.rgraph.edges.extend(edges_it);
+        
         
         // Push | index_2 | ... | index_r |
         let mut curr_dist = 1;
         let base_offset = index_u + r + 2;
         let mut index = 2; // We start at index 2
         let mut offset = 0;
-        println!("-----------------------");
-        println!("r = {r:?}");
-        println!("Contents {:?}", &contents[index_u as usize..]);
-        println!("Distances {dists:?}");
-        println!("Base offset {base_offset:?}");
 
         // We add a guard element at the end so that positions for 
         // all distances are added to the index. As a result, this 
@@ -521,8 +571,6 @@ impl ReachGraphBuilder {
 
         // Finally write all neighbours
         contents.extend(vertices.into_iter());
-
-        println!("-----------------------");
 
         self.last_index = Some(index_u);
     }
