@@ -371,7 +371,7 @@ impl Graph for OrdGraph {
 
 
 pub struct ReachGraph {
-    depth: u32,
+    _depth: u32,
     indices:VertexMap<usize>,
     contents:Vec<u32>,
     edges: EdgeSet
@@ -379,7 +379,7 @@ pub struct ReachGraph {
 
 #[derive(Debug)]
 pub struct Reachables<'a> {
-    from: Vertex,
+    pub(crate) from: Vertex,
     reachables: Vec<&'a [u32]>,
     boundaries: Vec<(usize, usize)>
 }
@@ -407,24 +407,28 @@ impl<'a> Reachables<'a> {
 
 impl ReachGraph {
     fn new(depth:u32) -> Self {
-        ReachGraph{ depth,
+        ReachGraph{ _depth: depth,
                     indices: VertexMap::default(),
                     edges: EdgeSet::default(),
                     contents: Vec::default() }
     }
 
-    pub fn reachables(&self, u:&Vertex) -> Reachables {
-        let index_u = *self.indices.get(u).expect(format!("{u} is not a vertex in this graph.").as_str());
-        let r = self.depth as usize;
-        debug_assert_eq!(*u, self.contents[index_u]);
+    /// Returns the first vertex in the ordering
+    pub fn first(&self) -> Vertex {
+        assert!(self.contents.len() > 1);
+        self.contents[0]
+    }
 
+    fn reachables_at(&self, index_u:usize) -> Reachables {
+        let r = self._depth as usize;
+        let u = self.contents[index_u];
 
         // Layout:
         //    | u | next_vertex | index_2 | index_3 | ... | index_r  | index_end | [dist 1 neighbours] [dist 2 neighbours] ... [dist r neigbhours]
         //  index_u     + 1         +2         + 3          + r          + (r+1)   + (r+2)        
         let mut left = index_u + r + 2; 
-        let mut reachables = Vec::with_capacity(self.depth as usize);
-        let mut boundaries = Vec::with_capacity(self.depth as usize);
+        let mut reachables = Vec::with_capacity(self._depth as usize);
+        let mut boundaries = Vec::with_capacity(self._depth as usize);
         for right in &self.contents[index_u+2..=index_u+r+1] {
             let right = *right as usize;
             reachables.push(&self.contents[left..right]);
@@ -432,12 +436,29 @@ impl ReachGraph {
             left = right;
         }
 
-        Reachables { from: *u, reachables, boundaries }
+        Reachables { from: u, reachables, boundaries }
+    }
+
+    pub fn reachables(&self, u:&Vertex) -> Reachables {
+        let index_u = *self.indices.get(u).expect(format!("{u} is not a vertex in this graph.").as_str());
+        self.reachables_at(index_u)
+    }
+
+    pub fn next_reachables(&self, last:&Vertex) -> Option<Reachables> {
+        let index_last = *self.indices.get(last).expect(format!("{last} is not a vertex in this graph.").as_str());
+        debug_assert_eq!(*last, self.contents[index_last]);
+
+        let index_next = self.contents[index_last+1] as usize;
+        if index_next == index_last {
+            None
+        } else {
+            Some(self.reachables_at(index_next))
+        }
     }
 
     pub fn reachables_all(&self, u:&Vertex) -> &[u32] {
         let index_u = *self.indices.get(u).expect(format!("{u} is not a vertex in this graph.").as_str());
-        let r = self.depth as usize;
+        let r = self._depth as usize;
         debug_assert_eq!(*u, self.contents[index_u]);
 
         let left = index_u + r + 2;
@@ -448,12 +469,16 @@ impl ReachGraph {
 
     fn segment(&self, u:&Vertex) -> &[u32] {
         let index_u = *self.indices.get(u).expect(format!("{u} is not a vertex in this graph.").as_str());
-        let r = self.depth as usize;
+        let r = self._depth as usize;
         debug_assert_eq!(*u, self.contents[index_u]);
 
         let right = self.contents[index_u + r + 1] as usize;
 
         &self.contents[index_u..right]
+    }    
+
+    pub fn depth(&self) -> u32 {
+        self._depth
     }    
 }
 
@@ -561,7 +586,6 @@ impl ReachGraphBuilder {
             while curr_dist < dist {
                 contents.push(base_offset + offset);
                 assert_eq!((contents.len()-1) as u32,  index_u + index);
-                println!("  {curr_dist} {:?}", &contents[index_u as usize..]);
                 curr_dist += 1;
                 index += 1;
             }
@@ -586,7 +610,6 @@ impl ReachGraphBuilder {
 //     #    #      #    #   #   #    # 
 //     #    ######  ####    #    ####  
 
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -599,6 +622,8 @@ mod test {
         let O = OrdGraph::by_degeneracy(&G);
         let W = O.to_wreach_graph(r);
         
+        // Ensures that 'reachables' in wreach graph contain the same 
+        // information as the wreach sets computed by OrdGraph
         let wreach_sets = O.wreach_sets(r);
 
         for u in G.vertices() {
