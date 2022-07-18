@@ -377,7 +377,7 @@ pub struct ReachGraph {
     edges: EdgeSet
 }
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq,Eq)]
 pub struct Reachables<'a> {
     pub(crate) from: Vertex,
     reachables: Vec<&'a [u32]>,
