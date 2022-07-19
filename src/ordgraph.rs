@@ -485,26 +485,49 @@ impl ReachGraph {
         let mut res = 0;
         for (v,reachables) in self.iter() {
             let neighbours = reachables.at(1);
-
+            let include = VertexSet::default();
+            let exclude = VertexSet::default();
+            let maybe = neighbours.iter().cloned().collect();
+            res += self.bk_pivot_count(&neigbhours, &mut include, &mut maybe, &mut exclude)
         }
         res
     }
 
-    // fn bron_kerbosch_pivot_count(&self, include:VertexSet, maybe:VertexSet, exclude:VertexSet) -> u64 {
-    //     if maybe.len() == 0 && exclude.len() == 0 {
-    //         // `include` is a maximal clique
-    //         return 1
-    //     }
+    fn bk_pivot_count(&self, vertices:&[Vertex], include:&mut VertexSet, maybe:&mut VertexSet, exclude:&mut VertexSet) -> u64 {
+        if maybe.len() == 0 && exclude.len() == 0 {
+            // `include` is a maximal clique
+            return 1
+        }
 
-    //     // Choice of pivot from `maybe` + `exclude`
-    //     // TODO: Optimise pivot choice.
-    //     // We are guaranateed that `maybe` + `exclude` is non-empty.
-    //     let u = maybe.iter().chain(exclude.iter()).next().unwrap();
+        // Choose the last vertex in ordering which is in either `maybe` or `exclude`
+        // as the pivot vertex
+        let u = None;
+        let i = vertices.len()-1;
+        while i >= 0 {
+            let cand = vertices[i];
+            if maybe.contains(cand) || exclude.contains(cand) {
+                u = Some(cand);
+                break;
+            }
+            i -= 1;
+        }
+        let u = u.expect("If this fails there is a bug");
 
-    //     for v in 
+        // Compute u's *left* neighbourhood inside of `vertices`. 
+        let left_neighbours:Vec<Vertex> = vertices[0..=(i-1)].iter()
+                .filter_map(|v| if self.adjacent(&u, v) {Some(*v)} else {None} ).collect();
 
-    //     0 
-    // }
+        let mut res = 0;
+        for v in vertices[0..=(i-1)].iter().rev() {
+            if !maybe.contains(v) || left_neighbours.contains(&v) {
+                continue
+            } 
+
+            // TODO
+        }
+
+        res
+    }
 }
 
 impl Graph for ReachGraph {

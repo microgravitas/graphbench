@@ -281,6 +281,8 @@ impl<G> GraphAlgorithms for G where G: Graph {
     }    
 }
 
+
+
 //  #######                            
 //     #    ######  ####  #####  ####  
 //     #    #      #        #   #      
@@ -288,7 +290,6 @@ impl<G> GraphAlgorithms for G where G: Graph {
 //     #    #           #   #        # 
 //     #    #      #    #   #   #    # 
 //     #    ######  ####    #    ####  
-
 
 #[cfg(test)]
 mod test {
