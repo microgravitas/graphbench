@@ -432,6 +432,7 @@ impl<'a> Iterator for DTFArcIterator<'a> {
 }
 
 
+
 /// Reachable-set iterator for graphs. At each step, the iterator
 /// returns a pair $(v,W^r(v))$.
 pub struct ReachIterator<'a> {

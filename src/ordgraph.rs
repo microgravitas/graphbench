@@ -19,7 +19,7 @@ use crate::iterators::*;
 /// modifying the odering.
 /// 
 pub struct OrdGraph {
-    indices: FxHashMap<Vertex, usize>,
+    indices: VertexMap<usize>,
     nodes: Vec<OrdNode>,
     m: usize
 }
@@ -56,7 +56,7 @@ impl OrdGraph {
         where G: Graph, I: Iterator<Item=&'a Vertex>
     {
         let order:Vec<_> = order.collect();
-        let indices:FxHashMap<_,_> = order.iter().cloned()
+        let indices:VertexMap<_> = order.iter().cloned()
                 .enumerate().map(|(i,u)| (*u,i)).collect();
         let mut nodes:Vec<_> = Vec::with_capacity(order.len());
 
@@ -87,7 +87,7 @@ impl OrdGraph {
         let wreach_sets = self.wreach_sets(r);
 
         for (u, W) in wreach_sets.into_iter() {
-            builder.append(&u, &W);
+            builder.append(&u, &W, &self.indices);
         }
 
         builder.build()
@@ -98,7 +98,7 @@ impl OrdGraph {
 
         for u in self.vertices() {
             let S = self.sreach_set(u, r);
-            builder.append(&u, &S);
+            builder.append(&u, &S, &self.indices);
         }
 
         builder.build()
@@ -373,7 +373,7 @@ impl Graph for OrdGraph {
 pub struct ReachGraph {
     _depth: u32,
     indices:VertexMap<usize>,
-    contents:Vec<u32>,
+    pub(crate) contents:Vec<u32>,
     edges: EdgeSet
 }
 
@@ -393,11 +393,11 @@ impl<'a> Reachables<'a> {
     /// Returns all vertices that are reachable at `depth` from the
     /// root vertex.
     pub fn at(&self, depth:usize) -> &[Vertex] {
-        assert!(depth >=1 && depth < self.reachables.len()+1);
+        assert!(depth >= 1 && depth < self.reachables.len()+1);
         self.reachables[(depth-1)]
     }
 
-    /// Returns the boundary indices of veritces that are reachable
+    /// Returns the boundary indices of vertices that are reachable
     /// at `depth` from the root vertex.
     fn get_boundaries(&self, depth:usize) -> (usize, usize) {
         assert!(depth >=1 && depth < self.reachables.len()+1);
@@ -479,7 +479,32 @@ impl ReachGraph {
 
     pub fn depth(&self) -> u32 {
         self._depth
-    }    
+    }
+
+    pub fn count_max_cliques(&self) -> u64 {
+        let mut res = 0;
+        for (v,reachables) in self.iter() {
+            let neighbours = reachables.at(1);
+
+        }
+        res
+    }
+
+    // fn bron_kerbosch_pivot_count(&self, include:VertexSet, maybe:VertexSet, exclude:VertexSet) -> u64 {
+    //     if maybe.len() == 0 && exclude.len() == 0 {
+    //         // `include` is a maximal clique
+    //         return 1
+    //     }
+
+    //     // Choice of pivot from `maybe` + `exclude`
+    //     // TODO: Optimise pivot choice.
+    //     // We are guaranateed that `maybe` + `exclude` is non-empty.
+    //     let u = maybe.iter().chain(exclude.iter()).next().unwrap();
+
+    //     for v in 
+
+    //     0 
+    // }
 }
 
 impl Graph for ReachGraph {
@@ -529,7 +554,7 @@ impl ReachGraphBuilder {
         self.rgraph
     }
 
-    pub fn append(&mut self, u:&Vertex, reachable:&VertexMap<u32>) {
+    pub fn append(&mut self, u:&Vertex, reachable:&VertexMap<u32>, order:&VertexMap<usize>) {
         // Let r be the depth of this data structure. Then for each vertex we layout the data as follows:
         //    
         //                                                                          base_offset
@@ -556,12 +581,14 @@ impl ReachGraphBuilder {
             contents[(last_index+1) as usize] = index_u;
         }
 
-        // Compute index for reachable neighbours
-        let mut pairs:Vec<_> = reachable.iter().map(|(v,dist)| (*dist,*v)).collect();
-        pairs.sort_unstable();
+        // Compute the local index for reachable neighbours. We first group neighbours by their 
+        // reachability distance, which is some value between 1 and r. Second, inside each group of
+        // equidistance neighbour, we want to preserve the order of the original OrdGraph.
+        let mut neighbour_order:Vec<_> = reachable.iter().map(|(v,dist)| (*dist, order[v], *v)).collect();
+        neighbour_order.sort_unstable();
     
-        let vertices:Vec<_> = pairs.iter().map(|(_,v)| *v).collect();
-        let dists:Vec<_> = pairs.iter().map(|(dist,_)| *dist).collect();
+        let vertices:Vec<_> = neighbour_order.iter().map(|(_,_,v)| *v).collect();
+        let dists:Vec<_> = neighbour_order.iter().map(|(dist,_,_)| *dist).collect();
 
         // Add edges
         let edges_it = reachable.iter()
