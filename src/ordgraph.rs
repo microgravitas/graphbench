@@ -46,7 +46,7 @@ impl OrdGraph {
     /// Creates an ordered graph from `graph` by computing a degeneracy ordering.
     pub fn by_degeneracy<G>(graph: &G) -> OrdGraph where G: Graph {
         let (_, _, ord, _) = graph.degeneracy();
-        OrdGraph::with_ordering(graph, ord.iter().rev())
+        OrdGraph::with_ordering(graph, ord.iter())
     }
     
     /// Creates an ordered graphs from `graph` using `order`.
@@ -66,9 +66,9 @@ impl OrdGraph {
         for (u,v) in graph.edges() {
             assert!(indices.contains_key(&u), "Vertex {} not contained in provided ordering", u);
             assert!(indices.contains_key(&v), "Vertex {} not contained in provided ordering", v);
-            // let nU = nodes.get_mut(indices[&u]).unwrap();
-            // let nV = nodes.get_mut(indices[&v]).unwrap();
-            if u < v {
+            let iu = indices[&u];
+            let iv = indices[&v];
+            if iu < iv {
                 {nodes.get_mut(indices[&u]).unwrap().right.insert(v); }
                 {nodes.get_mut(indices[&v]).unwrap().left.insert(u); }
             } else {
@@ -362,8 +362,8 @@ mod test {
 
     #[test] 
     fn consistency() {
-        let mut G = EditGraph::clique(5);
-        let mut O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());
+        let G = EditGraph::clique(5);
+        let O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());
     
         assert_eq!(O.left_degree(&0), 0);
         assert_eq!(O.left_degree(&1), 1);
@@ -377,8 +377,15 @@ mod test {
         assert_eq!(O.left_neighbours(&3), vec![0,1,2]);
         assert_eq!(O.left_neighbours(&4), vec![0,1,2,3]);
 
-        let mut G = EditGraph::from_txt("./resources/karate.txt").unwrap();
-        let mut O = OrdGraph::by_degeneracy(&G);
+        let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
+        let (lower, upper, order, _) = G.degeneracy();
+        assert_eq!(lower, upper);
+        let degen = upper;
+
+        let O = OrdGraph::with_ordering(&G, order.iter());
+
+        let left_degs = O.left_degrees();
+        assert_eq!(*left_degs.values().max().unwrap(), degen);
 
         let mut m = 0;
         for u in O.vertices() {
