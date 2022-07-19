@@ -82,6 +82,18 @@ impl OrdGraph {
         OrdGraph {nodes, indices, m: graph.num_edges()}
     }
 
+    pub fn to_degeneracy_graph(&self) -> ReachGraph {
+        let mut builder = ReachGraphBuilder::new(1);
+
+        for u in self.vertices() {
+            let L = self.left_neighbours(u);
+            let W = L.iter().map(|x| (*x,1) ).collect();
+            builder.append(&u, &W, &self.indices);
+        }
+
+        builder.build()
+    }    
+
     pub fn to_wreach_graph(&self, r:u32) -> ReachGraph {
         let mut builder = ReachGraphBuilder::new(r);
         let wreach_sets = self.wreach_sets(r);
@@ -485,15 +497,15 @@ impl ReachGraph {
         let mut res = 0;
         for (v,reachables) in self.iter() {
             let neighbours = reachables.at(1);
-            let mut include = VertexSet::default();
+            let include = VertexSet::default();
             let mut exclude = VertexSet::default();
             let mut maybe = neighbours.iter().cloned().collect();
-            res += self.bk_pivot_count(&neighbours, &mut include, &mut maybe, &mut exclude)
+            res += self.bk_pivot_count(&neighbours, include, maybe, exclude)
         }
         res
     }
 
-    fn bk_pivot_count(&self, vertices:&[Vertex], include:&mut VertexSet, maybe:&mut VertexSet, exclude:&mut VertexSet) -> u64 {
+    fn bk_pivot_count(&self, vertices:&[Vertex], include:VertexSet, mut maybe:VertexSet, mut exclude:VertexSet) -> u64 {
         if maybe.len() == 0 && exclude.len() == 0 {
             // `include` is a maximal clique
             return 1
@@ -503,7 +515,7 @@ impl ReachGraph {
         // as the pivot vertex
         let mut u = None;
         let mut i = vertices.len()-1;
-        while i >= 0 {
+        while i != 0 {
             let cand = vertices[i];
             if maybe.contains(&cand) || exclude.contains(&cand) {
                 u = Some(cand);
@@ -517,13 +529,25 @@ impl ReachGraph {
         let left_neighbours:Vec<Vertex> = vertices[0..=(i-1)].iter()
                 .filter_map(|v| if self.adjacent(&u, v) {Some(*v)} else {None} ).collect();
 
+        let left_neighbours_set:VertexSet = left_neighbours.iter().cloned().collect();
+
         let mut res = 0;
         for v in vertices[0..=(i-1)].iter().rev() {
-            if !maybe.contains(&v) || left_neighbours.contains(&v) {
+            // We ignore `v` if it is not a maybe-vertex. We also ignore it
+            // if it is a neighbour of the pivot `u`.
+            if !maybe.contains(&v) || left_neighbours_set.contains(&v) {
                 continue
             } 
 
-            // TODO
+            // Recursion
+            res += self.bk_pivot_count(&left_neighbours, 
+                            include.intersection(&left_neighbours_set).cloned().collect(),
+                            maybe.intersection(&left_neighbours_set).cloned().collect(),
+                            exclude.intersection(&left_neighbours_set).cloned().collect(),
+                            );
+            
+            maybe.remove(&v);
+            exclude.insert(*v);
         }
 
         res
@@ -685,10 +709,10 @@ mod test {
             // *and* that the relative order in each depth-group
             // has been maintained.
             for depth in 1..=r {
-                let last_index = -1;
+                let mut last_index:i64 = -1;
                 for v in reachables.at(depth as usize) {
                     assert_eq!(depth, wreach_set[v]);  
-                    let index = O.indices[v];
+                    let index = O.indices[v] as i64;
                     assert!(index > last_index);
                     last_index = index;
                 }
@@ -752,4 +776,11 @@ mod test {
         assert_eq!(S[&1], 3); // 4-5-6-1
         assert_eq!(S[&0], 4); // 4-5-6-7-0
     }    
+
+    #[test] 
+    fn count_cliques() {
+        let G = EditGraph::clique(5);
+        let O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());    
+        let W = O.to_degeneracy_graph();
+    }
 }
