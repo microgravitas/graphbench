@@ -485,10 +485,10 @@ impl ReachGraph {
         let mut res = 0;
         for (v,reachables) in self.iter() {
             let neighbours = reachables.at(1);
-            let include = VertexSet::default();
-            let exclude = VertexSet::default();
-            let maybe = neighbours.iter().cloned().collect();
-            res += self.bk_pivot_count(&neigbhours, &mut include, &mut maybe, &mut exclude)
+            let mut include = VertexSet::default();
+            let mut exclude = VertexSet::default();
+            let mut maybe = neighbours.iter().cloned().collect();
+            res += self.bk_pivot_count(&neighbours, &mut include, &mut maybe, &mut exclude)
         }
         res
     }
@@ -501,11 +501,11 @@ impl ReachGraph {
 
         // Choose the last vertex in ordering which is in either `maybe` or `exclude`
         // as the pivot vertex
-        let u = None;
-        let i = vertices.len()-1;
+        let mut u = None;
+        let mut i = vertices.len()-1;
         while i >= 0 {
             let cand = vertices[i];
-            if maybe.contains(cand) || exclude.contains(cand) {
+            if maybe.contains(&cand) || exclude.contains(&cand) {
                 u = Some(cand);
                 break;
             }
@@ -519,7 +519,7 @@ impl ReachGraph {
 
         let mut res = 0;
         for v in vertices[0..=(i-1)].iter().rev() {
-            if !maybe.contains(v) || left_neighbours.contains(&v) {
+            if !maybe.contains(&v) || left_neighbours.contains(&v) {
                 continue
             } 
 
