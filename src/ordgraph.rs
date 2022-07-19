@@ -782,5 +782,7 @@ mod test {
         let G = EditGraph::clique(5);
         let O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());    
         let W = O.to_degeneracy_graph();
+
+        assert_eq!(W.count_max_cliques(), 1);
     }
 }
