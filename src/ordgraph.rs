@@ -46,7 +46,7 @@ impl OrdGraph {
     /// Creates an ordered graph from `graph` by computing a degeneracy ordering.
     pub fn by_degeneracy<G>(graph: &G) -> OrdGraph where G: Graph {
         let (_, _, ord, _) = graph.degeneracy();
-        OrdGraph::with_ordering(graph, ord.iter())
+        OrdGraph::with_ordering(graph, ord.iter().rev())
     }
     
     /// Creates an ordered graphs from `graph` using `order`.
