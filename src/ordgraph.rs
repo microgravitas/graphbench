@@ -658,9 +658,16 @@ mod test {
             let wreach_set = wreach_sets.get(&u).unwrap();
             assert_eq!(reachables.len(), wreach_set.len());
 
+            // Verify that the depth of each vertex is correct
+            // *and* that the relative order in each depth-group
+            // has been maintained.
             for depth in 1..=r {
+                let last_index = -1;
                 for v in reachables.at(depth as usize) {
-                    assert_eq!(depth, wreach_set[v]);
+                    assert_eq!(depth, wreach_set[v]);  
+                    let index = O.indices[v];
+                    assert!(index > last_index);
+                    last_index = index;
                 }
             }
         }
