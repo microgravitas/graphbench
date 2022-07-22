@@ -483,7 +483,7 @@ mod test {
     #[test]
     fn components() {
         let n:u32 = 10;        
-        let mut G = EditGraph::matching(n);
+        let G = EditGraph::matching(n);
 
         assert_eq!(G.components().len(), G.edges().count());
 

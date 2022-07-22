@@ -497,9 +497,10 @@ impl ReachGraph {
         let mut res = 0;
         for (v,reachables) in self.iter() {
             let neighbours = reachables.at(1);
-            let include = VertexSet::default();
-            let mut exclude = VertexSet::default();
-            let mut maybe = neighbours.iter().cloned().collect();
+            let mut include = VertexSet::default();
+            include.insert(v);
+            let exclude = VertexSet::default();
+            let maybe = neighbours.iter().cloned().collect();
             res += self.bk_pivot_count(&neighbours, include, maybe, exclude)
         }
         res
@@ -772,7 +773,7 @@ mod test {
         G.add_edge(&0, &7);
 
         let ord:Vec<_> = (0..=8).collect();
-        let mut O = OrdGraph::with_ordering(&G, ord.iter());
+        let O = OrdGraph::with_ordering(&G, ord.iter());
     
         let S = O.sreach_set(&4, 5);
 

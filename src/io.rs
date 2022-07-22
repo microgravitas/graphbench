@@ -148,6 +148,7 @@ mod test {
     }
 
     #[test]
+    #[allow(unused_must_use)]
     fn write_graph() {
         let G = EditGraph::biclique(3, 3);
         G.write_txt("resources/temp.txt");

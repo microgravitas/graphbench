@@ -308,6 +308,7 @@ mod test {
     }
 
     // #[test]
+    #[allow(unused_must_use)]
     fn union_find() {
         // There is a bug in the 0.2.1 version of the crate `union-find-rs`.
         // I opened an issue here: 
