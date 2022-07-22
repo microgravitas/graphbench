@@ -31,7 +31,7 @@ impl<'a, G> Iterator for NeighIterator<'a, G> where G: Graph {
     type Item = (Vertex, Box<dyn Iterator<Item=&'a Vertex> + 'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let v = self.v_it.next()?.clone();
+        let v = *self.v_it.next()?;
         let N = self.graph.neighbours(&v);
 
         Some((v, N))
@@ -47,15 +47,15 @@ pub struct DiNeighIterator<'a, G> where G: Graph {
     mode: DiNeighIteratorMode
 }
 
-enum DiNeighIteratorMode {IN, OUT}
+enum DiNeighIteratorMode {In, Out}
 
 impl<'a, D: Digraph> DiNeighIterator<'a, D> {
     pub fn new_in(graph: &'a D) -> DiNeighIterator<'a, D> {
-        DiNeighIterator { graph, mode: DiNeighIteratorMode::IN, v_it: graph.vertices() }
+        DiNeighIterator { graph, mode: DiNeighIteratorMode::In, v_it: graph.vertices() }
     }
 
     pub fn new_out(graph: &'a D) -> DiNeighIterator<'a, D> {
-        DiNeighIterator { graph, mode: DiNeighIteratorMode::OUT, v_it: graph.vertices() }
+        DiNeighIterator { graph, mode: DiNeighIteratorMode::Out, v_it: graph.vertices() }
     }
 }
 
@@ -63,11 +63,11 @@ impl<'a, D> Iterator for DiNeighIterator<'a, D> where D: Digraph {
     type Item = (Vertex, Box<dyn Iterator<Item=&'a Vertex> + 'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let v = self.v_it.next()?.clone();
+        let v = *self.v_it.next()?;
         match &self.mode {
-            DiNeighIteratorMode::IN =>  {let N = self.graph.in_neighbours(&v);
+            DiNeighIteratorMode::In =>  {let N = self.graph.in_neighbours(&v);
                     Some((v, N))},
-            DiNeighIteratorMode::OUT => {let N = self.graph.out_neighbours(&v);
+            DiNeighIteratorMode::Out => {let N = self.graph.out_neighbours(&v);
                     Some((v, N))}
         }
     }
@@ -156,7 +156,7 @@ impl<'a, G> Iterator for EdgeIterator<'a, G> where G: Graph {
             };
 
             // Tie-breaking so we only return every edge once
-            let u = uu.unwrap().clone();
+            let u = *uu.unwrap();
             let v = self.curr_v.as_ref().unwrap();
             if v > &u {
                 continue;
@@ -228,7 +228,7 @@ impl<'a, G> Iterator for MixedIterator<'a, G> where G: Graph {
             }
 
             // Otherwise return edge
-            while let Some(u) = it.next() {
+            for u in it.by_ref() {
                 // Tie-break so we do not return edges multiple times
                 if v < *u {
                     return Some(VertexOrEdge::E( (v,*u) ));
@@ -297,8 +297,8 @@ impl<'a, D> Iterator for ArcIterator<'a, D> where D: Digraph  {
             };
 
             // Tie-breaking so we only return every edge once
-            let u = uu.unwrap().clone();
-            return Some((self.curr_v.as_ref().unwrap().clone(), u));
+            let u = *uu.unwrap();
+            return Some((*self.curr_v.as_ref().unwrap(), u));
         }
 
         None
@@ -460,16 +460,16 @@ impl<'a> Iterator for ReachIterator<'a>{
             let next = self.rgraph.next_reachables(&u);
             let res = std::mem::replace(&mut self.current, next);     
             
-            return Some((u, res.unwrap()))
+            Some((u, res.unwrap()))
         } else {
-            return None
+            None
         }
     }
 }
 
 impl ReachGraph {
     pub fn iter(&self) -> ReachIterator {
-        ReachIterator::new(&self)
+        ReachIterator::new(self)
     }
 }
 

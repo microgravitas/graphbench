@@ -204,7 +204,7 @@ impl MutableGraph for EditGraph {
     }
 
     fn add_vertex(&mut self, u:&Vertex) -> bool {
-        if !self.adj.contains_key(&u) {
+        if !self.adj.contains_key(u) {
             self.adj.insert(*u, FxHashSet::default());
             self.degs.insert(*u, 0);
             true
@@ -230,10 +230,10 @@ impl MutableGraph for EditGraph {
 
     fn remove_edge(&mut self, u:&Vertex, v:&Vertex) -> bool {
         if self.adjacent(u, v) {
-            self.adj.get_mut(&u).unwrap().remove(&v);
-            self.adj.get_mut(&v).unwrap().remove(&u);
-            self.degs.insert(*u, self.degs[&u] - 1);
-            self.degs.insert(*v, self.degs[&v] - 1);
+            self.adj.get_mut(u).unwrap().remove(v);
+            self.adj.get_mut(v).unwrap().remove(u);
+            self.degs.insert(*u, self.degs[u] - 1);
+            self.degs.insert(*v, self.degs[v] - 1);
             self.m -= 1;
             true
         } else {
@@ -248,12 +248,12 @@ impl MutableGraph for EditGraph {
             let N = self.adj.get(u).unwrap().clone();
             for v in &N {
                 self.adj.get_mut(v).unwrap().remove(u);
-                self.degs.insert(*v, self.degs[&v] - 1);
+                self.degs.insert(*v, self.degs[v] - 1);
                 self.m -= 1;
             }
 
-            self.adj.remove(&u);
-            self.degs.remove(&u);
+            self.adj.remove(u);
+            self.degs.remove(u);
 
             true
         }
@@ -331,7 +331,7 @@ impl EditGraph {
     pub fn complete_kpartite<'a, I>(sizes:I) -> EditGraph where I: IntoIterator<Item=&'a u32> {
         let sizes:Vec<u32> = sizes.into_iter().cloned().collect();
 
-        if sizes.len() == 0 { 
+        if sizes.is_empty() { 
             return EditGraph::new();
         } else if sizes.len() == 1 {
             return EditGraph::clique(sizes[0]);
@@ -368,7 +368,7 @@ impl EditGraph {
     pub fn disj_union(&self, graph: &impl Graph) -> EditGraph {
         let mut res = EditGraph::with_capacity(self.len() + graph.len());
 
-        let offset:Vertex = self.vertices().max().and_then(|x| Some(x+1)).unwrap_or(0);
+        let offset:Vertex = self.vertices().max().map(|x| x+1).unwrap_or(0);
 
         res.add_vertices(self.vertices().cloned());
         res.add_edges(self.edges());
@@ -407,7 +407,7 @@ impl EditGraph {
                                 .map(|(i,v)| (*v, *i))
                                 .collect();
         for u in self.vertices() {
-            res.add_vertex(&vex2id[&u]);
+            res.add_vertex(&vex2id[u]);
         }
         for (u, v) in self.edges() {
             res.add_edge(&vex2id[&u], &vex2id[&v]);
@@ -449,10 +449,10 @@ impl EditGraph {
     /// as its neighbours all vertices that were adjacent to at least one vertex in `vertices`.
     pub fn contract_into<'a, I>(&mut self, center:&Vertex, vertices:I) where I: Iterator<Item=&'a Vertex> {
         let mut contract:VertexSet = vertices.cloned().collect();
-        contract.remove(&center);
+        contract.remove(center);
 
         let mut N = self.neighbourhood(contract.iter());
-        N.remove(&center);
+        N.remove(center);
 
         for u in N {
             self.add_edge(center, &u);

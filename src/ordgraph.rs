@@ -88,7 +88,7 @@ impl OrdGraph {
         for u in self.vertices() {
             let L = self.left_neighbours(u);
             let W = L.iter().map(|x| (*x,1) ).collect();
-            builder.append(&u, &W, &self.indices);
+            builder.append(u, &W, &self.indices);
         }
 
         builder.build()
@@ -110,7 +110,7 @@ impl OrdGraph {
 
         for u in self.vertices() {
             let S = self.sreach_set(u, r);
-            builder.append(&u, &S, &self.indices);
+            builder.append(u, &S, &self.indices);
         }
 
         builder.build()
@@ -129,7 +129,7 @@ impl OrdGraph {
 
         // Recompute left/right neighbours of u and v for u when moved to iv
         // and for v when moved to iu.
-        for (s,old_i,new_i) in vec![(u,iu,iv), (v,iv,iu)]{
+        for (s,old_i,new_i) in [(u,iu,iv), (v,iv,iu)]{
             let mut needs_update:Vec<usize> = Vec::new();            
             {   // Update vertex itself
                 let mut n = &mut self.nodes[old_i];
@@ -176,7 +176,7 @@ impl OrdGraph {
 
     /// Returns a copy of `u`'s left neighbourhood.
     pub fn left_neighbours(&self, u:&Vertex) -> Vec<Vertex> {
-        let iu = self.indices.get(u).expect(format!("Vertex {u} does not exist").as_str()); 
+        let iu = self.indices.get(u).unwrap_or_else(|| panic!("Vertex {u} does not exist")); 
         let node_u = &self.nodes[*iu];
 
         let mut res:Vec<Vertex> = node_u.left.iter().cloned().collect();
@@ -206,7 +206,7 @@ impl OrdGraph {
 
     /// Returns a copy of `u`'s right neighbourhood. 
     pub fn right_neighbours(&self, u:&Vertex) -> Vec<Vertex> {
-        let iu = self.indices.get(u).expect(format!("Vertex {u} does not exist").as_str()); 
+        let iu = self.indices.get(u).unwrap_or_else(|| panic!("Vertex {u} does not exist")); 
         let node_u = &self.nodes[*iu];
 
         let mut res:Vec<Vertex> = node_u.right.iter().cloned().collect();
@@ -240,10 +240,10 @@ impl OrdGraph {
         for d in 1..=(dist as usize) {
             let (part1, part2) = res.split_at_mut(d as usize);
 
-            for u in part1[d-1].iter().cloned() {
-                let iu = *self.indices.get(&u).unwrap();
+            for u in part1[d-1].iter() {
+                let iu = *self.indices.get(u).unwrap();
                 for v in self.nodes[iu].neighbours() {
-                    let iv = *self.indices.get(&v).unwrap();
+                    let iv = *self.indices.get(v).unwrap();
                     if iv > iroot && !seen.contains(v) {
                         part2[0].insert(*v);
                         seen.insert(*v);
@@ -268,7 +268,7 @@ impl OrdGraph {
         let bfs = self.right_bfs(u, r-1);
         let mut res = VertexMap::default();
         
-        let iu = self.indices.get(u).expect(format!("{u} not contained in this graph").as_str()).clone();
+        let iu = *self.indices.get(u).unwrap_or_else(|| panic!("{u} not contained in this graph"));
         for (d, layer) in bfs.iter().enumerate() {
             for v in layer {
                 for x in self.left_neighbours(v) {
@@ -452,12 +452,12 @@ impl ReachGraph {
     }
 
     pub fn reachables(&self, u:&Vertex) -> Reachables {
-        let index_u = *self.indices.get(u).expect(format!("{u} is not a vertex in this graph.").as_str());
+        let index_u = *self.indices.get(u).unwrap_or_else(|| panic!("{u} is not a vertex in this graph."));
         self.reachables_at(index_u)
     }
 
     pub fn next_reachables(&self, last:&Vertex) -> Option<Reachables> {
-        let index_last = *self.indices.get(last).expect(format!("{last} is not a vertex in this graph.").as_str());
+        let index_last = *self.indices.get(last).unwrap_or_else(|| panic!("{last} is not a vertex in this graph."));
         debug_assert_eq!(*last, self.contents[index_last]);
 
         let index_next = self.contents[index_last+1] as usize;
@@ -469,7 +469,7 @@ impl ReachGraph {
     }
 
     pub fn reachables_all(&self, u:&Vertex) -> &[u32] {
-        let index_u = *self.indices.get(u).expect(format!("{u} is not a vertex in this graph.").as_str());
+        let index_u = *self.indices.get(u).unwrap_or_else(|| panic!("{u} is not a vertex in this graph."));
         let r = self._depth as usize;
         debug_assert_eq!(*u, self.contents[index_u]);
 
@@ -480,7 +480,7 @@ impl ReachGraph {
     }
 
     fn segment(&self, u:&Vertex) -> &[u32] {
-        let index_u = *self.indices.get(u).expect(format!("{u} is not a vertex in this graph.").as_str());
+        let index_u = *self.indices.get(u).unwrap_or_else(|| panic!("{u} is not a vertex in this graph."));
         let r = self._depth as usize;
         debug_assert_eq!(*u, self.contents[index_u]);
 
@@ -501,13 +501,13 @@ impl ReachGraph {
             include.insert(v);
             let exclude = VertexSet::default();
             let maybe = neighbours.iter().cloned().collect();
-            res += self.bk_pivot_count(&neighbours, include, maybe, exclude)
+            res += self.bk_pivot_count(neighbours, include, maybe, exclude)
         }
         res
     }
 
     fn bk_pivot_count(&self, vertices:&[Vertex], include:VertexSet, mut maybe:VertexSet, mut exclude:VertexSet) -> u64 {
-        if maybe.len() == 0 && exclude.len() == 0 {
+        if maybe.is_empty() && exclude.is_empty() {
             // `include` is a maximal clique
             return 1
         }
@@ -536,7 +536,7 @@ impl ReachGraph {
         for v in vertices[0..=(i-1)].iter().rev() {
             // We ignore `v` if it is not a maybe-vertex. We also ignore it
             // if it is a neighbour of the pivot `u`.
-            if !maybe.contains(&v) || left_neighbours_set.contains(&v) {
+            if !maybe.contains(v) || left_neighbours_set.contains(v) {
                 continue
             } 
 
@@ -547,7 +547,7 @@ impl ReachGraph {
                             exclude.intersection(&left_neighbours_set).cloned().collect(),
                             );
             
-            maybe.remove(&v);
+            maybe.remove(v);
             exclude.insert(*v);
         }
 
@@ -595,7 +595,7 @@ pub struct ReachGraphBuilder {
 
 impl ReachGraphBuilder {
     pub fn new(depth:u32) -> Self {
-        ReachGraphBuilder{ last_index: None, depth: depth, rgraph: ReachGraph::new(depth) }
+        ReachGraphBuilder{ last_index: None, depth, rgraph: ReachGraph::new(depth) }
     }
 
     pub fn build(self) -> ReachGraph {
@@ -635,7 +635,7 @@ impl ReachGraphBuilder {
         let mut neighbour_order:Vec<_> = reachable.iter().map(|(v,dist)| (*dist, order[v], *v)).collect();
         neighbour_order.sort_unstable();
     
-        let vertices:Vec<_> = neighbour_order.iter().map(|(_,_,v)| *v).collect();
+        let vertices = neighbour_order.iter().map(|(_,_,v)| *v);
         let dists:Vec<_> = neighbour_order.iter().map(|(dist,_,_)| *dist).collect();
 
         // Add edges
@@ -650,21 +650,19 @@ impl ReachGraphBuilder {
         let mut curr_dist = 1;
         let base_offset = index_u + r + 2;
         let mut index = 2; // We start at index 2
-        let mut offset = 0;
 
         // We add a guard element at the end so that positions for 
         // all distances are added to the index. As a result, this 
         // loop adds the elements 
         //     | index_2 | ... | index_r | index_end |
-        for dist in dists.iter().chain(iter::once(&(r+1))) {
+        for (offset, dist) in dists.iter().chain(iter::once(&(r+1))).enumerate() {
             let dist = *dist;
             while curr_dist < dist {
-                contents.push(base_offset + offset);
+                contents.push(base_offset + offset as u32);
                 assert_eq!((contents.len()-1) as u32,  index_u + index);
                 curr_dist += 1;
                 index += 1;
             }
-            offset += 1;            
         }
         assert_eq!((contents.len()-1) as u32,  index_u + r + 1);
 

@@ -135,7 +135,7 @@ impl DTFNode {
 
     pub fn has_in_neighbour(&self, v:&Vertex) -> bool {
         for N in &self.in_arcs {
-            if N.contains(&v) {
+            if N.contains(v) {
                 return true
             }
         }
@@ -151,7 +151,7 @@ impl DTFNode {
 
     pub fn get_arc_depth_from(&self, v:&Vertex) -> Option<u32> {
         for (i,N) in self.in_arcs.iter().enumerate() {
-            if N.contains(&v) {
+            if N.contains(v) {
                 return Some((i+1) as u32)
             }
         }
@@ -207,24 +207,24 @@ impl Graph for DTFGraph {
     }
 
     fn degree(&self, u:&Vertex) -> u32 {
-        self.nodes.get(&u).unwrap().degree()
+        self.nodes.get(u).unwrap().degree()
     }
 }
 
 impl Digraph for DTFGraph {
     fn has_arc(&self, u:&Vertex, v:&Vertex) -> bool {
-        if !self.nodes.contains_key(&v) {
+        if !self.nodes.contains_key(v) {
             return false
         }
-        self.nodes.get(&v).unwrap().has_in_neighbour(u)
+        self.nodes.get(v).unwrap().has_in_neighbour(u)
     }
 
     fn in_degree(&self, u:&Vertex) -> u32 {
-        self.nodes.get(&u).unwrap().in_degree()
+        self.nodes.get(u).unwrap().in_degree()
     }
 
     fn out_degree(&self, u:&Vertex) -> u32 {
-        self.nodes.get(&u).unwrap().out_degree()
+        self.nodes.get(u).unwrap().out_degree()
     }
 
     fn out_neighbours<'a>(&'a self, _:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>  {
@@ -232,7 +232,7 @@ impl Digraph for DTFGraph {
     }
 
     fn in_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>  {
-        self.nodes.get(&u).unwrap().in_neighbours()
+        self.nodes.get(u).unwrap().in_neighbours()
     }
 }
 
@@ -327,11 +327,11 @@ impl DTFGraph {
             let iv = indices[&v];
             H.add_vertex(v);
             for u in N {
-                let iu = indices[&u];
+                let iu = indices[u];
                 if iu < iv {
-                    H.add_arc(&u, &v, 1);
+                    H.add_arc(u, &v, 1);
                 } else {
-                    H.add_arc(&v, &u, 1);
+                    H.add_arc(&v, u, 1);
                 }
             }
         }
@@ -370,14 +370,14 @@ impl DTFGraph {
     }
 
     pub fn has_arc_at(&self, u:&Vertex, v:&Vertex, depth:usize) -> bool {
-        if !self.nodes.contains_key(&v) {
+        if !self.nodes.contains_key(v) {
             return false
         }
-        self.nodes.get(&v).unwrap().has_in_neighbour_at(u, depth)
+        self.nodes.get(v).unwrap().has_in_neighbour_at(u, depth)
     }
 
     pub fn get_arc_depth(&self, u:&Vertex, v:&Vertex) -> Option<u32> {
-        self.nodes.get(&v).unwrap().get_arc_depth_from(u)
+        self.nodes.get(v).unwrap().get_arc_depth_from(u)
     }
 
     pub fn arcs(&self) -> DTFArcIterator {
@@ -397,13 +397,13 @@ impl DTFGraph {
     }
 
     pub fn in_neighbours_at<'a>(&'a self, u:&Vertex, depth:usize) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
-        self.nodes.get(&u).unwrap().in_neighbours_at(depth)
+        self.nodes.get(u).unwrap().in_neighbours_at(depth)
     }
 
     pub fn in_neighbours_with_weights(&self, u:&Vertex) -> FxHashMap<Vertex, u32> {
         let mut res:FxHashMap<Vertex, u32> = FxHashMap::default();
         for d in 1..(self.depth+1) {
-            for v in self.in_neighbours_at(&u, d) {
+            for v in self.in_neighbours_at(u, d) {
                 res.insert(*v, d as u32);
             }
         }
@@ -427,7 +427,7 @@ impl DTFGraph {
         for d in 1..(self.depth+1) {
             for x in self.in_neighbours_at(u, d) {
                 if Nv.contains_key(x) {
-                    dist = min(dist, Nv[&x]+d as u32);
+                    dist = min(dist, Nv[x]+d as u32);
                 }
             }
         }
@@ -605,13 +605,13 @@ impl DTFGraph {
 
                     // If a vertex has been an in-neigbhour of a domination node for
                     // too many time, we include it in the domset.
-                    if dom_counter[&u] > cutoff && !domset.contains(&u) {
+                    if dom_counter[u] > cutoff && !domset.contains(u) {
                         domset.insert(*u);
                         dom_distance.insert(*u, 0);
 
                         for rx in 1..(radius+1) {
                             for x in self.in_neighbours_at(u,  rx as usize) {
-                                *dom_distance.get_mut(&x).unwrap() += min(dom_distance[&x],  rx);
+                                *dom_distance.get_mut(x).unwrap() += min(dom_distance[x],  rx);
                             }
                         }
                     }

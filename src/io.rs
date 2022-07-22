@@ -23,7 +23,7 @@ impl<G:Graph> WriteGraph for G {
         let mut buf = BufWriter::new(file);
 
         for (u,v) in self.edges() {
-            buf.write(format!("{u} {v}\n").as_bytes())?;
+            buf.write_all(format!("{u} {v}\n").as_bytes())?;
         }
         buf.flush()?;
 
@@ -36,7 +36,7 @@ impl<G:Graph> WriteGraph for G {
         let mut buf = BufWriter::new(gz);
 
         for (u,v) in self.edges() {
-            buf.write(format!("{u} {v}\n").as_bytes())?;
+            buf.write_all(format!("{u} {v}\n").as_bytes())?;
         }
         buf.flush()?;
         

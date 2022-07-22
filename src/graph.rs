@@ -109,6 +109,11 @@ pub trait Graph {
         self.num_vertices()
     }
 
+    /// Returns true if the graph contains no vertices
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Returns an iterator to this graph's vertices.
     fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
 
@@ -126,7 +131,7 @@ pub trait Graph {
             res.extend(self.neighbours(v).cloned());
         }
 
-        res.retain(|u| !centers.contains(&u));
+        res.retain(|u| !centers.contains(u));
         res
     }
 
@@ -144,7 +149,7 @@ pub trait Graph {
 
     /// Returns all vertices which lie within distance at most `r` to `u`.
     fn r_neighbours(&self, u:&Vertex, r:usize) -> FxHashSet<Vertex>  {
-        self.r_neighbourhood([u.clone()].iter(), r)
+        self.r_neighbourhood([*u].iter(), r)
     }
 
     /// Given an iterator `vertices` over vertices and a distance `r`, returns all vertices of the graph
@@ -208,7 +213,7 @@ pub trait MutableGraph: Graph{
     /// Adds a collection of `vertices` to the graph.
     ///
     /// Returns the number of vertices added this way.
-    fn add_vertices<'a>(&mut self, vertices: impl Iterator<Item=Vertex>) -> u32 {
+    fn add_vertices(&mut self, vertices: impl Iterator<Item=Vertex>) -> u32 {
         let mut count = 0;
         for v in vertices {
             if self.add_vertex(&v) {
@@ -221,7 +226,7 @@ pub trait MutableGraph: Graph{
     /// Adds a collection of `edges` to the graph.
     ///
     /// Returns the number of edges added this way.
-    fn add_edges<'a>(&mut self, edges: impl Iterator<Item=Edge>) -> u32 {
+    fn add_edges(&mut self, edges: impl Iterator<Item=Edge>) -> u32 {
         let mut count = 0;
         for (u,v) in edges {
             if self.add_edge(&u, &v) {
@@ -238,7 +243,7 @@ pub trait MutableGraph: Graph{
         let mut cands = Vec::new();
         for u in self.vertices() {
             if self.adjacent(u, u) {
-                cands.push(u.clone())
+                cands.push(*u)
             }
         }
 
@@ -273,12 +278,12 @@ pub trait Digraph: Graph {
 
     /// Returns the number of arcs which point to `u` in the digraph.
     fn in_degree(&self, u:&Vertex) -> u32 {
-        self.in_neighbours(&u).count() as u32
+        self.in_neighbours(u).count() as u32
     }
 
     /// Returns the number of arcs which point away from `u` in the digraph.
     fn out_degree(&self, u:&Vertex) -> u32 {
-        self.out_neighbours(&u).count() as u32
+        self.out_neighbours(u).count() as u32
     }
 
     /// Returns the in-degrees of all vertices in the digraph as a map.

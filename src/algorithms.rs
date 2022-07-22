@@ -107,11 +107,11 @@ impl<G> GraphAlgorithms for G where G: Graph {
 
         for v in self.vertices() {
             let d = self.degree(v);
-            deg_dict.insert(v.clone(), d);
+            deg_dict.insert(*v, d);
             buckets
                 .entry(calc_index(d) as i32)
                 .or_insert_with(FxHashSet::default)
-                .insert(v.clone());
+                .insert(*v);
         }
 
         let mut core_num = 0;
@@ -129,7 +129,7 @@ impl<G> GraphAlgorithms for G where G: Graph {
                 break;
             }
 
-            let v = buckets[&d].iter().next().unwrap().clone();
+            let v = *buckets[&d].iter().next().unwrap();
             buckets.get_mut(&d).unwrap().remove(&v);
 
             for u in self.neighbours(&v) {
@@ -150,11 +150,11 @@ impl<G> GraphAlgorithms for G where G: Graph {
                     buckets
                         .entry(new_index)
                         .or_insert_with(FxHashSet::default)
-                        .insert(u.clone());
+                        .insert(*u);
                 }
 
                 // Updated degree
-                deg_dict.entry(u.clone()).and_modify(|e| *e -= 1);
+                deg_dict.entry(*u).and_modify(|e| *e -= 1);
             }
             core_numbers.insert(v, core_num);
             order.push(v);
@@ -174,6 +174,8 @@ impl<G> GraphAlgorithms for G where G: Graph {
     }    
 
     fn is_bipartite(&self) -> BipartiteWitness {
+        use std::collections::hash_map::Entry::*;
+
         let mut unprocessed:VertexSet = self.vertices().cloned().collect();
 
         let mut conflict:Option<(Vertex, Vertex, Vertex)> = None;
@@ -190,18 +192,20 @@ impl<G> GraphAlgorithms for G where G: Graph {
             
             while !col_queue.is_empty() {
                 let (col, v, parent) = col_queue.pop().unwrap();
-                if colours.contains_key(&v) {
-                    let (curr_col, other_parent) = colours.get(&v).unwrap();
-                    if *curr_col != col {
-                        conflict = Some((parent, v, *other_parent));
-                        break;
+                match colours.entry(v) {
+                    Occupied(e) => {
+                        let (curr_col, other_parent) =  e.get();
+                        if *curr_col != col {
+                            conflict = Some((parent, v, *other_parent));
+                            break;
+                        }
                     }
-                    // Otherwise the already assigned colour matches and we are done with v
-                } else {
-                    colours.insert(v, (col, parent));
-                    // Queue neighbours
-                    for u in self.neighbours(&v) {
-                        col_queue.push((!col, *u, v));
+                    Vacant(e) => {
+                        e.insert((col, parent));
+                        // Queue neighbours
+                        for u in self.neighbours(&v) {
+                            col_queue.push((!col, *u, v));
+                        }
                     }
                 }
                 unprocessed.remove(&v);
@@ -277,7 +281,7 @@ impl<G> GraphAlgorithms for G where G: Graph {
             }
         }
 
-        return BipartiteWitness::Bipartition(left, right)
+        BipartiteWitness::Bipartition(left, right)
     }    
 }
 
