@@ -1,6 +1,7 @@
 use fxhash::{FxHashMap, FxHashSet};
 
 use crate::graph::*;
+use crate::ordgraph::{ReachGraph, Reachables};
 use std::hash::Hash;
 
 use crate::editgraph::EditGraph;
@@ -431,11 +432,62 @@ impl<'a> Iterator for DTFArcIterator<'a> {
 }
 
 
+
+/// Reachable-set iterator for graphs. At each step, the iterator
+/// returns a pair $(v,W^r(v))$.
+pub struct ReachIterator<'a> {
+    rgraph: &'a ReachGraph,
+    current: Option<Reachables<'a>>
+}
+
+impl<'a> ReachIterator<'a> {
+    pub fn new(rgraph: &'a ReachGraph) -> ReachIterator<'a> {
+        if rgraph.len() == 0 {
+            ReachIterator { rgraph, current: None }
+        } else {
+            let current = rgraph.reachables(&rgraph.first());
+            ReachIterator { rgraph, current: Some(current) }
+        }
+    }    
+}
+
+impl<'a> Iterator for ReachIterator<'a>{
+    type Item = (Vertex, Reachables<'a>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(reachables) = &self.current {
+            let u = reachables.from;
+            let next = self.rgraph.next_reachables(&u);
+            let res = std::mem::replace(&mut self.current, next);     
+            
+            return Some((u, res.unwrap()))
+        } else {
+            return None
+        }
+    }
+}
+
+impl ReachGraph {
+    pub fn iter(&self) -> ReachIterator {
+        ReachIterator::new(&self)
+    }
+}
+
+
+//  #######                            
+//     #    ######  ####  #####  ####  
+//     #    #      #        #   #      
+//     #    #####   ####    #    ####  
+//     #    #           #   #        # 
+//     #    #      #    #   #   #    # 
+//     #    ######  ####    #    ####  
+
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::graph::*;
-    use crate::editgraph::EditGraph;
+    use crate::editgraph::*;
+    use crate::ordgraph::*;
 
     #[test] 
     fn edge_iterator() {
@@ -471,4 +523,19 @@ mod test {
         assert_eq!(vertices, VertexSet::from_iter(G.vertices().cloned())); 
         assert_eq!(edges, EdgeSet::from_iter(G.edges().map(|e| e )));                  
     }        
+    
+    #[test]
+    fn wreach_iterator() {
+        let r = 5;
+        let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
+        let O = OrdGraph::by_degeneracy(&G);
+        let W = O.to_wreach_graph(r);
+        
+        for (v,reachables) in W.iter() {
+            assert_eq!(v, reachables.from);
+            println!("{} -> {:?}", v, reachables);
+            assert_eq!(reachables, W.reachables(&v));
+        }
+        
+    }
 }
