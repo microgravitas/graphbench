@@ -533,7 +533,6 @@ mod test {
         
         for (v,reachables) in W.iter() {
             assert_eq!(v, reachables.from);
-            println!("{} -> {:?}", v, reachables);
             assert_eq!(reachables, W.reachables(&v));
         }
         
