@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::iter;
 
 use crate::algorithms::GraphAlgorithms;
@@ -494,64 +495,89 @@ impl ReachGraph {
     }
 
     pub fn count_max_cliques(&self) -> u64 {
-        let mut res = 0;
+        let mut results = FxHashSet::<BTreeSet<Vertex>>::default(); 
+
         for (v,reachables) in self.iter() {
             let neighbours = reachables.at(1);
             let mut include = VertexSet::default();
             include.insert(v);
             let exclude = VertexSet::default();
             let maybe = neighbours.iter().cloned().collect();
-            res += self.bk_pivot_count(neighbours, include, maybe, exclude)
+            println!("Anchor {v} with left-neighbours {neighbours:?}");
+            println!("I = {include:?}, M = {maybe:?}, X = {exclude:?}");
+            self.bk_pivot_count(&v, neighbours, &mut include, maybe, exclude, &mut results, 0);
         }
-        res
+        results.len() as u64
     }
 
-    fn bk_pivot_count(&self, vertices:&[Vertex], include:VertexSet, mut maybe:VertexSet, mut exclude:VertexSet) -> u64 {
+    fn bk_pivot_count(&self, v:&Vertex, vertices:&[Vertex], include:&mut VertexSet, mut maybe:VertexSet, mut exclude:VertexSet, results:&mut FxHashSet<BTreeSet<Vertex>>, depth:usize) {
+        let indent = format!("{:indent$}", "", indent=2*(depth+1));
+
+        println!("{indent}I = {include:?}, M = {maybe:?}, X = {exclude:?}");
         if maybe.is_empty() && exclude.is_empty() {
             // `include` is a maximal clique
-            return 1
+            
+            if include.len() > 1 {
+                println!("{indent}M and X empty: I = {include:?} is a (local) maxm. clique");
+
+                // Add new maximal clique
+                let clique:BTreeSet<Vertex> = include.iter().copied().collect();
+                results.insert(clique);
+            }
+
+            if include.len() >= 3 { 
+                // Remove prefix of clique. While we know that it must have been added to `results`
+                // at some point, it could have been removed in the meantime.
+                let mut clique:BTreeSet<Vertex> = include.iter().copied().collect();
+                clique.remove(v);
+                results.remove(&clique);
+            }
+
+            return ;
         }
 
         // Choose the last vertex in ordering which is in either `maybe` or `exclude`
         // as the pivot vertex
         let mut u = None;
-        let mut i = vertices.len()-1;
-        while i != 0 {
+        let mut iu = 0;
+        for i in (0..vertices.len()).rev() {
             let cand = vertices[i];
             if maybe.contains(&cand) || exclude.contains(&cand) {
                 u = Some(cand);
+                iu = i;
                 break;
             }
-            i -= 1;
         }
         let u = u.expect("If this fails there is a bug");
 
         // Compute u's *left* neighbourhood inside of `vertices`. 
-        let left_neighbours:Vec<Vertex> = vertices[0..=(i-1)].iter()
+        let left_neighbours:Vec<Vertex> = vertices[0..iu].iter()
                 .filter_map(|v| if self.adjacent(&u, v) {Some(*v)} else {None} ).collect();
 
         let left_neighbours_set:VertexSet = left_neighbours.iter().cloned().collect();
+        println!("{indent}Chose pivot {u:?} with left-neighbours {left_neighbours:?} ");
 
-        let mut res = 0;
-        for v in vertices[0..=(i-1)].iter().rev() {
-            // We ignore `v` if it is not a maybe-vertex. We also ignore it
+        for w in vertices[0..=iu].iter().rev() {
+            // We ignore `w` if it is not a maybe-vertex. We also ignore it
             // if it is a neighbour of the pivot `u`.
-            if !maybe.contains(v) || left_neighbours_set.contains(v) {
+            if !maybe.contains(w) || left_neighbours_set.contains(w) {
                 continue
             } 
 
             // Recursion
-            res += self.bk_pivot_count(&left_neighbours, 
-                            include.intersection(&left_neighbours_set).cloned().collect(),
-                            maybe.intersection(&left_neighbours_set).cloned().collect(),
-                            exclude.intersection(&left_neighbours_set).cloned().collect(),
-                            );
-            
-            maybe.remove(v);
-            exclude.insert(*v);
-        }
+            include.insert(*w);
+            self.bk_pivot_count(v,
+                    &left_neighbours, 
+                    include,
+                    maybe.intersection(&left_neighbours_set).cloned().collect(),
+                    exclude.intersection(&left_neighbours_set).cloned().collect(),
+                    results,
+                    depth+1 );
+            include.remove(w);
 
-        res
+            maybe.remove(w);
+            exclude.insert(*w);
+        }
     }
 }
 
@@ -775,8 +801,6 @@ mod test {
     
         let S = O.sreach_set(&4, 5);
 
-        println!("Sreach set {S:?}");
-
         assert_eq!(S[&3], 1); // 4-3
         assert_eq!(S[&2], 2); // 4-5-2
         assert_eq!(S[&1], 3); // 4-5-6-1
@@ -790,5 +814,11 @@ mod test {
         let W = O.to_degeneracy_graph();
 
         assert_eq!(W.count_max_cliques(), 1);
+
+        let G = EditGraph::complete_kpartite([5,5,5].iter());
+        let O = OrdGraph::by_degeneracy(&G);    
+        let W = O.to_degeneracy_graph();
+
+        assert_eq!(W.count_max_cliques(), 5*5*5);        
     }
 }
