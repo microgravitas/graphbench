@@ -100,9 +100,9 @@ impl OrdGraph {
         builder.build()
     }    
 
-    pub fn to_wreach_graph(&self, r:u32) -> ReachGraph {
-        let mut builder = ReachGraphBuilder::new(r);
-        let wreach_sets = self.wreach_sets(r);
+    pub fn to_wreach_graph<const DEPTH: usize>(&self) -> ReachGraph<DEPTH> {
+        let mut builder = ReachGraphBuilder::<DEPTH>::new();
+        let wreach_sets = self.wreach_sets(DEPTH as u32);
 
         for u in self.vertices() {
             let W = &wreach_sets[u];
@@ -112,11 +112,11 @@ impl OrdGraph {
         builder.build()
     }
 
-    pub fn to_sreach_graph(&self, r:u32) -> ReachGraph {
-        let mut builder = ReachGraphBuilder::new(r);
+    pub fn to_sreach_graph<const DEPTH: usize>(&self) -> ReachGraph<DEPTH> {
+        let mut builder = ReachGraphBuilder::<DEPTH>::new();
 
         for u in self.vertices() {
-            let S = self.sreach_set(u, r);
+            let S = self.sreach_set(u, DEPTH as u32);
             builder.append(u, &S, &self.indices);
         }
 
@@ -281,14 +281,14 @@ mod test {
 
     #[test]
     fn wreach_graph() {
-        let r = 5;
+        const R:usize = 5;
         let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
         let O = OrdGraph::by_degeneracy(&G);
-        let W = O.to_wreach_graph(r);
+        let W = O.to_wreach_graph::<R>();
         
         // Ensures that 'reachables' in wreach graph contain the same 
         // information as the wreach sets computed by OrdGraph
-        let wreach_sets = O.wreach_sets(r);
+        let wreach_sets = O.wreach_sets(R as u32);
 
         for u in G.vertices() {
             let reachables = W.reachables(&u);
@@ -298,7 +298,7 @@ mod test {
             // Verify that the depth of each vertex is correct
             // *and* that the relative order in each depth-group
             // has been maintained.
-            for depth in 1..=r {
+            for depth in 1..=R as u32 {
                 let mut last_index:i64 = -1;
                 for v in reachables.at(depth as usize) {
                     assert_eq!(depth, wreach_set[v]);  

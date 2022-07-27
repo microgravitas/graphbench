@@ -251,7 +251,7 @@ mod test {
     fn consistency() {
         let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
         let O = OrdGraph::by_degeneracy(&G);
-        let D = O.to_wreach_graph(3);
+        let D = O.to_wreach_graph::<3>();
 
         for u in G.vertices() {
             assert_eq!(G.degree(u), D.degree(u));

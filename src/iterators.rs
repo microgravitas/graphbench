@@ -523,10 +523,10 @@ mod test {
     
     #[test]
     fn wreach_iterator() {
-        let r = 5;
+        const R:usize = 5;
         let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
         let O = OrdGraph::by_degeneracy(&G);
-        let W = O.to_wreach_graph(r);
+        let W = O.to_wreach_graph::<R>();
         
         for (v,reachables) in W.iter() {
             assert_eq!(v, reachables.from);

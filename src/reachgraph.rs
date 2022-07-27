@@ -6,8 +6,7 @@ use itertools::Itertools;
 use crate::graph::*;
 use crate::iterators::*;
 
-pub struct ReachGraph {
-    _depth: u32,
+pub struct ReachGraph<const DEPTH: usize> {
     indices: VertexMap<usize>,
     pub(crate) contents:Vec<u32>,
     right_degrees: VertexMap<u32>,
@@ -15,13 +14,13 @@ pub struct ReachGraph {
 }
 
 #[derive(Debug,PartialEq,Eq)]
-pub struct Reachables<'a> {
+pub struct Reachables<'a, const DEPTH: usize> {
     pub(crate) from: Vertex,
-    reachables: Vec<&'a [u32]>,
-    boundaries: Vec<(usize, usize)>
+    reachables: [&'a [u32]; DEPTH],
+    boundaries: [(usize, usize); DEPTH]
 }
 
-impl<'a> Reachables<'a> {
+impl<'a, const DEPTH: usize> Reachables<'a, DEPTH> {
     /// Returns the total number of reachable vertices at all depths.
     pub fn len(&self) -> usize {
         self.reachables.iter().map(|seg| seg.len()).sum()
@@ -30,8 +29,8 @@ impl<'a> Reachables<'a> {
     /// Returns all vertices that are reachable at `depth` from the
     /// root vertex.
     pub fn at(&self, depth:usize) -> &[Vertex] {
-        assert!(depth >= 1 && depth < self.reachables.len()+1);
-        self.reachables[(depth-1)]
+        assert!(depth >= 1 && depth <= DEPTH);
+        self.reachables[depth-1]
     }
 
     /// Returns the boundary indices of vertices that are reachable
@@ -42,10 +41,9 @@ impl<'a> Reachables<'a> {
     }
 }
 
-impl ReachGraph {
-    fn new(depth:u32) -> Self {
-        ReachGraph{ _depth: depth,
-                    indices: VertexMap::default(),
+impl<const DEPTH: usize> ReachGraph<DEPTH> {
+    fn new() -> Self {
+        ReachGraph{ indices: VertexMap::default(),
                     edges: EdgeSet::default(),
                     right_degrees: VertexMap::default(),
                     contents: Vec::default() }
@@ -60,16 +58,16 @@ impl ReachGraph {
         }
     }
 
-    fn reachables_at(&self, index_u:usize) -> Reachables {
-        let r = self._depth as usize;
+    fn reachables_at(&self, index_u:usize) -> Reachables<DEPTH> {
+        let r = DEPTH;
         let u = self.contents[index_u];
 
         // Layout:
         //    | u | next_vertex | index_2 | index_3 | ... | index_r  | index_end | [dist 1 neighbours] [dist 2 neighbours] ... [dist r neigbhours]
         //  index_u     + 1         +2         + 3          + r          + (r+1)   + (r+2)        
         let mut left = index_u + r + 2; 
-        let mut reachables = Vec::with_capacity(self._depth as usize);
-        let mut boundaries = Vec::with_capacity(self._depth as usize);
+        let mut reachables = Vec::with_capacity(DEPTH as usize);
+        let mut boundaries = Vec::with_capacity(DEPTH as usize);
         for right in &self.contents[index_u+2..=index_u+r+1] {
             let right = *right as usize;
             reachables.push(&self.contents[left..right]);
@@ -77,15 +75,18 @@ impl ReachGraph {
             left = right;
         }
 
+        let reachables:[&[u32]; DEPTH] = reachables.try_into().unwrap();
+        let boundaries:[(usize, usize); DEPTH] = boundaries.try_into().unwrap();
+
         Reachables { from: u, reachables, boundaries }
     }
 
-    pub fn reachables(&self, u:&Vertex) -> Reachables {
+    pub fn reachables(&self, u:&Vertex) -> Reachables<DEPTH> {
         let index_u = self.index_of(u);
         self.reachables_at(index_u)
     }
 
-    pub fn next_reachables(&self, last:&Vertex) -> Option<Reachables> {
+    pub fn next_reachables(&self, last:&Vertex) -> Option<Reachables<DEPTH>> {
         let index_last = self.index_of(last);
         debug_assert_eq!(*last, self.contents[index_last]);
 
@@ -99,7 +100,7 @@ impl ReachGraph {
 
     pub fn reachables_all(&self, u:&Vertex) -> &[u32] {
         let index_u = self.index_of(u);
-        let r = self._depth as usize;
+        let r = DEPTH as usize;
         debug_assert_eq!(*u, self.contents[index_u]);
 
         let left = index_u + r + 2;
@@ -110,7 +111,7 @@ impl ReachGraph {
 
     fn segment(&self, u:&Vertex) -> &[u32] {
         let index_u = self.index_of(u);
-        let r = self._depth as usize;
+        let r = DEPTH as usize;
         debug_assert_eq!(*u, self.contents[index_u]);
 
         let right = self.contents[index_u + r + 1] as usize;
@@ -118,12 +119,12 @@ impl ReachGraph {
         &self.contents[index_u..right]
     }    
 
-    pub fn depth(&self) -> u32 {
-        self._depth
+    pub fn depth(&self) -> usize {
+        DEPTH
     }
 }
 
-impl Graph for ReachGraph {
+impl<const DEPTH: usize> Graph for ReachGraph<DEPTH> {
     fn num_vertices(&self) -> usize {
         self.indices.len()
     }
@@ -153,7 +154,7 @@ impl Graph for ReachGraph {
     }
 }
 
-impl LinearGraph for ReachGraph {
+impl<const DEPTH: usize> LinearGraph for ReachGraph<DEPTH> {
     fn index_of(&self, u:&Vertex) -> usize {
         *self.indices.get(u).unwrap_or_else(|| panic!("{u} is not a vertex in this graph."))
     }
@@ -167,18 +168,17 @@ impl LinearGraph for ReachGraph {
     }
 }
 
-pub struct ReachGraphBuilder {
+pub struct ReachGraphBuilder<const DEPTH: usize> {
     last_index: Option<u32>,
-    depth: u32,
-    rgraph: ReachGraph
+    rgraph: ReachGraph<DEPTH>
 }
 
-impl ReachGraphBuilder {
-    pub fn new(depth:u32) -> Self {
-        ReachGraphBuilder{ last_index: None, depth, rgraph: ReachGraph::new(depth) }
+impl<const DEPTH: usize> ReachGraphBuilder<DEPTH> {
+    pub fn new() -> Self {
+        ReachGraphBuilder{ last_index: None, rgraph: ReachGraph::<DEPTH>::new() }
     }
 
-    pub fn build(self) -> ReachGraph {
+    pub fn build(self) -> ReachGraph<DEPTH> {
         self.rgraph
     }
 
@@ -195,7 +195,7 @@ impl ReachGraphBuilder {
 
         let contents = &mut self.rgraph.contents;
         let indices = &mut self.rgraph.indices;
-        let r = self.depth;
+        let r = DEPTH as u32;
 
         // Add vertex to contentss
         contents.push(*u);           // | u |
@@ -242,7 +242,7 @@ impl ReachGraphBuilder {
         // all distances are added to the index. As a result, this 
         // loop adds the elements 
         //     | index_2 | ... | index_r | index_end |
-        for (offset, dist) in dists.iter().chain(std::iter::once(&(r+1))).enumerate() {
+        for (offset, dist) in dists.iter().chain(std::iter::once(&(r + 1))).enumerate() {
             let dist = *dist;
             while curr_dist < dist {
                 contents.push(base_offset + offset as u32);
@@ -260,13 +260,13 @@ impl ReachGraphBuilder {
     }
 }
 
-pub struct ReachOrderIterator<'a> {
-    rgraph: &'a ReachGraph,
+pub struct ReachOrderIterator<'a, const DEPTH: usize> {
+    rgraph: &'a ReachGraph<DEPTH>,
     curr_index: Option<usize>
 }
 
-impl<'a> ReachOrderIterator<'a> {
-    pub fn new(rgraph: &'a ReachGraph) -> Self {
+impl<'a, const DEPTH: usize> ReachOrderIterator<'a, DEPTH> {
+    pub fn new(rgraph: &'a ReachGraph<DEPTH>) -> Self {
         if rgraph.len() == 0 {
             ReachOrderIterator { rgraph, curr_index: None }
         } else {
@@ -275,7 +275,7 @@ impl<'a> ReachOrderIterator<'a> {
     }    
 }
 
-impl<'a> Iterator for ReachOrderIterator<'a> {
+impl<'a, const DEPTH: usize> Iterator for ReachOrderIterator<'a, DEPTH> {
     type Item = &'a Vertex;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -300,20 +300,20 @@ impl<'a> Iterator for ReachOrderIterator<'a> {
 
 /// Reachable-set iterator for graphs. At each step, the iterator
 /// returns a pair $(v,W^r(v))$.
-pub struct ReachIterator<'a> {
-    rgraph: &'a ReachGraph,
-    current: Option<Reachables<'a>>
+pub struct ReachIterator<'a, const DEPTH: usize> {
+    rgraph: &'a ReachGraph<DEPTH>,
+    current: Option<Reachables<'a, DEPTH>>
 }
 
-impl<'a> ReachIterator<'a> {
-    pub fn new(rgraph: &'a ReachGraph) -> Self {
+impl<'a, const DEPTH: usize> ReachIterator<'a, DEPTH> {
+    pub fn new(rgraph: &'a ReachGraph<DEPTH>) -> Self {
         let current = rgraph.first().map(|u| rgraph.reachables(&u));
         ReachIterator { rgraph, current }
     }    
 }
 
-impl<'a> Iterator for ReachIterator<'a>{
-    type Item = (Vertex, Reachables<'a>);
+impl<'a, const DEPTH: usize> Iterator for ReachIterator<'a, DEPTH>{
+    type Item = (Vertex, Reachables<'a, DEPTH>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(reachables) = &self.current {
@@ -328,8 +328,8 @@ impl<'a> Iterator for ReachIterator<'a>{
     }
 }
 
-impl ReachGraph {
-    pub fn iter(&self) -> ReachIterator {
+impl<const DEPTH: usize> ReachGraph<DEPTH> {
+    pub fn iter(&self) -> ReachIterator<DEPTH> {
         ReachIterator::new(self)
     }
 }
@@ -355,7 +355,7 @@ mod test {
     fn consistency() {
         let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
         let O = OrdGraph::by_degeneracy(&G);
-        let W = O.to_wreach_graph(3);
+        let W = O.to_wreach_graph::<3>();
 
         for u in G.vertices() {
             assert_eq!(G.degree(u), W.degree(u));
@@ -367,7 +367,7 @@ mod test {
         let G = EditGraph::path(20);
         let order:Vec<_> = (0..20).rev().collect();
         let O = OrdGraph::with_ordering(&G, order.iter());    
-        let W = O.to_wreach_graph(3);
+        let W = O.to_wreach_graph::<3>();
         
         assert_eq!(order, W.vertices().copied().collect_vec());
     }
@@ -376,13 +376,13 @@ mod test {
     fn count_cliques() {
         let G = EditGraph::clique(5);
         let O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());    
-        let W = O.to_wreach_graph(3);
+        let W = O.to_wreach_graph::<3>();
 
         assert_eq!(W.count_max_cliques(), 1);
 
         let G = EditGraph::complete_kpartite([5,5,5].iter());
         let O = OrdGraph::by_degeneracy(&G);    
-        let W = O.to_wreach_graph(3);
+        let W = O.to_wreach_graph::<3>();
 
         assert_eq!(W.count_max_cliques(), 5*5*5);        
     }
