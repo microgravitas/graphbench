@@ -23,6 +23,9 @@ pub mod ordgraph;
 /// stores certain 'reachable' sets for each vertex.
 pub mod reachgraph;
 
+/// Data structure for degenerate graphs.
+pub mod degengraph;
+
 /// Various iterators for graph traits.
 pub mod iterators;
 

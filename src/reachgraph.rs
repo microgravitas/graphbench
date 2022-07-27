@@ -148,9 +148,8 @@ impl Graph for ReachGraph {
         Box::new(ReachOrderIterator::new(self))
     }
 
-    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
-        let (left, right) = self.reachables(u).get_boundaries(1);
-        Box::new(self.contents[left..right].iter())
+    fn neighbours<'a>(&'a self, _u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+        panic!("ReachGraph::neighbours not supported.")
     }
 }
 
@@ -184,7 +183,7 @@ impl ReachGraphBuilder {
     }
 
     pub fn append(&mut self, u:&Vertex, reachable:&VertexMap<u32>, order:&VertexMap<usize>) {
-        // Let r be the depth of this data structure. Then for each vertex we layout the data as follows:
+        // Let r be the depth of this data structure. Then for each vertex the data is layed out as follows:
         //    
         //                                                                          base_offset
         //    | u | next_vertex | index_2 | index_3 | ... | index_r  | index_end | [dist 1 neighbours] [dist 2 neighbours] ... [dist r neigbhours]
@@ -368,7 +367,7 @@ mod test {
         let G = EditGraph::path(20);
         let order:Vec<_> = (0..20).rev().collect();
         let O = OrdGraph::with_ordering(&G, order.iter());    
-        let W = O.to_degeneracy_graph();
+        let W = O.to_wreach_graph(3);
         
         assert_eq!(order, W.vertices().copied().collect_vec());
     }
@@ -377,13 +376,13 @@ mod test {
     fn count_cliques() {
         let G = EditGraph::clique(5);
         let O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());    
-        let W = O.to_degeneracy_graph();
+        let W = O.to_wreach_graph(3);
 
         assert_eq!(W.count_max_cliques(), 1);
 
         let G = EditGraph::complete_kpartite([5,5,5].iter());
         let O = OrdGraph::by_degeneracy(&G);    
-        let W = O.to_degeneracy_graph();
+        let W = O.to_wreach_graph(3);
 
         assert_eq!(W.count_max_cliques(), 5*5*5);        
     }

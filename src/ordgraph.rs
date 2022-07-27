@@ -3,6 +3,8 @@ use std::iter;
 
 use crate::algorithms::GraphAlgorithms;
 use crate::algorithms::LinearGraphAlgorithms;
+use crate::degengraph::DegenGraph;
+use crate::degengraph::DegenGraphBuilder;
 use crate::reachgraph::ReachGraph;
 use crate::reachgraph::ReachGraphBuilder;
 use fxhash::{FxHashMap, FxHashSet};
@@ -87,13 +89,12 @@ impl OrdGraph {
         OrdGraph {nodes, indices, m: graph.num_edges()}
     }
 
-    pub fn to_degeneracy_graph(&self) -> ReachGraph {
-        let mut builder = ReachGraphBuilder::new(1);
+    pub fn to_degeneracy_graph(&self) -> DegenGraph {
+        let mut builder = DegenGraphBuilder::new(1);
 
         for u in self.vertices() {
             let L = self.left_neighbours(u);
-            let W = L.iter().map(|x| (*x,1) ).collect();
-            builder.append(u, &W, &self.indices);
+            builder.append(u, &L);
         }
 
         builder.build()
@@ -103,8 +104,9 @@ impl OrdGraph {
         let mut builder = ReachGraphBuilder::new(r);
         let wreach_sets = self.wreach_sets(r);
 
-        for (u, W) in wreach_sets.into_iter() {
-            builder.append(&u, &W, &self.indices);
+        for u in self.vertices() {
+            let W = &wreach_sets[u];
+            builder.append(&u, W, &self.indices);
         }
 
         builder.build()
@@ -374,13 +376,11 @@ mod test {
     fn count_cliques() {
         let G = EditGraph::clique(5);
         let O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());    
-        // let W = O.to_degeneracy_graph();
 
         assert_eq!(O.count_max_cliques(), 1);
 
         let G = EditGraph::complete_kpartite([5,5,5].iter());
         let O = OrdGraph::by_degeneracy(&G);    
-        // let W = O.to_degeneracy_graph();
 
         assert_eq!(O.count_max_cliques(), 5*5*5);        
     }
