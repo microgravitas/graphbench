@@ -105,7 +105,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
     }    
 
     /// Returns for each vertex the size of its $r$-weakly reachable set. 
-    /// This method uses less memory than [wreach_sets](OrdGraph::wreach_sets).
+    /// This method uses less memory than [wreach_sets](LinearGraphAlgorithms::wreach_sets).
     fn wreach_sizes(&self, r:u32) -> VertexMap<u32> {
         let mut res = VertexMap::default();
         for u in self.vertices() {
