@@ -139,7 +139,7 @@ impl DegenGraphBuilder {
         contents.push(neighbours.len() as u32);
 
         // Finally write all neighbours
-        contents.extend(neighbours.into_iter());
+        contents.extend(neighbours.iter());
 
         self.last_index = Some(index_u);
     }
@@ -176,7 +176,7 @@ impl<'a> Iterator for DegenOrderIterator<'a> {
                     self.curr_index = Some(next_ix);
                 }
 
-                Some(&u)
+                Some(u)
             },
             None => None,
         }

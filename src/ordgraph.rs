@@ -106,7 +106,7 @@ impl OrdGraph {
 
         for u in self.vertices() {
             let W = &wreach_sets[u];
-            builder.append(&u, W, &self.indices);
+            builder.append(u, W, &self.indices);
         }
 
         builder.build()

@@ -291,7 +291,7 @@ impl<'a, const DEPTH: usize> Iterator for ReachOrderIterator<'a, DEPTH> {
                     self.curr_index = Some(next_ix);
                 }
 
-                Some(&u)
+                Some(u)
             },
             None => None,
         }

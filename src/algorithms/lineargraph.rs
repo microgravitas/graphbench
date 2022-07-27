@@ -131,24 +131,17 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
             include.insert(v);
             let exclude = VertexSet::default();
             let maybe = neighbours.iter().cloned().collect();
-            println!("Anchor {v} with left-neighbours {neighbours:?}");
-            println!("I = {include:?}, M = {maybe:?}, X = {exclude:?}");
-            bk_pivot_count(self, &v, &neighbours, &mut include, maybe, exclude, &mut results, 0);
+            bk_pivot_count(self, &v, &neighbours, &mut include, maybe, exclude, &mut results);
         }
         results.len() as u64
     }
 }
 
-fn bk_pivot_count<'a, L: LinearGraph>(graph:&'a L, v:&Vertex, vertices:&[Vertex], include:&mut VertexSet, mut maybe:VertexSet, mut exclude:VertexSet, results:&mut FxHashSet<BTreeSet<Vertex>>, depth:usize) {
-    let indent = format!("{:indent$}", "", indent=2*(depth+1));
-
-    println!("{indent}I = {include:?}, M = {maybe:?}, X = {exclude:?}");
+fn bk_pivot_count<'a, L: LinearGraph>(graph:&'a L, v:&Vertex, vertices:&[Vertex], include:&mut VertexSet, mut maybe:VertexSet, mut exclude:VertexSet, results:&mut FxHashSet<BTreeSet<Vertex>>) {
     if maybe.is_empty() && exclude.is_empty() {
         // `include` is a maximal clique
         
         if include.len() > 1 {
-            println!("{indent}M and X empty: I = {include:?} is a (local) maxm. clique");
-
             // Add new maximal clique
             let clique:BTreeSet<Vertex> = include.iter().copied().collect();
             results.insert(clique);
@@ -184,7 +177,6 @@ fn bk_pivot_count<'a, L: LinearGraph>(graph:&'a L, v:&Vertex, vertices:&[Vertex]
             .filter_map(|v| if graph.adjacent(&u, v) {Some(*v)} else {None} ).collect();
 
     let left_neighbours_set:VertexSet = left_neighbours.iter().cloned().collect();
-    println!("{indent}Chose pivot {u:?} with left-neighbours {left_neighbours:?} ");
 
     for w in vertices[0..=iu].iter().rev() {
         // We ignore `w` if it is not a maybe-vertex. We also ignore it
@@ -201,8 +193,7 @@ fn bk_pivot_count<'a, L: LinearGraph>(graph:&'a L, v:&Vertex, vertices:&[Vertex]
                 include,
                 maybe.intersection(&left_neighbours_set).cloned().collect(),
                 exclude.intersection(&left_neighbours_set).cloned().collect(),
-                results,
-                depth+1 );
+                results);
         include.remove(w);
 
         maybe.remove(w);
