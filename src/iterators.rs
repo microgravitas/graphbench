@@ -1,7 +1,7 @@
 use fxhash::{FxHashMap, FxHashSet};
 
 use crate::graph::*;
-use crate::ordgraph::{ReachGraph, Reachables};
+use crate::reachgraph::{ReachGraph, Reachables};
 use std::hash::Hash;
 
 use crate::editgraph::EditGraph;

@@ -19,6 +19,10 @@ pub mod dtfgraph;
 /// Data structure for graphs with an ordered vertex set.
 pub mod ordgraph;
 
+/// Data structures for graphs with a fixed vertex ordering which makes
+/// stores certain 'reachable' sets for each vertex.
+pub mod reachgraph;
+
 /// Various iterators for graph traits.
 pub mod iterators;
 
