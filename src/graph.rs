@@ -342,4 +342,48 @@ pub trait MutableDigraph: Digraph  {
     fn remove_arc(&mut self, u: &Vertex, v: &Vertex) -> bool;
 }
 
+/// Represents graphs imbued with a linear ordering. The assumption is that this is used for
+/// *degenerate* graphs, meaning that each vertex has only few neighbours that appear before it
+/// in the ordering (the 'left' neighbourhood). 
+/// 
+/// As a consequence this trait does not provide a method to query the right neighbourhood of a vertex
+/// as algorithms designed for degenerate graphs work exclusively on left neighbourhoods.
+pub trait LinearGraph : Graph {
+    /// Returns the index of `u` in the ordering.
+    fn index_of(&self, u:&Vertex) -> usize;
 
+    /// Returns the left neighbourhood of `u`. 
+    fn left_neighbours(&self, u:&Vertex) -> Vec<Vertex>;
+
+    /// Returns the size of `u`'s right neighbourhood.
+    fn right_degree(&self, u:&Vertex) -> u32;    
+
+    /// Returns the number of left neigbhours of `u`. Returns 0 if `u`
+    /// is not contained in the graph.
+    fn left_degree(&self, u:&Vertex) -> u32 {
+        if self.contains(u) {
+            self.left_neighbours(u).len() as u32
+        } else {
+            0
+        }
+    }
+    
+    /// Returns the sizes of all left neighbourhoods as a map.
+    fn left_degrees(&self) -> VertexMap<u32> {
+        let mut res = VertexMap::default();
+        for u in self.vertices() {
+            res.insert(*u, self.left_degree(u));
+        }
+        res
+    }
+    
+    /// Returns the sizes of all right neighbourhood as a map.
+    fn right_degrees(&self) -> VertexMap<u32> {
+        let mut res = VertexMap::default();
+        for u in self.vertices() {
+            res.insert(*u, self.right_degree(u));
+        }
+        res
+    }
+
+}

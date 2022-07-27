@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 use std::iter;
 
 use crate::algorithms::GraphAlgorithms;
+use crate::algorithms::LinearGraphAlgorithms;
 use fxhash::{FxHashMap, FxHashSet};
 
 use crate::graph::*;
@@ -44,6 +45,7 @@ impl OrdNode {
         OrdNode{v: *v, left: VertexSet::default(), right: VertexSet::default() }
     }
 }
+
 
 impl OrdGraph {
     /// Creates an ordered graph from `graph` by computing a degeneracy ordering.
@@ -165,46 +167,6 @@ impl OrdGraph {
         self.nodes.swap(iu, iv);
     }
 
-    /// Returns the size of `u`'s left neighbourhood
-    pub fn left_degree(&self, u:&Vertex) -> usize {
-        if let Some(iu) = self.indices.get(u) {
-            let node_u = &self.nodes[*iu];
-            node_u.left.len()
-        } else {
-            0
-        }
-    }
-
-    /// Returns a copy of `u`'s left neighbourhood.
-    pub fn left_neighbours(&self, u:&Vertex) -> Vec<Vertex> {
-        let iu = self.indices.get(u).unwrap_or_else(|| panic!("Vertex {u} does not exist")); 
-        let node_u = &self.nodes[*iu];
-
-        let mut res:Vec<Vertex> = node_u.left.iter().cloned().collect();
-        res.sort_by_cached_key(|v| self.indices.get(v).unwrap());
-        
-        res
-    }
-
-    /// Returns the sizes of all left neighbourhood as a map.
-    pub fn left_degrees(&self) -> VertexMap<u32> {
-        let mut res = VertexMap::default();
-        for n in &self.nodes {
-            res.insert(n.v, n.left.len() as u32);
-        }
-        res
-    }
-    
-    /// Returns the size of `u`'s right neighbourhood.
-    pub fn right_degree(&self, u:&Vertex) -> usize {
-        if let Some(iu) = self.indices.get(u) {
-            let node_u = &self.nodes[*iu];
-            node_u.right.len()
-        } else {
-            0
-        }
-    }    
-
     /// Returns a copy of `u`'s right neighbourhood. 
     pub fn right_neighbours(&self, u:&Vertex) -> Vec<Vertex> {
         let iu = self.indices.get(u).unwrap_or_else(|| panic!("Vertex {u} does not exist")); 
@@ -215,124 +177,6 @@ impl OrdGraph {
         
         res
     }    
-    
-    /// Returns the sizes of all right neighbourhood as a map.
-    pub fn right_degrees(&self) -> VertexMap<u32> {
-        let mut res = VertexMap::default();
-        for n in &self.nodes {
-            res.insert(n.v, n.right.len() as u32);
-        }
-        res
-    }
-
-    /// Conducts a bfs from `root` for `dist` steps ignoring all vertices
-    /// left of `root`.
-    /// 
-    /// Returns the bfs as a sequence of layers.
-    pub fn right_bfs(&self, root:&Vertex, dist:u32) -> Vec<VertexSet> {
-        let mut seen:VertexSet = VertexSet::default();
-        let iroot = *self.indices.get(root).unwrap();
-        let root = *root;
-
-        let mut res = vec![VertexSet::default(); (dist+1) as usize];
-        res[0].insert(root);
-        seen.insert(root);
-
-        for d in 1..=(dist as usize) {
-            let (part1, part2) = res.split_at_mut(d as usize);
-
-            for u in part1[d-1].iter() {
-                let iu = *self.indices.get(u).unwrap();
-                for v in self.nodes[iu].neighbours() {
-                    let iv = *self.indices.get(v).unwrap();
-                    if iv > iroot && !seen.contains(v) {
-                        part2[0].insert(*v);
-                        seen.insert(*v);
-                    }
-                }
-            }
-        }
-
-        res
-    }
-
-    /// Computes all strongly $r$-reachable vertices to $u$. 
-    /// 
-    /// A vertex $v$ is strongly $r$-reachable from $u$ if there exists a $u$-$v$-path in the graph
-    /// of length at most $r$ where $v$ is the only vertex of the path that comes before $u$ in the
-    /// ordering.
-    /// 
-    /// Returns a map with all vertices that are strongly $r$-reachable
-    /// from $u$. For each member $v$ in the map the corresponding values represents
-    /// the distance $d \\leq r$ at which $v$ is strongly reachable from $u$.
-    pub fn sreach_set(&self, u:&Vertex, r:u32) -> VertexMap<u32> {
-        let bfs = self.right_bfs(u, r-1);
-        let mut res = VertexMap::default();
-        
-        let iu = *self.indices.get(u).unwrap_or_else(|| panic!("{u} not contained in this graph"));
-        for (d, layer) in bfs.iter().enumerate() {
-            for v in layer {
-                for x in self.left_neighbours(v) {
-                    let ix = self.indices[&x];
-                    if ix < iu {
-                        // If x is alyread in `res` then it will be for a smaller
-                        // distance. Therefore we only insert the current distance if 
-                        // no entry exists yet.
-                        res.entry(x).or_insert((d+1) as u32);
-                    }
-                }
-            }
-        }
-
-        res
-    }
-
-    /// Computes all weakly $r$-reachable sets as a map.. 
-    /// 
-    /// A vertex $v$ is weakly $r$-rechable from $u$ if there exists a $u$-$v$-path in the graph
-    /// of length at most $r$ whose leftmost vertex is $v$. In particular, $v$ must be left of
-    /// $u$ in the ordering.
-    /// 
-    /// Returns a [VertexMap] for each vertex. For a vertex $u$ the corresponding [VertexMap] 
-    /// contains all vertices that are weakly $r$-reachable from $u$. For each member $v$ 
-    /// in this [VertexMap] the corresponding values represents the distance $d \\leq r$ at 
-    /// which $v$ is weakly reachable from $u$.
-    /// 
-    /// If the sizes of the weakly $r$-reachable sets are bounded by a constant the computation 
-    /// takes $O(|G|)$ time.      
-    pub fn wreach_sets(&self, r:u32) -> VertexMap<VertexMap<u32>> {
-        let mut res = VertexMap::default();
-        for n in &self.nodes {
-            res.insert(n.v, VertexMap::default());
-        }
-        for u in self.vertices() {
-            for (d, layer) in self.right_bfs(u, r).iter().skip(1).enumerate() {
-                for v in layer {
-                    assert!(*v != *u);
-                    res.get_mut(v).unwrap().insert(*u, (d+1) as u32); 
-                }
-            }
-        }
-        res
-    }    
-
-    /// Returns for each vertex the size of its $r$-weakly reachable set. 
-    /// This method uses less memory than [wreach_sets](OrdGraph::wreach_sets).
-    pub fn wreach_sizes(&self, r:u32) -> VertexMap<u32> {
-        let mut res = VertexMap::default();
-        for n in &self.nodes {
-            res.insert(n.v, 0);
-        }
-        for u in self.vertices() {
-            for layer in self.right_bfs(u, r).iter().skip(1) {
-                for v in layer {
-                    let count = res.entry(*v).or_insert(0);
-                    *count += 1;
-                }
-            }
-        }
-        res
-    }     
 }
 
 impl Graph for OrdGraph {
@@ -380,6 +224,31 @@ impl Graph for OrdGraph {
             Box::new(iter::empty::<&Vertex>())
         }
     }
+}
+
+impl LinearGraph for OrdGraph {
+    fn index_of(&self, u:&Vertex) -> usize {
+        *self.indices.get(u).unwrap_or_else(|| panic!("Vertex {u} does not exist"))
+    }
+
+    fn left_neighbours(&self, u:&Vertex) -> Vec<Vertex> {
+        let iu = self.index_of(u);
+        let node_u = &self.nodes[iu];
+
+        let mut res:Vec<Vertex> = node_u.left.iter().cloned().collect();
+        res.sort_by_cached_key(|v| self.indices.get(v).unwrap());
+        
+        res
+    }
+    
+    fn right_degree(&self, u:&Vertex) -> u32 {
+        if let Some(iu) = self.indices.get(u) {
+            let node_u = &self.nodes[*iu];
+            node_u.right.len() as u32
+        } else {
+            0
+        }
+    }    
 }
 
 
@@ -774,10 +643,10 @@ mod test {
 
         let mut m = 0;
         for u in O.vertices() {
-            assert_eq!(O.left_degree(u), O.left_neighbours(u).len());
+            assert_eq!(O.left_degree(u), O.left_neighbours(u).len() as u32);
             m += O.left_degree(u);
         }
-        assert_eq!(m, G.num_edges());
+        assert_eq!(m as usize, G.num_edges());
 
         for (u,v) in O.edges() {
             assert!(G.adjacent(&u, &v));
