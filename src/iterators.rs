@@ -75,7 +75,7 @@ impl<'a, D> Iterator for DiNeighIterator<'a, D> where D: Digraph {
 
 /// Allows construction of a [NeighIterator].
 /// 
-/// Has a deafult implementation for [Graph].
+/// Has a default implementation for [Graph].
 pub trait NeighIterable<G> where G: Graph {
     /// Returns a [NeighIterator] for the graph.
     fn neighbourhoods(&self) -> NeighIterator<G>;
@@ -432,44 +432,41 @@ impl<'a> Iterator for DTFArcIterator<'a> {
 }
 
 
-
-/// Reachable-set iterator for graphs. At each step, the iterator
-/// returns a pair $(v,W^r(v))$.
-pub struct ReachIterator<'a> {
-    rgraph: &'a ReachGraph,
-    current: Option<Reachables<'a>>
+/// Left-neighbourhood iterators for linear graphs. At each step, the iterator
+/// returns a pair $(v,L(v))$. 
+pub struct LeftNeighIterator<'a, L> where L: LinearGraph  {
+    graph: &'a L,
+    v_it: Box<dyn Iterator<Item=&'a Vertex> + 'a>
 }
 
-impl<'a> ReachIterator<'a> {
-    pub fn new(rgraph: &'a ReachGraph) -> ReachIterator<'a> {
-        if rgraph.len() == 0 {
-            ReachIterator { rgraph, current: None }
-        } else {
-            let current = rgraph.reachables(&rgraph.first());
-            ReachIterator { rgraph, current: Some(current) }
-        }
-    }    
-}
-
-impl<'a> Iterator for ReachIterator<'a>{
-    type Item = (Vertex, Reachables<'a>);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(reachables) = &self.current {
-            let u = reachables.from;
-            let next = self.rgraph.next_reachables(&u);
-            let res = std::mem::replace(&mut self.current, next);     
-            
-            Some((u, res.unwrap()))
-        } else {
-            None
-        }
+impl<'a, L> LeftNeighIterator<'a, L> where L: LinearGraph  {
+    pub fn new(graph: &'a L) -> LeftNeighIterator<'a, L> {
+        LeftNeighIterator { graph, v_it: graph.vertices() }
     }
 }
 
-impl ReachGraph {
-    pub fn iter(&self) -> ReachIterator {
-        ReachIterator::new(self)
+impl<'a, L> Iterator for LeftNeighIterator<'a, L> where L: LinearGraph  {
+    type Item = (Vertex, Vec<u32>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let v = *self.v_it.next()?;
+        let N = self.graph.left_neighbours(&v);
+
+        Some((v, N))
+    }
+}
+
+/// Allows construction of a [LeftNeighIterator].
+/// 
+/// Has a default implementation for [LinearGraph].
+pub trait LeftNeighIterable<L> where L: LinearGraph {
+    /// Returns a [NeighIterator] for the graph.
+    fn left_neighbourhoods(&self) -> LeftNeighIterator<L>;
+}
+
+impl<L> LeftNeighIterable<L> for L where L: LinearGraph {
+    fn left_neighbourhoods(&self) -> LeftNeighIterator<L> {
+        LeftNeighIterator::<L>::new(self)
     }
 }
 

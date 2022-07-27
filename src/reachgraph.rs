@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use fxhash::FxHashSet;
+use itertools::Itertools;
 
 use crate::graph::*;
 use crate::iterators::*;
@@ -115,92 +116,6 @@ impl ReachGraph {
     pub fn depth(&self) -> u32 {
         self._depth
     }
-
-    pub fn count_max_cliques(&self) -> u64 {
-        let mut results = FxHashSet::<BTreeSet<Vertex>>::default(); 
-
-        for (v,reachables) in self.iter() {
-            let neighbours = reachables.at(1);
-            let mut include = VertexSet::default();
-            include.insert(v);
-            let exclude = VertexSet::default();
-            let maybe = neighbours.iter().cloned().collect();
-            println!("Anchor {v} with left-neighbours {neighbours:?}");
-            println!("I = {include:?}, M = {maybe:?}, X = {exclude:?}");
-            self.bk_pivot_count(&v, neighbours, &mut include, maybe, exclude, &mut results, 0);
-        }
-        results.len() as u64
-    }
-
-    fn bk_pivot_count(&self, v:&Vertex, vertices:&[Vertex], include:&mut VertexSet, mut maybe:VertexSet, mut exclude:VertexSet, results:&mut FxHashSet<BTreeSet<Vertex>>, depth:usize) {
-        let indent = format!("{:indent$}", "", indent=2*(depth+1));
-
-        println!("{indent}I = {include:?}, M = {maybe:?}, X = {exclude:?}");
-        if maybe.is_empty() && exclude.is_empty() {
-            // `include` is a maximal clique
-            
-            if include.len() > 1 {
-                println!("{indent}M and X empty: I = {include:?} is a (local) maxm. clique");
-
-                // Add new maximal clique
-                let clique:BTreeSet<Vertex> = include.iter().copied().collect();
-                results.insert(clique);
-            }
-
-            if include.len() >= 3 { 
-                // Remove prefix of clique. While we know that it must have been added to `results`
-                // at some point, it could have been removed in the meantime.
-                let mut clique:BTreeSet<Vertex> = include.iter().copied().collect();
-                clique.remove(v);
-                results.remove(&clique);
-            }
-
-            return ;
-        }
-
-        // Choose the last vertex in ordering which is in either `maybe` or `exclude`
-        // as the pivot vertex
-        let mut u = None;
-        let mut iu = 0;
-        for i in (0..vertices.len()).rev() {
-            let cand = vertices[i];
-            if maybe.contains(&cand) || exclude.contains(&cand) {
-                u = Some(cand);
-                iu = i;
-                break;
-            }
-        }
-        let u = u.expect("If this fails there is a bug");
-
-        // Compute u's *left* neighbourhood inside of `vertices`. 
-        let left_neighbours:Vec<Vertex> = vertices[0..iu].iter()
-                .filter_map(|v| if self.adjacent(&u, v) {Some(*v)} else {None} ).collect();
-
-        let left_neighbours_set:VertexSet = left_neighbours.iter().cloned().collect();
-        println!("{indent}Chose pivot {u:?} with left-neighbours {left_neighbours:?} ");
-
-        for w in vertices[0..=iu].iter().rev() {
-            // We ignore `w` if it is not a maybe-vertex. We also ignore it
-            // if it is a neighbour of the pivot `u`.
-            if !maybe.contains(w) || left_neighbours_set.contains(w) {
-                continue
-            } 
-
-            // Recursion
-            include.insert(*w);
-            self.bk_pivot_count(v,
-                    &left_neighbours, 
-                    include,
-                    maybe.intersection(&left_neighbours_set).cloned().collect(),
-                    exclude.intersection(&left_neighbours_set).cloned().collect(),
-                    results,
-                    depth+1 );
-            include.remove(w);
-
-            maybe.remove(w);
-            exclude.insert(*w);
-        }
-    }
 }
 
 impl Graph for ReachGraph {
@@ -226,12 +141,26 @@ impl Graph for ReachGraph {
     }
 
     fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
-        Box::new(self.indices.keys())
+        Box::new(ReachOrderIterator::new(self))
     }
 
     fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
         let (left, right) = self.reachables(u).get_boundaries(1);
         Box::new(self.contents[left..right].iter())
+    }
+}
+
+impl LinearGraph for ReachGraph {
+    fn index_of(&self, u:&Vertex) -> usize {
+        self.indices[u]
+    }
+
+    fn left_neighbours(&self, u:&Vertex) -> Vec<Vertex> {
+        self.reachables(u).at(1).to_vec()
+    }
+
+    fn right_degree(&self, _u:&Vertex) -> u32 {
+        panic!("ReachGraph::right_degree is not available.")   
     }
 }
 
@@ -322,3 +251,127 @@ impl ReachGraphBuilder {
     
 }
 
+
+
+pub struct ReachOrderIterator<'a> {
+    rgraph: &'a ReachGraph,
+    curr_index: Option<usize>
+}
+
+impl<'a> ReachOrderIterator<'a> {
+    pub fn new(rgraph: &'a ReachGraph) -> Self {
+        if rgraph.len() == 0 {
+            ReachOrderIterator { rgraph, curr_index: None }
+        } else {
+            ReachOrderIterator { rgraph, curr_index: Some(0) }
+        }
+    }    
+}
+
+impl<'a> Iterator for ReachOrderIterator<'a> {
+    type Item = &'a Vertex;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.curr_index {
+            Some(ix) => {
+                let contents = &self.rgraph.contents;
+                let u = &contents[ix];
+
+                let next_ix = contents[ix+1] as usize;
+                if next_ix == ix { 
+                    self.curr_index = None;
+                } else {
+                    self.curr_index = Some(next_ix);
+                }
+
+                Some(&u)
+            },
+            None => None,
+        }
+    }
+}
+
+
+/// Reachable-set iterator for graphs. At each step, the iterator
+/// returns a pair $(v,W^r(v))$.
+pub struct ReachIterator<'a> {
+    rgraph: &'a ReachGraph,
+    current: Option<Reachables<'a>>
+}
+
+impl<'a> ReachIterator<'a> {
+    pub fn new(rgraph: &'a ReachGraph) -> Self {
+        if rgraph.len() == 0 {
+            ReachIterator { rgraph, current: None }
+        } else {
+            let current = rgraph.reachables(&rgraph.first());
+            ReachIterator { rgraph, current: Some(current) }
+        }
+    }    
+}
+
+impl<'a> Iterator for ReachIterator<'a>{
+    type Item = (Vertex, Reachables<'a>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(reachables) = &self.current {
+            let u = reachables.from;
+            let next = self.rgraph.next_reachables(&u);
+            let res = std::mem::replace(&mut self.current, next);     
+            
+            Some((u, res.unwrap()))
+        } else {
+            None
+        }
+    }
+}
+
+impl ReachGraph {
+    pub fn iter(&self) -> ReachIterator {
+        ReachIterator::new(self)
+    }
+}
+
+
+
+//  #######                            
+//     #    ######  ####  #####  ####  
+//     #    #      #        #   #      
+//     #    #####   ####    #    ####  
+//     #    #           #   #        # 
+//     #    #      #    #   #   #    # 
+//     #    ######  ####    #    ####  
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::editgraph::EditGraph;
+    use crate::ordgraph::OrdGraph;
+    use crate::algorithms::lineargraph::*;
+
+    #[test]
+    fn order_iteration() {
+        let G = EditGraph::path(20);
+        let order:Vec<_> = (0..20).rev().collect();
+        let O = OrdGraph::with_ordering(&G, order.iter());    
+        let W = O.to_degeneracy_graph();
+        
+        assert_eq!(order, W.vertices().copied().collect_vec());
+    }
+
+    #[test] 
+    fn count_cliques() {
+        let G = EditGraph::clique(5);
+        let O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());    
+        let W = O.to_degeneracy_graph();
+
+        assert_eq!(W.count_max_cliques(), 1);
+
+        let G = EditGraph::complete_kpartite([5,5,5].iter());
+        let O = OrdGraph::by_degeneracy(&G);    
+        let W = O.to_degeneracy_graph();
+
+        assert_eq!(W.count_max_cliques(), 5*5*5);        
+    }
+
+}

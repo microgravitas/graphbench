@@ -266,6 +266,16 @@ impl LinearGraph for OrdGraph {
 mod test {
     use super::*;
     use crate::editgraph::EditGraph;
+    use itertools::Itertools;    
+
+    #[test]
+    fn order_iteration() {
+        let G = EditGraph::path(20);
+        let order:Vec<_> = (0..20).rev().collect();
+        let O = OrdGraph::with_ordering(&G, order.iter());    
+        
+        assert_eq!(order, O.vertices().copied().collect_vec());
+    }
 
     #[test]
     fn wreach_graph() {
@@ -364,14 +374,14 @@ mod test {
     fn count_cliques() {
         let G = EditGraph::clique(5);
         let O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());    
-        let W = O.to_degeneracy_graph();
+        // let W = O.to_degeneracy_graph();
 
-        assert_eq!(W.count_max_cliques(), 1);
+        assert_eq!(O.count_max_cliques(), 1);
 
         let G = EditGraph::complete_kpartite([5,5,5].iter());
         let O = OrdGraph::by_degeneracy(&G);    
-        let W = O.to_degeneracy_graph();
+        // let W = O.to_degeneracy_graph();
 
-        assert_eq!(W.count_max_cliques(), 5*5*5);        
+        assert_eq!(O.count_max_cliques(), 5*5*5);        
     }
 }
