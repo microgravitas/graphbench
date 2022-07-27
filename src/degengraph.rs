@@ -30,7 +30,7 @@ impl DegenGraph {
         }
     }
 
-    fn left_neighbours_slice(&self, u:&Vertex) -> &[Vertex] {
+    pub fn left_neighbours_slice(&self, u:&Vertex) -> &[Vertex] {
         let iu = self.index_of(u);
         debug_assert_eq!(*u, self.contents[iu]);
 
