@@ -8,8 +8,9 @@ use crate::iterators::*;
 
 pub struct ReachGraph {
     _depth: u32,
-    indices:VertexMap<usize>,
+    indices: VertexMap<usize>,
     pub(crate) contents:Vec<u32>,
+    right_degrees: VertexMap<u32>,
     edges: EdgeSet
 }
 
@@ -46,13 +47,17 @@ impl ReachGraph {
         ReachGraph{ _depth: depth,
                     indices: VertexMap::default(),
                     edges: EdgeSet::default(),
+                    right_degrees: VertexMap::default(),
                     contents: Vec::default() }
     }
 
-    /// Returns the first vertex in the ordering
-    pub fn first(&self) -> Vertex {
-        assert!(self.contents.len() > 1);
-        self.contents[0]
+    /// Returns the first vertex in the ordering, if the graph is non-empty.
+    pub fn first(&self) -> Option<Vertex> {
+        if self.contents.is_empty() {
+            None
+        } else { 
+            Some(self.contents[0])
+        }
     }
 
     fn reachables_at(&self, index_u:usize) -> Reachables {
@@ -76,12 +81,12 @@ impl ReachGraph {
     }
 
     pub fn reachables(&self, u:&Vertex) -> Reachables {
-        let index_u = *self.indices.get(u).unwrap_or_else(|| panic!("{u} is not a vertex in this graph."));
+        let index_u = self.index_of(u);
         self.reachables_at(index_u)
     }
 
     pub fn next_reachables(&self, last:&Vertex) -> Option<Reachables> {
-        let index_last = *self.indices.get(last).unwrap_or_else(|| panic!("{last} is not a vertex in this graph."));
+        let index_last = self.index_of(last);
         debug_assert_eq!(*last, self.contents[index_last]);
 
         let index_next = self.contents[index_last+1] as usize;
@@ -93,7 +98,7 @@ impl ReachGraph {
     }
 
     pub fn reachables_all(&self, u:&Vertex) -> &[u32] {
-        let index_u = *self.indices.get(u).unwrap_or_else(|| panic!("{u} is not a vertex in this graph."));
+        let index_u = self.index_of(u);
         let r = self._depth as usize;
         debug_assert_eq!(*u, self.contents[index_u]);
 
@@ -104,7 +109,7 @@ impl ReachGraph {
     }
 
     fn segment(&self, u:&Vertex) -> &[u32] {
-        let index_u = *self.indices.get(u).unwrap_or_else(|| panic!("{u} is not a vertex in this graph."));
+        let index_u = self.index_of(u);
         let r = self._depth as usize;
         debug_assert_eq!(*u, self.contents[index_u]);
 
@@ -136,8 +141,7 @@ impl Graph for ReachGraph {
     }
 
     fn degree(&self, u:&Vertex) -> u32 {
-        let reach = self.reachables(u);
-        reach.at(1).len() as u32
+        self.left_degree(u) + self.right_degree(u)
     }
 
     fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
@@ -152,15 +156,15 @@ impl Graph for ReachGraph {
 
 impl LinearGraph for ReachGraph {
     fn index_of(&self, u:&Vertex) -> usize {
-        self.indices[u]
+        *self.indices.get(u).unwrap_or_else(|| panic!("{u} is not a vertex in this graph."))
     }
 
     fn left_neighbours(&self, u:&Vertex) -> Vec<Vertex> {
         self.reachables(u).at(1).to_vec()
     }
 
-    fn right_degree(&self, _u:&Vertex) -> u32 {
-        panic!("ReachGraph::right_degree is not available.")   
+    fn right_degree(&self, u:&Vertex) -> u32 {
+        *self.right_degrees.get(u).unwrap_or(&0)
     }
 }
 
@@ -215,12 +219,19 @@ impl ReachGraphBuilder {
         let vertices = neighbour_order.iter().map(|(_,_,v)| *v);
         let dists:Vec<_> = neighbour_order.iter().map(|(dist,_,_)| *dist).collect();
 
-        // Add edges
-        let edges_it = reachable.iter()
-            .filter_map(|(v,dist)| if *dist == 1 {Some((*u,*v))} else {None} )
-            .map(|(u,v)| if u < v {(u,v)} else {(v,u)} );
+        // Add edges and count right-degrees
+        for (v,&dist) in reachable.iter() {
+            if dist != 1 {
+                continue
+            }
+            *self.rgraph.right_degrees.entry(*v).or_insert(0) += 1;
 
-        self.rgraph.edges.extend(edges_it);
+            if u < v { 
+                self.rgraph.edges.insert((*u,*v));
+            } else {
+                self.rgraph.edges.insert((*v,*u));
+            }
+        }
         
         
         // Push | index_2 | ... | index_r |
@@ -248,10 +259,7 @@ impl ReachGraphBuilder {
 
         self.last_index = Some(index_u);
     }
-    
 }
-
-
 
 pub struct ReachOrderIterator<'a> {
     rgraph: &'a ReachGraph,
@@ -291,7 +299,6 @@ impl<'a> Iterator for ReachOrderIterator<'a> {
     }
 }
 
-
 /// Reachable-set iterator for graphs. At each step, the iterator
 /// returns a pair $(v,W^r(v))$.
 pub struct ReachIterator<'a> {
@@ -301,12 +308,8 @@ pub struct ReachIterator<'a> {
 
 impl<'a> ReachIterator<'a> {
     pub fn new(rgraph: &'a ReachGraph) -> Self {
-        if rgraph.len() == 0 {
-            ReachIterator { rgraph, current: None }
-        } else {
-            let current = rgraph.reachables(&rgraph.first());
-            ReachIterator { rgraph, current: Some(current) }
-        }
+        let current = rgraph.first().map(|u| rgraph.reachables(&u));
+        ReachIterator { rgraph, current }
     }    
 }
 
@@ -348,6 +351,17 @@ mod test {
     use crate::editgraph::EditGraph;
     use crate::ordgraph::OrdGraph;
     use crate::algorithms::lineargraph::*;
+
+    #[test]
+    fn consistency() {
+        let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
+        let O = OrdGraph::by_degeneracy(&G);
+        let W = O.to_wreach_graph(3);
+
+        for u in G.vertices() {
+            assert_eq!(G.degree(u), W.degree(u));
+        }
+    }
 
     #[test]
     fn order_iteration() {
