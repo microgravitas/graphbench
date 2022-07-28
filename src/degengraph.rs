@@ -15,12 +15,13 @@ pub struct DegenGraph {
 }
 
 impl DegenGraph {
-    /// Creates an ordered graph from `graph` by computing a degeneracy ordering.
+    /// Creates a degenerate graph representation from `graph` by computing a degeneracy ordering.
     pub fn from_graph<G: Graph>(graph: &G) -> DegenGraph {
         let (_, _, ord, _) = graph.degeneracy();
         DegenGraph::with_ordering(graph, ord.iter())
     }
 
+    /// Creates a degenerate graph representation from `graph` using `order`.
     pub fn with_ordering<'a, G, I>(graph: &G, order:I) -> DegenGraph
         where G: Graph, I: Iterator<Item=&'a Vertex>
     {
