@@ -90,7 +90,7 @@ impl OrdGraph {
     }
 
     pub fn to_degeneracy_graph(&self) -> DegenGraph {
-        let mut builder = DegenGraphBuilder::new(1);
+        let mut builder = DegenGraphBuilder::new();
 
         for u in self.vertices() {
             let L = self.left_neighbours(u);

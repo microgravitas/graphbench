@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use fxhash::FxHashSet;
 use itertools::Itertools;
 
+use crate::algorithms::GraphAlgorithms;
 use crate::graph::*;
 use crate::iterators::*;
 
@@ -14,6 +15,39 @@ pub struct DegenGraph {
 }
 
 impl DegenGraph {
+    /// Creates an ordered graph from `graph` by computing a degeneracy ordering.
+    pub fn from_graph<G: Graph>(graph: &G) -> DegenGraph {
+        let (_, _, ord, _) = graph.degeneracy();
+        DegenGraph::with_ordering(graph, ord.iter())
+    }
+
+    pub fn with_ordering<'a, G, I>(graph: &G, order:I) -> DegenGraph
+        where G: Graph, I: Iterator<Item=&'a Vertex>
+    {
+        let order:Vec<_> = order.collect();
+        let indices:VertexMap<_> = order.iter().cloned()
+                .enumerate().map(|(i,u)| (*u,i)).collect();
+
+        let mut builder = DegenGraphBuilder::new();
+
+        for u in order {
+            let mut L = Vec::new();
+            let iu = indices[&u];            
+            for v in graph.neighbours(u) {
+                let iv = indices[&v];
+                if iv < iu {
+                    L.push((iv, *v));
+                }
+            }
+            L.sort_unstable();
+
+            let L = L.iter().map(|(_,v)| *v).collect();
+            builder.append(u, &L);
+        }
+
+        builder.build()
+    }
+
     fn new() -> Self {
         DegenGraph{ indices: VertexMap::default(),
                     edges: EdgeSet::default(),
@@ -89,13 +123,12 @@ impl LinearGraph for DegenGraph {
 
 pub struct DegenGraphBuilder {
     last_index: Option<u32>,
-    depth: u32,
     dgraph: DegenGraph
 }
 
 impl DegenGraphBuilder {
-    pub fn new(depth:u32) -> Self {
-        DegenGraphBuilder{ last_index: None, depth, dgraph: DegenGraph::new() }
+    pub fn new() -> Self {
+        DegenGraphBuilder{ last_index: None, dgraph: DegenGraph::new() }
     }
 
     pub fn build(self) -> DegenGraph {
@@ -250,20 +283,25 @@ mod test {
     #[test]
     fn consistency() {
         let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
-        let O = OrdGraph::by_degeneracy(&G);
-        let D = O.to_wreach_graph::<3>();
+        let D = DegenGraph::from_graph(&G);
 
         for u in G.vertices() {
             assert_eq!(G.degree(u), D.degree(u));
         }
+
+        let O = OrdGraph::with_ordering(&G, D.vertices());
+        for u in G.vertices() {
+            assert_eq!(O.left_degree(u), D.left_degree(u));
+            assert_eq!(O.right_degree(u), D.right_degree(u));
+        }
+
     }
 
     #[test]
     fn order_iteration() {
         let G = EditGraph::path(20);
         let order:Vec<_> = (0..20).rev().collect();
-        let O = OrdGraph::with_ordering(&G, order.iter());    
-        let D = O.to_degeneracy_graph();
+        let D = DegenGraph::with_ordering(&G, order.iter());
         
         assert_eq!(order, D.vertices().copied().collect_vec());
     }
@@ -271,14 +309,12 @@ mod test {
     #[test] 
     fn count_cliques() {
         let G = EditGraph::clique(5);
-        let O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());    
-        let D = O.to_degeneracy_graph();
+        let D = DegenGraph::with_ordering(&G, vec![0,1,2,3,4].iter());
 
         assert_eq!(D.count_max_cliques(), 1);
 
         let G = EditGraph::complete_kpartite([5,5,5].iter());
-        let O = OrdGraph::by_degeneracy(&G);    
-        let D = O.to_degeneracy_graph();
+        let D = DegenGraph::from_graph(&G);
 
         assert_eq!(D.count_max_cliques(), 5*5*5);        
     }
