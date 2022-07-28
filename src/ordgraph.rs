@@ -382,6 +382,11 @@ mod test {
         let G = EditGraph::complete_kpartite([5,5,5].iter());
         let O = OrdGraph::by_degeneracy(&G);    
 
-        assert_eq!(O.count_max_cliques(), 5*5*5);        
+        assert_eq!(O.count_max_cliques(), 5*5*5);     
+        
+        let G = EditGraph::independent(5);
+        let O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());    
+
+        assert_eq!(O.count_max_cliques(), 5);         
     }
 }

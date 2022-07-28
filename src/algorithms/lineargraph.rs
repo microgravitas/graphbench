@@ -5,19 +5,53 @@ use fxhash::{FxHashMap, FxHashSet};
 use crate::graph::*;
 use crate::iterators::*;
 
+/// Implements various algorithms for the [LinearGraph](crate::graph::LinearGraph) trait.
 pub trait LinearGraphAlgorithms {
+    /// Conducts a bfs from `root` for `dist` steps ignoring all vertices
+    /// left of `root`.
+    /// 
+    /// Returns the bfs as a sequence of layers.    
     fn right_bfs(&self, root:&Vertex, dist:u32) -> Vec<VertexSet>;
+
+
+    /// Computes all strongly $r$-reachable vertices to $u$. 
+    /// 
+    /// A vertex $v$ is strongly $r$-reachable from $u$ if there exists a $u$-$v$-path in the graph
+    /// of length at most $r$ where $v$ is the only vertex of the path that comes before $u$ in the
+    /// ordering.
+    /// 
+    /// Returns a map with all vertices that are strongly $r$-reachable
+    /// from $u$. For each member $v$ in the map the corresponding values represents
+    /// the distance $d \\leq r$ at which $v$ is strongly reachable from $u$.
     fn sreach_set(&self, u:&Vertex, r:u32) -> VertexMap<u32>;
+
+    /// Computes all weakly $r$-reachable sets as a map.. 
+    /// 
+    /// A vertex $v$ is weakly $r$-rechable from $u$ if there exists a $u$-$v$-path in the graph
+    /// of length at most $r$ whose leftmost vertex is $v$. In particular, $v$ must be left of
+    /// $u$ in the ordering.
+    /// 
+    /// Returns a [VertexMap] for each vertex. For a vertex $u$ the corresponding [VertexMap] 
+    /// contains all vertices that are weakly $r$-reachable from $u$. For each member $v$ 
+    /// in this [VertexMap] the corresponding values represents the distance $d \\leq r$ at 
+    /// which $v$ is weakly reachable from $u$.
+    /// 
+    /// If the sizes of the weakly $r$-reachable sets are bounded by a constant the computation 
+    /// takes $O(|G|)$ time.    
     fn wreach_sets(&self, r:u32) -> VertexMap<VertexMap<u32>>;
+
+    /// Returns for each vertex the size of its $r$-weakly reachable set. 
+    /// This method uses less memory than [wreach_sets](LinearGraphAlgorithms::wreach_sets).    
     fn wreach_sizes(&self, r:u32) -> VertexMap<u32>;
+
+    /// Computes the total number of maximal cliques in the graph. 
+    /// 
+    /// This count includes vertices of degree zero and singles edges which 
+    /// cannot be extended into a triangle.
     fn count_max_cliques(&self) -> u64;
 }
 
 impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
-    /// Conducts a bfs from `root` for `dist` steps ignoring all vertices
-    /// left of `root`.
-    /// 
-    /// Returns the bfs as a sequence of layers.
     fn right_bfs(&self, root:&Vertex, dist:u32) -> Vec<VertexSet> {
         let mut seen:VertexSet = VertexSet::default();
         let iroot = self.index_of(root);
@@ -44,15 +78,6 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         res
     }
 
-    /// Computes all strongly $r$-reachable vertices to $u$. 
-    /// 
-    /// A vertex $v$ is strongly $r$-reachable from $u$ if there exists a $u$-$v$-path in the graph
-    /// of length at most $r$ where $v$ is the only vertex of the path that comes before $u$ in the
-    /// ordering.
-    /// 
-    /// Returns a map with all vertices that are strongly $r$-reachable
-    /// from $u$. For each member $v$ in the map the corresponding values represents
-    /// the distance $d \\leq r$ at which $v$ is strongly reachable from $u$.
     fn sreach_set(&self, u:&Vertex, r:u32) -> VertexMap<u32> {
         let bfs = self.right_bfs(u, r-1);
         let mut res = VertexMap::default();
@@ -74,20 +99,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
 
         res
     }    
-
-    /// Computes all weakly $r$-reachable sets as a map.. 
-    /// 
-    /// A vertex $v$ is weakly $r$-rechable from $u$ if there exists a $u$-$v$-path in the graph
-    /// of length at most $r$ whose leftmost vertex is $v$. In particular, $v$ must be left of
-    /// $u$ in the ordering.
-    /// 
-    /// Returns a [VertexMap] for each vertex. For a vertex $u$ the corresponding [VertexMap] 
-    /// contains all vertices that are weakly $r$-reachable from $u$. For each member $v$ 
-    /// in this [VertexMap] the corresponding values represents the distance $d \\leq r$ at 
-    /// which $v$ is weakly reachable from $u$.
-    /// 
-    /// If the sizes of the weakly $r$-reachable sets are bounded by a constant the computation 
-    /// takes $O(|G|)$ time.      
+      
     fn wreach_sets(&self, r:u32) -> VertexMap<VertexMap<u32>> {
         let mut res = VertexMap::default();
         for u in self.vertices() {
@@ -104,8 +116,6 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         res
     }    
 
-    /// Returns for each vertex the size of its $r$-weakly reachable set. 
-    /// This method uses less memory than [wreach_sets](LinearGraphAlgorithms::wreach_sets).
     fn wreach_sizes(&self, r:u32) -> VertexMap<u32> {
         let mut res = VertexMap::default();
         for u in self.vertices() {
@@ -122,7 +132,6 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         res
     }         
 
-    /// Computes the total number of maximal cliques in the graph. 
     fn count_max_cliques(&self) -> u64 {
         let mut results = FxHashSet::<BTreeSet<Vertex>>::default(); 
 
@@ -141,13 +150,11 @@ fn bk_pivot_count<'a, L: LinearGraph>(graph:&'a L, v:&Vertex, vertices:&[Vertex]
     if maybe.is_empty() && exclude.is_empty() {
         // `include` is a maximal clique
         
-        if include.len() > 1 {
-            // Add new maximal clique
-            let clique:BTreeSet<Vertex> = include.iter().copied().collect();
-            results.insert(clique);
-        }
+        // Add new maximal clique
+        let clique:BTreeSet<Vertex> = include.iter().copied().collect();
+        results.insert(clique);
 
-        if include.len() >= 3 { 
+        if include.len() > 1 { 
             // Remove prefix of clique. While we know that it must have been added to `results`
             // at some point, it could have been removed in the meantime.
             let mut clique:BTreeSet<Vertex> = include.iter().copied().collect();

@@ -312,6 +312,17 @@ impl EditGraph {
         res        
     }
 
+    /// Generates an empty graph (independent set) on `n` vertices.
+    pub fn independent(n:u32) -> EditGraph {
+        let mut res = EditGraph::with_capacity(n as usize);
+        for u in 0..n {
+            res.add_vertex(&u);
+        }
+
+        res        
+    }
+
+
     /// Generates a complete bipartite graph (biclique) on `s`+`t` vertices.
     pub fn biclique(s:u32, t:u32) -> EditGraph {
         let mut res = EditGraph::with_capacity((s+t) as usize);

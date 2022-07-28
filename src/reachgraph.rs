@@ -384,7 +384,13 @@ mod test {
         let O = OrdGraph::by_degeneracy(&G);    
         let W = O.to_wreach_graph::<3>();
 
-        assert_eq!(W.count_max_cliques(), 5*5*5);        
+        assert_eq!(W.count_max_cliques(), 5*5*5);      
+        
+        let G = EditGraph::independent(5);
+        let O = OrdGraph::with_ordering(&G, vec![0,1,2,3,4].iter());    
+        let W = O.to_wreach_graph::<3>();
+
+        assert_eq!(W.count_max_cliques(), 5);        
     }
 
 }
