@@ -180,16 +180,16 @@ impl DegenGraphBuilder {
 }
 
 pub struct DegenOrderIterator<'a> {
-    rgraph: &'a DegenGraph,
+    dgraph: &'a DegenGraph,
     curr_index: Option<usize>
 }
 
 impl<'a> DegenOrderIterator<'a> {
     pub fn new(dgraph: &'a DegenGraph) -> Self {
         if dgraph.len() == 0 {
-            DegenOrderIterator { rgraph: dgraph, curr_index: None }
+            DegenOrderIterator { dgraph: dgraph, curr_index: None }
         } else {
-            DegenOrderIterator { rgraph: dgraph, curr_index: Some(0) }
+            DegenOrderIterator { dgraph: dgraph, curr_index: Some(0) }
         }
     }    
 }
@@ -200,7 +200,7 @@ impl<'a> Iterator for DegenOrderIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         match self.curr_index {
             Some(ix) => {
-                let contents = &self.rgraph.contents;
+                let contents = &self.dgraph.contents;
                 let u = &contents[ix];
 
                 let next_ix = contents[ix+1] as usize;
@@ -242,7 +242,7 @@ impl<'a> Iterator for DegenIterator<'a>{
                 let next = contents[i+1] as usize;
                 let num_neighbors = contents[i+2] as usize;
 
-                let left = (u+3) as usize;
+                let left = (i+3) as usize;
                 let right = left+num_neighbors;
 
                 if next == i {
@@ -282,6 +282,25 @@ mod test {
     use crate::algorithms::lineargraph::*;
 
     #[test]
+    fn basics() {
+        let G = EditGraph::path(3);
+        let order:Vec<_> = (0..3).collect();
+        let D = DegenGraph::with_ordering(&G, order.iter());
+
+        println!("{:?}", D.contents);
+
+        for (v,L) in D.iter() {
+            println!("{v} {L:?}");
+            if v == 0 {
+                assert!(L.is_empty());
+            } else {
+                assert_eq!(L.len(), 1);
+                assert_eq!(*L.iter().next().unwrap(), v-1);
+            }
+        }
+    }
+
+    #[test]
     fn consistency() {
         let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
         let D = DegenGraph::from_graph(&G);
@@ -295,7 +314,6 @@ mod test {
             assert_eq!(O.left_degree(u), D.left_degree(u));
             assert_eq!(O.right_degree(u), D.right_degree(u));
         }
-
     }
 
     #[test]
