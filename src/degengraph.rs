@@ -11,7 +11,7 @@ pub struct DegenGraph {
     indices: VertexMap<usize>,
     pub(crate) contents:Vec<u32>,
     right_degrees: VertexMap<u32>,
-    edges: EdgeSet
+    m:usize
 }
 
 impl DegenGraph {
@@ -51,7 +51,7 @@ impl DegenGraph {
 
     fn new() -> Self {
         DegenGraph{ indices: VertexMap::default(),
-                    edges: EdgeSet::default(),
+                    m: 0,
                     right_degrees: VertexMap::default(),
                     contents: Vec::default() }
     }
@@ -84,7 +84,7 @@ impl Graph for DegenGraph {
     }
 
     fn num_edges(&self) -> usize {
-        self.edges.len()
+        self.m
     }
 
     fn contains(&self, u:&Vertex) -> bool {
@@ -92,7 +92,7 @@ impl Graph for DegenGraph {
     }
 
     fn adjacent(&self, u:&Vertex, v:&Vertex) -> bool {
-        self.edges.contains(&(*u,*v)) || self.edges.contains(&(*v,*u)) 
+        self.left_neighbours(u).contains(v) || self.left_neighbours(v).contains(u)
     }
 
     fn degree(&self, u:&Vertex) -> u32 {
@@ -169,17 +169,11 @@ impl DegenGraphBuilder {
             contents[(last_index+1) as usize] = index_u;
         }
 
-        // Sort neighbours according to order
-    
+        // Increase right-degrees and number of edges
         for &v in neighbours {
-            *self.dgraph.right_degrees.entry(v).or_insert(0) += 1;
-
-            if *u < v { 
-                self.dgraph.edges.insert((*u,v));
-            } else {
-                self.dgraph.edges.insert((v,*u));
-            }            
+            *self.dgraph.right_degrees.entry(v).or_insert(0) += 1;          
         }
+        self.dgraph.m += neighbours.len();
         
         // Push | num_neighbours |
         contents.push(neighbours.len() as u32);
