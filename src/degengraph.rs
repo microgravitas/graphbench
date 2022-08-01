@@ -1,4 +1,5 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
+
 
 use fxhash::FxHashSet;
 use itertools::Itertools;
@@ -10,7 +11,7 @@ use crate::iterators::*;
 pub struct DegenGraph {
     indices: VertexMap<usize>,
     pub(crate) contents:Vec<u32>,
-    right_degrees: VertexMap<u32>,
+    right_neighbours: VertexMap<VertexSet>,
     m:usize
 }
 
@@ -52,7 +53,7 @@ impl DegenGraph {
     fn new() -> Self {
         DegenGraph{ indices: VertexMap::default(),
                     m: 0,
-                    right_degrees: VertexMap::default(),
+                    right_neighbours: VertexMap::default(),
                     contents: Vec::default() }
     }
 
@@ -103,8 +104,10 @@ impl Graph for DegenGraph {
         Box::new(DegenOrderIterator::new(self))
     }
 
-    fn neighbours<'a>(&'a self, _u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
-        panic!("DegenGraph::neighbours not supported.")
+    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+        Box::new(self.left_neighbours_slice(u).iter().chain(
+            self.right_neighbours.get(u).unwrap().iter()
+        ))
     }
 }
 
@@ -130,7 +133,10 @@ impl LinearGraph for DegenGraph {
     }    
 
     fn right_degree(&self, u:&Vertex) -> u32 {
-        *self.right_degrees.get(u).unwrap_or(&0)
+        match self.right_neighbours.get(u) {
+            Some(R) => R.len() as u32,
+            None => 0,
+        }
     }
 }
 
@@ -157,7 +163,10 @@ impl DegenGraphBuilder {
         let contents = &mut self.dgraph.contents;
         let indices = &mut self.dgraph.indices;
 
-        // Add vertex to contentss
+        // Ensure that right-neighbourhood entry exist for u
+        self.dgraph.right_neighbours.entry(*u).or_insert_with(VertexSet::default);
+
+        // Add vertex to contents
         contents.push(*u);           // | u |
         let index_u = (contents.len()-1) as u32;
         indices.insert(*u, index_u as usize);   
@@ -169,10 +178,12 @@ impl DegenGraphBuilder {
             contents[(last_index+1) as usize] = index_u;
         }
 
-        // Increase right-degrees and number of edges
+        // Update right neighbours
         for &v in neighbours {
-            *self.dgraph.right_degrees.entry(v).or_insert(0) += 1;          
+            self.dgraph.right_neighbours.entry(v).or_insert_with(VertexSet::default);
+            self.dgraph.right_neighbours.get_mut(&v).unwrap().insert(*u);
         }
+
         self.dgraph.m += neighbours.len();
         
         // Push | num_neighbours |
@@ -271,7 +282,6 @@ impl DegenGraph {
 }
 
 
-
 //  #######                            
 //     #    ######  ####  #####  ####  
 //     #    #      #        #   #      
@@ -307,6 +317,10 @@ mod test {
 
         let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
         let D = DegenGraph::from_graph(&G);
+
+        assert_eq!(G.num_vertices(), D.num_vertices());
+        assert_eq!(G.num_edges(), D.num_edges());
+
         for (v,L) in D.iter() {
             assert_eq!(D.left_degree(&v) as usize, L.len());
         }
@@ -325,7 +339,15 @@ mod test {
         for u in G.vertices() {
             assert_eq!(O.left_degree(u), D.left_degree(u));
             assert_eq!(O.right_degree(u), D.right_degree(u));
+
+            let mut NG:Vec<_> = G.neighbours(u).collect();
+            let mut DG:Vec<_> = D.neighbours(u).collect();
+            NG.sort_unstable();
+            DG.sort_unstable();
+            assert_eq!(NG, DG);
         }
+
+
     }
 
     #[test]
