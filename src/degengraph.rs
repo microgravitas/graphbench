@@ -108,7 +108,7 @@ impl Graph for DegenGraph {
     }
 }
 
-impl LinearGraph for DegenGraph {
+impl LinearGraph for DegenGraph {    
     fn index_of(&self, u:&Vertex) -> usize {
         *self.indices.get(u).unwrap_or_else(|| panic!("{u} is not a vertex in this graph."))
     }
@@ -116,6 +116,18 @@ impl LinearGraph for DegenGraph {
     fn left_neighbours(&self, u:&Vertex) -> Vec<Vertex> {
         self.left_neighbours_slice(u).to_vec()
     }
+
+    fn left_degree(&self, u:&Vertex) -> u32 {
+        match self.indices.get(u) {
+            Some(iu) => {
+                //  Layout:
+                //    | u | next_vertex | num_neighbors | [neighbours] 
+                //  index_u     + 1         +2             + 3                       
+                self.contents[iu+2]
+            },
+            None => 0,
+        }
+    }    
 
     fn right_degree(&self, u:&Vertex) -> u32 {
         *self.right_degrees.get(u).unwrap_or(&0)
@@ -297,6 +309,12 @@ mod test {
                 assert_eq!(L.len(), 1);
                 assert_eq!(*L.iter().next().unwrap(), v-1);
             }
+        }
+
+        let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
+        let D = DegenGraph::from_graph(&G);
+        for (v,L) in D.iter() {
+            assert_eq!(D.left_degree(&v) as usize, L.len());
         }
     }
 
