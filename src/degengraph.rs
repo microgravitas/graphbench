@@ -93,7 +93,11 @@ impl Graph for DegenGraph {
     }
 
     fn adjacent(&self, u:&Vertex, v:&Vertex) -> bool {
-        self.left_neighbours(u).contains(v) || self.left_neighbours(v).contains(u)
+        if !self.right_neighbours.contains_key(u) || !self.right_neighbours.contains_key(v) {
+            return false
+        }
+
+        self.right_neighbours.get(u).unwrap().contains(v) || self.right_neighbours.get(v).unwrap().contains(u) 
     }
 
     fn degree(&self, u:&Vertex) -> u32 {
@@ -323,6 +327,9 @@ mod test {
 
         for (v,L) in D.iter() {
             assert_eq!(D.left_degree(&v) as usize, L.len());
+            for u in L {
+                assert!(D.adjacent(u, &v));
+            }
         }
     }
 
