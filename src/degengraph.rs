@@ -77,6 +77,16 @@ impl DegenGraph {
         let num_neighbours = self.contents[iu+2] as usize;
         &self.contents[iu+3..iu+3+num_neighbours]
     }
+
+    /// Returns true if `u` is left of `v` and uv is an edge in the graph.
+    /// Returns false if `u` is right of `v`, either `u` or `v` is not in the graph
+    /// or if the edge uv is not in the graph.
+    fn adjacent_ordered(&self, u:&Vertex, v:&Vertex) -> bool {
+        match self.right_neighbours.get(u) {
+            Some(right) => right.contains(v),
+            None => false,
+        }
+    }    
 }
 
 impl Graph for DegenGraph {
@@ -306,6 +316,17 @@ mod test {
         let G = EditGraph::path(3);
         let order:Vec<_> = (0..3).collect();
         let D = DegenGraph::with_ordering(&G, order.iter());
+
+        assert!(D.adjacent(&0, &1));
+        assert!(D.adjacent(&1, &0));
+        assert!(D.adjacent(&1, &2));
+        assert!(D.adjacent(&2, &1));
+        assert!(!D.adjacent(&0, &2));
+        assert!(!D.adjacent(&2, &0));
+
+        assert!(D.adjacent_ordered(&0, &1));
+        assert!(!D.adjacent_ordered(&1, &0));
+
 
         println!("{:?}", D.contents);
 
