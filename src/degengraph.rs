@@ -81,7 +81,7 @@ impl DegenGraph {
     /// Returns true if `u` is left of `v` and uv is an edge in the graph.
     /// Returns false if `u` is right of `v`, either `u` or `v` is not in the graph
     /// or if the edge uv is not in the graph.
-    fn adjacent_ordered(&self, u:&Vertex, v:&Vertex) -> bool {
+    pub fn adjacent_ordered(&self, u:&Vertex, v:&Vertex) -> bool {
         match self.right_neighbours.get(u) {
             Some(right) => right.contains(v),
             None => false,
