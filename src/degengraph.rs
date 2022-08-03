@@ -75,7 +75,8 @@ impl DegenGraph {
         //  index_u     + 1         +2             + 3        
 
         let num_neighbours = self.contents[iu+2] as usize;
-        &self.contents[iu+3..iu+3+num_neighbours]
+        // &self.contents[iu+3..iu+3+num_neighbours]
+        unsafe{ self.contents.get_unchecked(iu+3..iu+3+num_neighbours) }
     }
 
     /// Returns true if `u` is left of `v` and uv is an edge in the graph.
@@ -218,9 +219,9 @@ pub struct DegenOrderIterator<'a> {
 impl<'a> DegenOrderIterator<'a> {
     pub fn new(dgraph: &'a DegenGraph) -> Self {
         if dgraph.len() == 0 {
-            DegenOrderIterator { dgraph: dgraph, curr_index: None }
+            DegenOrderIterator { dgraph, curr_index: None }
         } else {
-            DegenOrderIterator { dgraph: dgraph, curr_index: Some(0) }
+            DegenOrderIterator { dgraph, curr_index: Some(0) }
         }
     }    
 }
@@ -232,16 +233,20 @@ impl<'a> Iterator for DegenOrderIterator<'a> {
         match self.curr_index {
             Some(ix) => {
                 let contents = &self.dgraph.contents;
-                let u = &contents[ix];
+                unsafe {
+                    // The following indexing operations are safe if 'contents'
+                    // has the intended structure.
+                    let u = contents.get_unchecked(ix);
 
-                let next_ix = contents[ix+1] as usize;
-                if next_ix == ix { 
-                    self.curr_index = None;
-                } else {
-                    self.curr_index = Some(next_ix);
+                    let next_ix = *contents.get_unchecked(ix+1) as usize;
+                    if next_ix == ix { 
+                        self.curr_index = None;
+                    } else {
+                        self.curr_index = Some(next_ix);
+                    }
+
+                    Some(u)
                 }
-
-                Some(u)
             },
             None => None,
         }
@@ -269,20 +274,24 @@ impl<'a> Iterator for DegenIterator<'a>{
         match self.current {
             Some(i) => {
                 let contents = &self.dgraph.contents;
-                let u = contents[i];
-                let next = contents[i+1] as usize;
-                let num_neighbors = contents[i+2] as usize;
+                unsafe {
+                    // The indices in the following are safe assuming that 'contents'
+                    // has the propery structure.
+                    let u = *contents.get_unchecked(i); // contents[i]
+                    let next = *contents.get_unchecked(i+1) as usize; // contents[i+1]
+                    let num_neighbors = *contents.get_unchecked(i+2) as usize; // contents[i+2]
 
-                let left = (i+3) as usize;
-                let right = left+num_neighbors;
+                    let left = (i+3) as usize;
+                    let right = left+num_neighbors;
 
-                if next == i {
-                    self.current = None;
-                } else {
-                    self.current = Some(next);
+                    if next == i {
+                        self.current = None;
+                    } else {
+                        self.current = Some(next);
+                    }
+
+                    Some((u, contents.get_unchecked(left..right)))
                 }
-
-                Some((u, &contents[left..right]))
             }
             None => None,
         }
