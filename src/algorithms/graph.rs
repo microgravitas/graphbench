@@ -73,10 +73,10 @@ impl<G> GraphAlgorithms for G where G: Graph {
         let mut order:Vec<_> = Vec::new();
 
         // This index function defines buckets of exponentially increasing
-        // size, but all values below `small` (here 32) are put in their own
+        // size, but all values below `small` (here 128) are put in their own
         // buckets.
         fn calc_index(i: u32) -> usize {
-            let small = 2_i32.pow(5);
+            let small = 2_i32.pow(7);
             min(i, small as u32) as usize
                 + (max(0, (i as i32) - small + 1) as u32)
                     .next_power_of_two()
@@ -144,10 +144,10 @@ impl<G> GraphAlgorithms for G where G: Graph {
 
         // Compute lower bound for core number. 
         let ix = calc_index(core_num) as u32; 
-        let lower = if ix <= 33 {       
+        let lower = if ix <= 129 {       
             ix
         } else {
-            32 + (1 << ((ix - 32 - 1) as u32 ))
+            129 + (1 << ((ix - 129 - 1) as u32 ))
         };
         let upper = core_num;                  
 
@@ -155,6 +155,7 @@ impl<G> GraphAlgorithms for G where G: Graph {
         (lower, upper, order, core_numbers)
     }    
 
+    
     fn is_bipartite(&self) -> BipartiteWitness {
         use std::collections::hash_map::Entry::*;
 
