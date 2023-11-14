@@ -376,6 +376,11 @@ pub trait LinearGraph : Graph {
         }
         res
     }
+
+    /// Returns the maximum left degree of the graph. Returns zero if the graph is empty.
+    fn max_left_degree(&self) -> u32 {
+        self.vertices().map(|u| self.left_degree(u)).max().unwrap_or(0)
+    }    
     
     /// Returns the sizes of all right neighbourhood as a map.
     fn right_degrees(&self) -> VertexMap<u32> {
@@ -386,4 +391,8 @@ pub trait LinearGraph : Graph {
         res
     }
 
+    /// Returns the maximum right degree of the graph. Returns zero if the graph is empty.
+    fn max_right_degree(&self) -> u32 {
+        self.vertices().map(|u| self.right_degree(u)).max().unwrap_or(0)
+    }    
 }
