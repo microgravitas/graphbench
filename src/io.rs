@@ -2,15 +2,16 @@ use crate::editgraph::EditGraph;
 use crate::graph::Vertex;
 use crate::iterators::*;
 
+use std::ffi::OsStr;
 use std::io;
 use std::io::{BufRead,BufReader,BufWriter,Write};
 use std::fs::File;
+use std::path::Path;
 use flate2::Compression;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 
 use crate::graph::*;
-
 
 pub trait WriteGraph {
     fn write_txt(&self, filename:&str) -> io::Result<()>;
@@ -97,31 +98,63 @@ impl EditGraph {
 
     fn parse<R: BufRead>(reader: &mut R, n_estimate:usize) -> io::Result<EditGraph> {
         let mut G = EditGraph::with_capacity(n_estimate);
-        for (i, line) in reader.lines().enumerate() {
+        for (lineno, line) in reader.lines().enumerate() {
             let l = line.unwrap();
             let tokens:Vec<&str> = l.split_whitespace().collect();
             if tokens.len() != 2 {
                 let err = io::Error::new(io::ErrorKind::InvalidData,
-                        format!("Line {} does not contain two tokens", i));
+                        format!("Line {} does not contain two tokens", lineno));
                 return Err(err)
             }
-            let u = EditGraph::parse_vertex(tokens[0])?;
-            let v = EditGraph::parse_vertex(tokens[1])?;
+            let u = parse_vertex(tokens[0], lineno)?;
+            let v = parse_vertex(tokens[1], lineno)?;
 
             G.add_edge(&u,&v);
         }
 
         Ok(G)
     }
+}
 
-    fn parse_vertex(s: &str) -> io::Result<Vertex> {
-        match s.parse::<Vertex>() {
-            Ok(x) => Ok(x),
-            Err(_) => Err(io::Error::new(io::ErrorKind::InvalidData,
-                    format!("Cannot parse vertex id {}", s)))
+pub fn load_vertex_set(filename:&str) -> io::Result<VertexSet> {
+    let path = Path::new(&filename);
+
+    let extension = path.extension().and_then(OsStr::to_str);
+    let reader:Box<dyn BufRead> = match extension {
+        Some("txt") => {
+            let file = File::open(path)?;
+            Box::new(BufReader::new(file))
         }
+        Some("gz") => {
+            let file = File::open(path)?;
+            let gz = GzDecoder::new(file);
+            Box::new(BufReader::new(gz))
+        }
+        _ => {
+            let error = std::io::Error::new(std::io::ErrorKind::InvalidInput, 
+                format!("Invalid file `{filename:?}`. The supported formats are `.txt.gz` and `.txt`."));
+            return Err(error);
+        }        
+    };
+
+    let mut res = VertexSet::default();
+    for (i, line) in reader.lines().enumerate() {
+        let l = line.unwrap();
+        let u = parse_vertex(l.trim(), i)?;
+        res.insert(u);
+    }
+
+    Ok(res)
+}
+
+fn parse_vertex(s: &str, lineno:usize) -> io::Result<Vertex> {
+    match s.parse::<Vertex>() {
+        Ok(x) => Ok(x),
+        Err(_) => Err(io::Error::new(io::ErrorKind::InvalidData,
+                format!("Cannot parse vertex id {} at input line {}", s, lineno)))
     }
 }
+
 
 //  #######                            
 //     #    ######  ####  #####  ####  
