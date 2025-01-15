@@ -173,8 +173,7 @@ impl<G> GraphAlgorithms for G where G: Graph {
 
             let mut col_queue = vec![(true, u, u)];
             
-            while !col_queue.is_empty() {
-                let (col, v, parent) = col_queue.pop().unwrap();
+            while let Some((col, v, parent)) = col_queue.pop() {
                 match colours.entry(v) {
                     Occupied(e) => {
                         let (curr_col, other_parent) =  e.get();

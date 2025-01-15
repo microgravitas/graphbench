@@ -139,7 +139,7 @@ impl OrdGraph {
         for (s,old_i,new_i) in [(u,iu,iv), (v,iv,iu)]{
             let mut needs_update:Vec<usize> = Vec::new();            
             {   // Update vertex itself
-                let mut n = &mut self.nodes[old_i];
+                let n = &mut self.nodes[old_i];
                 let (mut new_left, mut new_right) = (VertexSet::default(), VertexSet::default());
                 for x in n.neighbours() {
                     let ix = self.indices.get(x).unwrap();

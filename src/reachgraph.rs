@@ -26,6 +26,11 @@ impl<'a, const DEPTH: usize> Reachables<'a, DEPTH> {
         self.reachables.iter().map(|seg| seg.len()).sum()
     }
 
+    /// Returns true if there are no reachavble vertices at any depth
+    pub fn is_empty(&self) -> bool {
+        self.reachables.iter().all(|seg| seg.is_empty())
+    }
+
     /// Returns all vertices that are reachable at `depth` from the
     /// root vertex.
     pub fn at(&self, depth:usize) -> &[Vertex] {
@@ -66,8 +71,8 @@ impl<const DEPTH: usize> ReachGraph<DEPTH> {
         //    | u | next_vertex | index_2 | index_3 | ... | index_r  | index_end | [dist 1 neighbours] [dist 2 neighbours] ... [dist r neigbhours]
         //  index_u     + 1         +2         + 3          + r          + (r+1)   + (r+2)        
         let mut left = index_u + r + 2; 
-        let mut reachables = Vec::with_capacity(DEPTH as usize);
-        let mut boundaries = Vec::with_capacity(DEPTH as usize);
+        let mut reachables = Vec::with_capacity(DEPTH);
+        let mut boundaries = Vec::with_capacity(DEPTH);
         for right in &self.contents[index_u+2..=index_u+r+1] {
             let right = *right as usize;
             reachables.push(&self.contents[left..right]);
@@ -254,7 +259,7 @@ impl<const DEPTH: usize> ReachGraphBuilder<DEPTH> {
         assert_eq!((contents.len()-1) as u32,  index_u + r + 1);
 
         // Finally write all neighbours
-        contents.extend(vertices.into_iter());
+        contents.extend(vertices);
 
         self.last_index = Some(index_u);
     }

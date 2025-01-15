@@ -143,7 +143,7 @@ impl Graph for EditGraph {
     }
 
     fn num_edges(&self) -> usize {
-        self.m as usize
+        self.m
     }
 
     fn adjacent(&self, u:&Vertex, v:&Vertex) -> bool {

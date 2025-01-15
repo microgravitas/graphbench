@@ -25,6 +25,17 @@ pub trait LinearGraphAlgorithms {
     /// the distance $d \\leq r$ at which $v$ is strongly reachable from $u$.
     fn sreach_set(&self, u:&Vertex, r:u32) -> VertexMap<u32>;
 
+    /// Compute all strongly $r$-reachable sets as a map.
+    /// 
+    /// For each vertex, the return value contains a map whose keys are the strongly $r$-reachable
+    /// vertices and the values are the respective distances at which those vertices can be
+    /// strongly reached.
+    fn sreach_sets(&self, r:u32) -> VertexMap<VertexMap<u32>>;
+
+  /// Returns for each vertex the size of its $r$-weakly reachable set. 
+    /// This method uses less memory than [sreach_sets](LinearGraphAlgorithms::sreach_sets).   
+    fn sreach_sizes(&self, r:u32) -> VertexMap<u32>;
+
     /// Computes all weakly $r$-reachable sets as a map.. 
     /// 
     /// A vertex $v$ is weakly $r$-rechable from $u$ if there exists a $u$-$v$-path in the graph
@@ -62,7 +73,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         seen.insert(root);
 
         for d in 1..=(dist as usize) {
-            let (part1, part2) = res.split_at_mut(d as usize);
+            let (part1, part2) = res.split_at_mut(d);
 
             for u in part1[d-1].iter() {
                 for v in self.neighbours(u) {
@@ -130,7 +141,25 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
             }
         }
         res
-    }         
+    }      
+
+    fn sreach_sets(&self, r:u32) -> VertexMap<VertexMap<u32>> {
+        let mut res = VertexMap::default();
+        for u in self.vertices() {
+            let sreach = self.sreach_set(u, r);
+            res.insert(*u, sreach);
+        }
+        res
+    }
+    
+    fn sreach_sizes(&self, r:u32) -> VertexMap<u32> {
+        let mut res = VertexMap::default();
+        for u in self.vertices() {
+            let sreach = self.sreach_set(u, r);
+            res.insert(*u, sreach.len() as u32);
+        }
+        res
+    }       
 
     fn count_max_cliques(&self) -> u64 {
         let mut results = FxHashSet::<BTreeSet<Vertex>>::default(); 

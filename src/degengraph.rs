@@ -179,7 +179,7 @@ impl DegenGraphBuilder {
         let indices = &mut self.dgraph.indices;
 
         // Ensure that right-neighbourhood entry exist for u
-        self.dgraph.right_neighbours.entry(*u).or_insert_with(VertexSet::default);
+        self.dgraph.right_neighbours.entry(*u).or_default();
 
         // Add vertex to contents
         contents.push(*u);           // | u |
@@ -195,7 +195,7 @@ impl DegenGraphBuilder {
 
         // Update right neighbours
         for &v in neighbours {
-            self.dgraph.right_neighbours.entry(v).or_insert_with(VertexSet::default);
+            self.dgraph.right_neighbours.entry(v).or_default();
             self.dgraph.right_neighbours.get_mut(&v).unwrap().insert(*u);
         }
 
@@ -281,7 +281,7 @@ impl<'a> Iterator for DegenIterator<'a>{
                     let next = *contents.get_unchecked(i+1) as usize; // contents[i+1]
                     let num_neighbors = *contents.get_unchecked(i+2) as usize; // contents[i+2]
 
-                    let left = (i+3) as usize;
+                    let left = i+3;
                     let right = left+num_neighbors;
 
                     if next == i {
