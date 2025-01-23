@@ -281,7 +281,7 @@ impl<G> GraphAlgorithms for G where G: Graph {
 mod test {
     use super::*;
     use std::matches;
-    use crate::{editgraph::EditGraph, iterators::EdgeIterable};
+    use crate::{editgraph::EditGraph, iterators::EdgeIterable, io::*};
 
     use rand::{seq::SliceRandom, SeedableRng}; // 0.6.5
     use rand_chacha::ChaChaRng; // 0.1.1
@@ -333,8 +333,6 @@ mod test {
         let G = EditGraph::cycle(51);
         let witness = G.is_bipartite();
         assert!(matches!(witness, BipartiteWitness::OddCycle(cycle) if cycle.len() == 51));        
-
-
 
         let karate = EditGraph::from_txt("resources/karate.txt").unwrap();
 

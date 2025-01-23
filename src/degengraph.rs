@@ -319,6 +319,7 @@ mod test {
     use crate::editgraph::EditGraph;
     use crate::ordgraph::OrdGraph;
     use crate::algorithms::lineargraph::*;
+    use crate::io::*;
 
     #[test]
     fn basics() {

@@ -635,7 +635,7 @@ impl DTFGraph {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::io;
+    use crate::io::*;
 
     #[test]
     fn iteration() {

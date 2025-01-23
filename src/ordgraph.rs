@@ -269,6 +269,7 @@ mod test {
     use super::*;
     use crate::editgraph::EditGraph;
     use itertools::Itertools;    
+    use crate::io::*;
 
     #[test]
     fn order_iteration() {

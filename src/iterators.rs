@@ -485,6 +485,7 @@ mod test {
     use crate::graph::*;
     use crate::editgraph::*;
     use crate::ordgraph::*;
+    use crate::io::*;
 
     #[test] 
     fn edge_iterator() {

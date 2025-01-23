@@ -57,6 +57,7 @@ We can then load the file as follows:
 
 ```rust,no_run
 use graphbench::graph::*;
+use graphbench::io::*;
 use graphbench::editgraph::EditGraph;
 use graphbench::iterators::EdgeIterable;
 
