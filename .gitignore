@@ -3,3 +3,4 @@
 Cargo.lock
 /env/**
 resources/temp.*
+resources/set.*
