@@ -75,7 +75,44 @@ impl VertexOrEdge {
         }
     }
 
-  
+    /// Returns true if the two vertex/edge objects intersect, that is,
+    /// if they share at least one vertex.
+    pub fn intersects(self, other:VertexOrEdge) -> bool {
+        self.intersection(other).is_some()
+    }
+
+    // Returns the intersection of these two objects, which is 
+    // either a vertex (Some(V(x))), an edge (Some(E(e))), or nothing (None).
+    pub fn intersection(self, other:VertexOrEdge) -> Option<VertexOrEdge> {
+        use VertexOrEdge::*;
+        match (self, other) {
+            (V(x), V(y)) => {
+                if x == y {
+                    Some(V(x)) 
+                } else { 
+                    None
+                }
+            },
+            (V(x), E((a,b))) | (E((a,b)), V(x)) => {
+                if x == a || x == b{
+                    Some(V(x))
+                } else {
+                    None
+                }
+            }
+            (E((a,b)), E((c,d))) => {
+                if (a,b) == (c,d) || (b,a) == (c,d) {
+                    Some(E((a,b)))
+                } else if a == c || a == d {
+                    Some(V(a))
+                } else if b == c || b == d {
+                    Some(V(b))
+                } else {
+                    None
+                }
+            }
+        }
+    }    
 }
 
 /// Trait for static graphs.
