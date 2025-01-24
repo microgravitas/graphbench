@@ -32,11 +32,16 @@ pub trait WriteToFile {
 
 pub trait LoadFromFile {
     fn from_txt(filename:&str) -> io::Result<Self> where Self: Sized{
-        let buf = open_reader(filename)?;
+        let buf = open_reader_txt(filename)?;
         Self::from_buf(buf)
     }
 
     fn from_gzipped(filename:&str) -> io::Result<Self> where Self: Sized {
+        let buf = open_reader_gzip(filename)?;
+        Self::from_buf(buf)
+    }
+
+    fn from_file(filename:&str) -> io::Result<Self> where Self: Sized {
         let buf = open_reader(filename)?;
         Self::from_buf(buf)
     }
@@ -218,6 +223,19 @@ fn open_reader(filename:&str) -> io::Result<Box<dyn BufRead>> {
         }        
     };
     Ok(reader)
+}
+
+fn open_reader_gzip(filename:&str) -> io::Result<Box<dyn BufRead>> {
+    let path = Path::new(&filename);
+    let file = File::open(path)?;
+    Ok(Box::new(BufReader::new(file)))
+}
+
+fn open_reader_txt(filename:&str) -> io::Result<Box<dyn BufRead>> {
+    let path = Path::new(&filename);
+    let file = File::open(path)?;
+    let gz = GzDecoder::new(file);
+    Ok(Box::new(BufReader::new(gz)))
 }
 
 fn parse_vertex(s: &str, lineno:usize) -> io::Result<Vertex> {
