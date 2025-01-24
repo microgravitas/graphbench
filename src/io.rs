@@ -225,13 +225,13 @@ fn open_reader(filename:&str) -> io::Result<Box<dyn BufRead>> {
     Ok(reader)
 }
 
-fn open_reader_gzip(filename:&str) -> io::Result<Box<dyn BufRead>> {
+fn open_reader_txt(filename:&str) -> io::Result<Box<dyn BufRead>> {
     let path = Path::new(&filename);
     let file = File::open(path)?;
     Ok(Box::new(BufReader::new(file)))
 }
 
-fn open_reader_txt(filename:&str) -> io::Result<Box<dyn BufRead>> {
+fn open_reader_gzip(filename:&str) -> io::Result<Box<dyn BufRead>> {
     let path = Path::new(&filename);
     let file = File::open(path)?;
     let gz = GzDecoder::new(file);
@@ -303,24 +303,36 @@ mod test {
 
         assert_eq!(S1, S);
         assert_eq!(S2, S);
+
+        let S1 = VertexSet::from_file("resources/set.txt").unwrap();
+        let S2 = VertexSet::from_file("resources/set.txt.gz").unwrap();
+
+        assert_eq!(S1, S);
+        assert_eq!(S2, S);        
     }
 
     #[test]
     #[allow(unused_must_use)]
     fn read_write_vec() {
-        let mut S = VertexSet::default();
+        let mut S = Vec::<Vertex>::default();
 
-        S.insert(1);
-        S.insert(2);
-        S.insert(999);
+        S.push(1);
+        S.push(2);
+        S.push(999);
 
         S.write_txt("resources/vec.txt");
         S.write_gzipped("resources/vec.txt.gz");
         
-        let S1 = VertexSet::from_txt("resources/vec.txt").unwrap();
-        let S2 = VertexSet::from_gzipped("resources/vec.txt.gz").unwrap();
+        let S1 = Vec::<Vertex>::from_txt("resources/vec.txt").unwrap();
+        let S2 = Vec::<Vertex>::from_gzipped("resources/vec.txt.gz").unwrap();
 
         assert_eq!(S1, S);
         assert_eq!(S2, S);
+
+        let S1 = Vec::<Vertex>::from_file("resources/vec.txt").unwrap();
+        let S2 = Vec::<Vertex>::from_file("resources/vec.txt.gz").unwrap();        
+
+        assert_eq!(S1, S);
+        assert_eq!(S2, S);        
     }    
 }
