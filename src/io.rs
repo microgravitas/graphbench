@@ -102,7 +102,6 @@ impl<G:Graph> WriteToFile for G {
     }
 }
 
-
 impl EditGraph {
     /// Since we assume graphs to be quite big and EditGraphs are the 'work horse' of
     /// this library, this method provides a way to read a graph without too many reallocations
@@ -219,30 +218,6 @@ fn open_reader(filename:&str) -> io::Result<Box<dyn BufRead>> {
         }        
     };
     Ok(reader)
-}
-
-pub fn load_vertex_set(filename:&str) -> io::Result<VertexSet> {
-    let reader:Box<dyn BufRead> = open_reader(filename)?;
-    let mut res = VertexSet::default();
-    for (i, line) in reader.lines().enumerate() {
-        let l = line.unwrap();
-        let u = parse_vertex(l.trim(), i)?;
-        res.insert(u);
-    }
-
-    Ok(res)
-}
-
-pub fn load_vertex_order(filename:&str) -> io::Result<Vec<Vertex>> {
-    let reader:Box<dyn BufRead> = open_reader(filename)?;
-    let mut res = Vec::default();
-    for (i, line) in reader.lines().enumerate() {
-        let l = line.unwrap();
-        let u = parse_vertex(l.trim(), i)?;
-        res.push(u);
-    }
-
-    Ok(res)
 }
 
 fn parse_vertex(s: &str, lineno:usize) -> io::Result<Vertex> {
