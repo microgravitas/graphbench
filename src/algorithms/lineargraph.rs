@@ -2,8 +2,12 @@ use std::collections::BTreeSet;
 
 use fxhash::{FxHashMap, FxHashSet};
 
+use crate::editgraph::EditGraph;
+use crate::ordgraph::OrdGraph;
 use crate::graph::*;
 use crate::iterators::*;
+
+use itertools::*;
 
 /// Implements various algorithms for the [LinearGraph](crate::graph::LinearGraph) trait.
 pub trait LinearGraphAlgorithms {
@@ -60,6 +64,17 @@ pub trait LinearGraphAlgorithms {
     /// This count includes vertices of degree zero and singles edges which 
     /// cannot be extended into a triangle.
     fn count_max_cliques(&self) -> u64;
+
+
+    // Computes a greedy colouring of this graph.
+    fn colour_greedy(&self) -> VertexMap<u32>;
+
+    /// Computes an approximate r-dominating set of the graph. If `witness` is set
+    /// to `true`, the algorithm also computes a 2r-scatterd subset of the dominating set,
+    /// e.g. a set in which all vertices have pairwise distance at least 2r. 
+    /// 
+    /// Computing the witness is more expensive than computing the dominating set.
+    fn domset(&self, radius:u32, witness:bool) -> (VertexSet, Option<VertexSet>);
 }
 
 impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
@@ -173,6 +188,134 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         }
         results.len() as u64
     }
+
+    fn colour_greedy(&self) -> VertexMap<u32> {
+        let mut colours = VertexMap::default();
+        let mut used_colours:Vec<u32> = vec![];
+        for (v, N) in self.left_neighbourhoods() {
+            let Ncols:Vec<u32> = N.iter().map(|x| *colours.get(x).unwrap()).collect();
+            if Ncols.len() == used_colours.len() {
+                let new_colour = used_colours.len() as u32;
+                used_colours.push(new_colour); 
+                colours.insert(v, new_colour);
+                continue
+            }
+
+            // Find unused colour
+            for c in used_colours.iter() {
+                if !Ncols.contains(&c) {
+                    colours.insert(v, *c);
+                    break
+                }
+            }
+            assert!(colours.contains_key(&v));
+        }
+
+        colours
+    }
+
+    fn domset(&self, radius:u32, witness:bool) -> (VertexSet, Option<VertexSet>) {
+        let mut domset = VertexSet::default();
+        let mut scattered = VertexSet::default();
+        let mut dom_distance = FxHashMap::<Vertex, u32>::default();
+        let mut dom_counter = FxHashMap::<Vertex, u32>::default();
+
+        let cutoff = (2*radius).pow(2);
+        let n = self.num_vertices() as i64;
+
+        // Sort by _decreasing_ in-degree, tie-break by
+        // total degree.
+        let order:Vec<Vertex> = self.vertices()
+                .cloned()
+                .sorted_by_key(|u| -(self.left_degree(u) as i64)*n - (self.degree(u) as i64))
+                .collect();
+        let undominated = radius+1;
+
+        let wreach = self.wreach_sets(radius);
+
+        for v in order.iter() {
+            dom_distance.insert(*v, undominated);
+            dom_counter.insert(*v, 0);
+        }
+
+        for v in order {
+            // Update domination distance of v via its in-neighbours
+            for (u,dist) in wreach.get(&v).unwrap().iter() {
+                *dom_distance.get_mut(&v).unwrap() = u32::min(dom_distance[&v],  dist+dom_distance[u]);
+            }
+
+            // If v is a already dominated we have nothing else to do
+            if dom_distance[&v] <= radius {
+                continue
+            }
+
+            // Otherwise, we add v to the dominating set
+            domset.insert(v);
+            scattered.insert(v);
+            dom_distance.insert(v, 0);
+
+            // Update dominationg distance for v's in-neighbours
+            for (u,dist) in wreach.get(&v).unwrap().iter() {
+                *dom_counter.get_mut(u).unwrap() += 1;
+                *dom_distance.get_mut(u).unwrap() = u32::min(dom_distance[u], *dist);
+
+                // If a vertex has been an in-neigbhour of a domination node for
+                // too many time, we include it in the domset.
+                if dom_counter[u] > cutoff && !domset.contains(u) {
+                    domset.insert(*u);
+                    dom_distance.insert(*u, 0);
+
+                    for (x,xdist) in wreach.get(&u).unwrap().iter() {
+                        *dom_distance.get_mut(x).unwrap() += u32::min(dom_distance[x], *xdist);
+                    }
+                }
+            }
+        }
+
+        if !witness {
+            return (domset, None)
+        }
+
+        // We need to construct an auxilliary graph in with `scattered` as nodes and
+        // connect each pair with distance < 2*radius by an edge.
+        let wreach = self.wreach_sets(2*radius);
+
+        // Collect 'out-neighbours' so we can compute auxilliary graph
+        let mut out_neigbhours:VertexMap<VertexMap<u32>> = VertexMap::default();
+        for x in &scattered { 
+            for (w,dist) in wreach.get(x).unwrap().iter() {
+                out_neigbhours.entry(*w).or_default().insert(*x, *dist);
+            }
+        }
+
+        let mut H = EditGraph::new();
+        H.add_vertices(scattered.iter().cloned());
+        for (w, O) in out_neigbhours {
+            for pair in O.iter().combinations(2) {
+                let (x, dx) = pair[0];
+                let (y, dy) = pair[1];
+                if dx + dy <= 2*radius {
+                    H.add_edge(x, y);
+                }
+            }
+
+            if !scattered.contains(&w) {
+                continue
+            }
+
+            for (x,dx) in O.iter() {
+                assert!(*dx <= 2*radius);
+                H.add_edge(&w,x);
+            }
+        }
+        assert_eq!(H.num_vertices(), scattered.len());
+
+        let OH = OrdGraph::by_degeneracy(&H);
+        let colours = OH.colour_greedy();
+
+
+        todo!()
+    }    
 }
 
 fn bk_pivot_count<'a, L: LinearGraph>(graph:&'a L, v:&Vertex, vertices:&[Vertex], include:&mut VertexSet, mut maybe:VertexSet, mut exclude:VertexSet, results:&mut FxHashSet<BTreeSet<Vertex>>) {
@@ -236,3 +379,39 @@ fn bk_pivot_count<'a, L: LinearGraph>(graph:&'a L, v:&Vertex, vertices:&[Vertex]
         exclude.insert(*w);
     }
 }    
+
+
+//  #######                            
+//     #    ######  ####  #####  ####  
+//     #    #      #        #   #      
+//     #    #####   ####    #    ####  
+//     #    #           #   #        # 
+//     #    #      #    #   #   #    # 
+//     #    ######  ####    #    ####  
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::editgraph::EditGraph;
+    use crate::ordgraph::OrdGraph;
+    use crate::algorithms::lineargraph::*;
+    use crate::io::*;
+
+    #[test]
+    fn colouring() {
+        let G = EditGraph::clique(5);
+        let D = OrdGraph::by_degeneracy(&G);
+
+        let colouring = D.colour_greedy();
+        let colours:FxHashSet<u32> = colouring.values().cloned().collect();
+        assert_eq!(colours.len(), 5 );
+
+        let mut G = EditGraph::new();
+        G.add_vertices(vec![1,2,3,4,5].into_iter());
+        let D = OrdGraph::by_degeneracy(&G);
+
+        let colouring = D.colour_greedy();
+        let colours:FxHashSet<u32> = colouring.values().cloned().collect();
+        assert_eq!(colours.len(), 1 );        
+    }
+}
