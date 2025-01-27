@@ -68,11 +68,11 @@ impl<'a> Graph for DTFLayer<'a> {
         self.graph.degree(u)
     }
 
-    fn vertices<'b>(&'b self) -> Box<dyn Iterator<Item=&Vertex> + 'b> {
+    fn vertices<'b>(&'b self) -> Box<dyn Iterator<Item=&'b Vertex> + 'b> {
         self.graph.vertices()
     }
 
-    fn neighbours<'b>(&'b self, _:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'b> {
+    fn neighbours<'b>(&'b self, _:&Vertex) -> Box<dyn Iterator<Item=&'b Vertex> + 'b> {
         // DTFGraph does not implement this method for efficiency reasons.
         unimplemented!("DTFGraph does not implement Graph::neighbours");
     }
@@ -92,17 +92,17 @@ impl<'b> Digraph for DTFLayer<'b> {
         self.graph.out_degree(u)
     }
 
-    fn neighbours<'a>(&'a self, _:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn neighbours<'a>(&'a self, _:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         // DTFGraph does not implement this method for efficiency reasons.
         unimplemented!("DTFGraph does not implement Graph::neighbours");
     }
 
-    fn out_neighbours<'a>(&'a self, _:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn out_neighbours<'a>(&'a self, _:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         // DTFGraph does not implement this method for efficiency reasons.
         unimplemented!("DTFGraph does not implement Graph::out_neighbours");
     }
 
-    fn in_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn in_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         self.graph.in_neighbours_at(u, self.depth)
     }
 }
@@ -193,7 +193,7 @@ impl Graph for DTFGraph {
         self.nodes.contains_key(u)
     }
 
-    fn vertices<'a>(&'a self) ->  Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn vertices<'a>(&'a self) ->  Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         Box::new(self.nodes.keys())
     }
 
@@ -202,7 +202,7 @@ impl Graph for DTFGraph {
         self.has_arc(u,v) || self.has_arc(v,u)
     }
 
-    fn neighbours<'a>(&'a self, _:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn neighbours<'a>(&'a self, _:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         unimplemented!("DTFGraph does not implement DiGraph::neighbours");
     }
 
@@ -227,11 +227,11 @@ impl Digraph for DTFGraph {
         self.nodes.get(u).unwrap().out_degree()
     }
 
-    fn out_neighbours<'a>(&'a self, _:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>  {
+    fn out_neighbours<'a>(&'a self, _:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a>  {
         unimplemented!("DTFGraph does not implement DiGraph::out_neighbours");
     }
 
-    fn in_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>  {
+    fn in_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a>  {
         self.nodes.get(u).unwrap().in_neighbours()
     }
 }
@@ -396,7 +396,7 @@ impl DTFGraph {
         DTFNIterator::fixed_depth(self, depth)
     }
 
-    pub fn in_neighbours_at<'a>(&'a self, u:&Vertex, depth:usize) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    pub fn in_neighbours_at<'a>(&'a self, u:&Vertex, depth:usize) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         self.nodes.get(u).unwrap().in_neighbours_at(depth)
     }
 

@@ -165,12 +165,12 @@ impl Graph for EditGraph {
     }
 
     // fn vertices(&self) -> Box<dyn Iterator<Item=&Vertex>>;
-    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         Box::new(self.adj.keys())
     }
 
     // fn neighbours(&self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex>>;
-    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         match self.adj.get(u) {
             Some(N) => Box::new(N.iter()),
             None => panic!("Vertex not contained in EditGraph")

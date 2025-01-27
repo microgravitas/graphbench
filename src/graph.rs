@@ -186,10 +186,10 @@ pub trait Graph {
     }
 
     /// Returns an iterator to this graph's vertices.
-    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
+    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&'a Vertex> + 'a>;
 
     /// Returns an iterator over the neighbours of `u`.
-    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
+    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a>;
 
     /// Given an iterator `vertices` over vertices, returns all vertices of the graph
     /// which are neighbours of those vertices but not part of `vertices` themselves.
@@ -376,15 +376,15 @@ pub trait Digraph: Graph {
     }
 
     /// Returns the set of all in- and out-neighbours of `u` as an iterator.
-    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         Box::new(self.in_neighbours(u).chain(self.out_neighbours(u)))
     }
 
     /// Returns an iterator over the out-neighbours of `u`.
-    fn out_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
+    fn out_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a>;
 
     /// Returns an iterator over the in-neighbours of `u`.
-    fn in_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a>;
+    fn in_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a>;
 }
 
 /// Trait for mutable digraphs (currently incomplete).

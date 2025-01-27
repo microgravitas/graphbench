@@ -39,7 +39,7 @@ pub struct OrdNode {
 
 impl OrdNode {
     /// Returns the union of left and right neighbours.
-    fn neighbours<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn neighbours<'a>(&'a self) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         Box::new( self.left.iter().chain(self.right.iter()) )
     }
 }
@@ -214,12 +214,12 @@ impl Graph for OrdGraph {
         }
     }
 
-    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         let it = self.nodes.iter();
         Box::new( it.map(|n| &n.v) )
     }
 
-    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         if let Some(iu) = self.indices.get(u) {
             let node_u = &self.nodes[*iu];
             node_u.neighbours()

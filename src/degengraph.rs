@@ -115,11 +115,11 @@ impl Graph for DegenGraph {
         self.left_degree(u) + self.right_degree(u)
     }
 
-    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         Box::new(DegenOrderIterator::new(self))
     }
 
-    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         Box::new(self.left_neighbours_slice(u).iter().chain(
             self.right_neighbours.get(u).unwrap().iter()
         ))

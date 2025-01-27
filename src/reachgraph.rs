@@ -150,11 +150,11 @@ impl<const DEPTH: usize> Graph for ReachGraph<DEPTH> {
         self.left_degree(u) + self.right_degree(u)
     }
 
-    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn vertices<'a>(&'a self) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         Box::new(ReachOrderIterator::new(self))
     }
 
-    fn neighbours<'a>(&'a self, _u:&Vertex) -> Box<dyn Iterator<Item=&Vertex> + 'a> {
+    fn neighbours<'a>(&'a self, _u:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a> {
         panic!("ReachGraph::neighbours not supported.")
     }
 }

@@ -378,7 +378,7 @@ pub struct DTFArcIterator<'a> {
 }
 
 impl<'a> DTFArcIterator<'a> {
-    pub fn all_depths(G: &'a DTFGraph) -> DTFArcIterator {
+    pub fn all_depths(G: &'a DTFGraph) -> DTFArcIterator<'a> {
         let mut res = DTFArcIterator {
             N_it: G.in_neighbourhoods_iter(),
             curr_v: std::u32::MAX,
@@ -388,7 +388,7 @@ impl<'a> DTFArcIterator<'a> {
         res
     }
 
-    pub fn fixed_depth(G: &'a DTFGraph, depth:usize) -> DTFArcIterator {
+    pub fn fixed_depth(G: &'a DTFGraph, depth:usize) -> DTFArcIterator<'a> {
         let mut res = DTFArcIterator {
             N_it: G.in_neighbourhoods_iter_at(depth),
             curr_v: std::u32::MAX,
