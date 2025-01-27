@@ -7,6 +7,7 @@
 //! This library uses 32 bits to represent vertices, therefore graphs cannot contain more than
 //! $2^{32} \approx 4.29~\text{Billion}$ vertices.
 use fxhash::{FxHashMap, FxHashSet};
+use itertools::Itertools;
 
 use std::{hash::Hash, collections::HashMap, ops::Add};
 
@@ -36,7 +37,6 @@ pub type MixedSetRef<'a> = FxHashSet<&'a VertexOrEdge>;
 
 /// A set of edges (implemented as a hashset).
 pub type EdgeSet = FxHashSet<Edge>;
-
 
 /// An enum which holds either a vertex or an edge. Used to allow
 /// [mixed-type sets](MixedSet) and [iteration](crate::iterators::MixedIterator). 
@@ -113,6 +113,40 @@ impl VertexOrEdge {
             }
         }
     }    
+}
+
+pub trait VertexMapOperations<T> where T: Copy + Hash + Eq {
+    // Groups the vertices in this map by their values 
+    // and returns the largest set among those. Ties are broken
+    // arbitrarily.
+    // Returns None if the vertex map is empty.
+    fn majority_set(&self) -> Option<(VertexSet, T)>;
+
+    // 
+    fn invert(&self) -> FxHashMap<T, VertexSet>;
+}
+
+
+impl<T> VertexMapOperations<T> for VertexMap<T> where T: Copy + Hash + Eq {
+    fn majority_set(&self) -> Option<(VertexSet, T)> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let inverted = self.invert();
+        let (_, value, set) = inverted.into_iter().map( |(value, set)| (set.len(), value, set) )
+            .sorted_by_key(|(len, _, _)| usize::MAX - *len)
+            .next().unwrap();
+        Some((set, value))
+    }
+    
+    fn invert(&self) -> FxHashMap<T, VertexSet> {
+        let mut res:FxHashMap<T, VertexSet> = FxHashMap::default();
+        for (&u, &value) in self.iter() {
+            res.entry(value).or_default().insert(u);
+        }
+        res
+    }
 }
 
 /// Trait for static graphs.
@@ -432,4 +466,39 @@ pub trait LinearGraph : Graph {
     fn max_right_degree(&self) -> u32 {
         self.vertices().map(|u| self.right_degree(u)).max().unwrap_or(0)
     }    
+}
+
+//  #######                            
+//     #    ######  ####  #####  ####  
+//     #    #      #        #   #      
+//     #    #####   ####    #    ####  
+//     #    #           #   #        # 
+//     #    #      #    #   #   #    # 
+//     #    ######  ####    #    ####  
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn vertex_map() {
+        let mut map:VertexMap<u32> = VertexMap::default();
+        map.insert(0, 100);
+        map.insert(1, 100);
+        map.insert(2, 100);
+        map.insert(3, 200);
+        map.insert(4, 200);
+        map.insert(5, 300);
+
+        let inverted = map.invert();
+        assert_eq!(inverted.get(&100).unwrap(), &vec![0,1,2].into_iter().collect::<VertexSet>() );
+        assert_eq!(inverted.get(&200).unwrap(), &vec![3,4].into_iter().collect::<VertexSet>() );
+        assert_eq!(inverted.get(&300).unwrap(), &vec![5].into_iter().collect::<VertexSet>() );
+        assert_eq!(inverted.keys().cloned().collect::<FxHashSet<u32>>(), vec![100,200,300].into_iter().collect::<FxHashSet<u32>>());
+
+        let (mset, value) = map.majority_set().unwrap();
+        assert_eq!(mset, vec![0,1,2].into_iter().collect::<VertexSet>() );
+        assert_eq!(value, 100);
+
+    }
 }
