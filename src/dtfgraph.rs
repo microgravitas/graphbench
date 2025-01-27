@@ -549,13 +549,13 @@ impl DTFGraph {
     /// specific version of the algorithm.
     /// 
     /// > \[Dvořák13\]
-    /// Dvořák, Z. (2013). Constant-factor approximation of the domination number in sparse graphs. *European Journal of Combinatorics*, 34(5), 833-840.
+    /// > Dvořák, Z. (2013). Constant-factor approximation of the domination number in sparse graphs. *European Journal of Combinatorics*, 34(5), 833-840.
     /// >
     /// > \[Brown20\]
-    /// Brown, C.T., Moritz, D., O’Brien, M.P., Reidl, F., Reiter, T. and Sullivan, B.D., 2020. Exploring neighborhoods in large metagenome assembly graphs using spacegraphcats reveals hidden sequence diversity. *Genome biology*, 21(1), pp.1-16.
+    /// > Brown, C.T., Moritz, D., O’Brien, M.P., Reidl, F., Reiter, T. and Sullivan, B.D., 2020. Exploring neighborhoods in large metagenome assembly graphs using spacegraphcats reveals hidden sequence diversity. *Genome biology*, 21(1), pp.1-16.
     /// >
     /// >\[Reidl16\]
-    /// >Reidl, F. (2016). Structural sparseness and complex networks (No. RWTH-2015-07564). Fachgruppe Informatik.
+    /// > Reidl, F. (2016). Structural sparseness and complex networks (No. RWTH-2015-07564). Fachgruppe Informatik.
     pub fn domset(&mut self, radius:u32) -> VertexSet {
         // A fraternal lookahead of 2 seems good accross the board.
         self.augment(radius as usize, 2);

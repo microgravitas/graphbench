@@ -445,7 +445,7 @@ impl<'a, L> LeftNeighIterator<'a, L> where L: LinearGraph  {
     }
 }
 
-impl<'a, L> Iterator for LeftNeighIterator<'a, L> where L: LinearGraph  {
+impl<L> Iterator for LeftNeighIterator<'_, L> where L: LinearGraph  {
     type Item = (Vertex, Vec<u32>);
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -150,11 +150,9 @@ impl LoadFromFile for EditGraph {
     /// use graphbench::editgraph::EditGraph;
     /// use graphbench::iterators::EdgeIterable;
     /// 
-    /// fn main() {
-    ///     let graph = EditGraph::from_txt("edges.txt").expect("Could not open edges.txt");
-    ///     println!("Vertices: {:?}", graph.vertices().collect::<Vec<&Vertex>>());
-    ///     println!("Edges: {:?}", graph.edges().collect::<Vec<Edge>>());
-    /// }
+    /// let graph = EditGraph::from_txt("edges.txt").expect("Could not open edges.txt");
+    /// println!("Vertices: {:?}", graph.vertices().collect::<Vec<&Vertex>>());
+    /// println!("Edges: {:?}", graph.edges().collect::<Vec<Edge>>());
     /// ```
     fn from_txt(filename:&str) -> io::Result<EditGraph> {
         let file = File::open(filename)?;

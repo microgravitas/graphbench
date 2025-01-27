@@ -206,7 +206,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
 
             // Find unused colour
             for c in used_colours.iter() {
-                if !Ncols.contains(&c) {
+                if !Ncols.contains(c) {
                     colours.insert(v, *c);
                     break
                 }
@@ -276,7 +276,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                     domset.insert(*u);
                     dom_distance.insert(*u, 0);
 
-                    for (x,xdist) in wreach.get(&u).unwrap().iter() {
+                    for (x,xdist) in wreach.get(u).unwrap().iter() {
                         *dom_distance.get_mut(x).unwrap() += u32::min(dom_distance[x], *xdist);
                     }
                 }
@@ -331,7 +331,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
     }    
 }
 
-fn bk_pivot_count<'a, L: LinearGraph>(graph:&'a L, v:&Vertex, vertices:&[Vertex], include:&mut VertexSet, mut maybe:VertexSet, mut exclude:VertexSet, results:&mut FxHashSet<BTreeSet<Vertex>>) {
+fn bk_pivot_count<L: LinearGraph>(graph:&L, v:&Vertex, vertices:&[Vertex], include:&mut VertexSet, mut maybe:VertexSet, mut exclude:VertexSet, results:&mut FxHashSet<BTreeSet<Vertex>>) {
     if maybe.is_empty() && exclude.is_empty() {
         // `include` is a maximal clique
         

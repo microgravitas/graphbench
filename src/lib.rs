@@ -3,6 +3,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 #![allow(non_snake_case)]
+#![allow(clippy::needless_doctest_main)]
 
 use std::iter::Map;
 
