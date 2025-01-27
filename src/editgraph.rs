@@ -374,6 +374,43 @@ impl EditGraph {
         res
     }
 
+    /// Generates a grid with s rows and t columns.
+    pub fn grid(s:u32, t:u32) -> EditGraph {
+        let mut res = EditGraph::with_capacity((s*t) as usize);
+        if s == 0 || t == 0 {
+            return res;
+        }
+
+        // s = 3, t = 4
+        // 0 -- 1 -- 2 -- 3
+        // |    |    |    |
+        // 4 -- 5 -- 6 -- 7
+        // |    |    |    |
+        // 8 -- 9 -- 10 -- 11
+        for y in 0..s-1 { // 0..2
+            for x in 0..t-1 { // 0..3
+                let u = y * t + x;
+                let right = u + 1;
+                let down = u + t;
+                res.add_edge(&u, &right);
+                res.add_edge(&u, &down);
+            }
+            // Last vertex of this row
+            let u = y*t + t-1;
+            let down = u + t;
+            res.add_edge(&u, &down);
+        }
+
+        // Last row
+        for x in 0..t-1 { // 0..3
+            let u = (s-1) * t + x; // (s-1) * t = 2*4 = 8 + 0..3 = 8..11
+            let right = u + 1;
+            res.add_edge(&u, &right);
+        }
+
+        res
+    }
+
     /// Creates a new graph that is the disjoint union of `self` and `graph`.
     /// The vertices of the second graph are relabelled to avoid index clashes.
     pub fn disj_union(&self, graph: &impl Graph) -> EditGraph {
@@ -488,6 +525,8 @@ impl EditGraph {
 
 #[cfg(test)]
 mod test {
+    use itertools::Itertools;
+
     use super::*;
     use crate::algorithms::GraphAlgorithms;
 
@@ -698,5 +737,49 @@ mod test {
             assert_eq!(H.vertices().collect::<VertexSetRef>(),
                         [0,2,3,4,5].iter().collect());
         }
+    }
+
+    #[test]
+    fn basic_graphs() {
+        let S = EditGraph::star(6);
+        assert_eq!(S.num_vertices(), 7);
+        assert_eq!(S.num_edges(), 6);
+
+        let (s, t) = (5,6);
+        let G = EditGraph::grid(s, t);
+
+        assert_eq!(G.num_vertices() as u32, s*t);
+        assert_eq!(G.num_edges() as u32, 2*s*t - s - t);
+
+        let (s, t) = (6,9);
+        let G = EditGraph::grid(s, t);
+
+        assert_eq!(G.num_vertices() as u32, s*t);
+        assert_eq!(G.num_edges() as u32, 2*s*t - s - t);  
+
+        let (s, t) = (1,6);
+        let G = EditGraph::grid(s, t);
+
+        assert_eq!(G.num_vertices() as u32, s*t);
+        assert_eq!(G.num_edges() as u32, 2*s*t - s - t); 
+
+        let (s, t) = (6, 1);
+        let G = EditGraph::grid(s, t);
+
+        assert_eq!(G.num_vertices() as u32, s*t);
+        assert_eq!(G.num_edges() as u32, 2*s*t - s - t);      
+
+        let G = EditGraph::grid(0, 999);
+        assert!(G.is_empty());
+
+        // 2*s*t - s - t
+        // 2*2*2 - 2 - 2 = 8 - 4 = 4
+        // x -- x 
+        // |    |
+        // x -- x
+        // 2*2*3 - 2 -3 = 7 
+        // x -- x -- x 
+        // |    |    |
+        // x -- x -- x 
     }
 }
