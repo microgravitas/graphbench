@@ -70,11 +70,14 @@ pub trait LinearGraphAlgorithms {
     fn colour_greedy(&self) -> VertexMap<u32>;
 
     /// Computes an approximate r-dominating set of the graph. If `witness` is set
-    /// to `true`, the algorithm also computes a 2r-scatterd subset of the dominating set,
-    /// e.g. a set in which all vertices have pairwise distance at least 2r. 
+    /// to `true`, the algorithm also computes an r-scatterd subset of the dominating set,
+    /// e.g. a set in which all vertices have pairwise distance at least 2r+1 (their r-neighbourhoods
+    /// are pairswise disjoint).
     /// 
     /// Computing the witness is more expensive than computing the dominating set.
-    fn domset(&self, radius:u32, witness:bool) -> (VertexSet, Option<VertexSet>);
+    /// The method returns the r-dominating set, a vertex map containting the minimum distance of
+    /// every vertex to the r-dominating set, and optionally a 2r-scattered set.
+    fn domset(&self, radius:u32, witness:bool) -> (VertexSet, VertexMap<u32>, Option<VertexSet>);
 }
 
 impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
@@ -214,7 +217,15 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         colours
     }
 
-    fn domset(&self, radius:u32, witness:bool) -> (VertexSet, Option<VertexSet>) {
+    fn domset(&self, radius:u32, witness:bool) -> (VertexSet, VertexMap<u32>, Option<VertexSet>) {
+        if self.is_empty() {
+            if witness {
+                return (VertexSet::default(), VertexMap::default(), Some(VertexSet::default()))
+            } else {
+                return (VertexSet::default(), VertexMap::default(), None)
+            }
+        }
+
         let mut domset = VertexSet::default();
         let mut scattered = VertexSet::default();
         let mut dom_distance = FxHashMap::<Vertex, u32>::default();
@@ -273,7 +284,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         }
 
         if !witness {
-            return (domset, None)
+            return (domset, dom_distance, None)
         }
 
         // We need to construct an auxilliary graph in with `scattered` as nodes and
@@ -310,11 +321,13 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         }
         assert_eq!(H.num_vertices(), scattered.len());
 
+        // Compute greedy colouring and return largest monochromatic
+        // subset. This set is guaranteed to be 
         let OH = OrdGraph::by_degeneracy(&H);
         let colours = OH.colour_greedy();
+        let (subset, _ ) = colours.majority_set().unwrap();
 
-
-        todo!()
+        (domset, dom_distance, Some(subset))
     }    
 }
 
@@ -412,6 +425,38 @@ mod test {
 
         let colouring = D.colour_greedy();
         let colours:FxHashSet<u32> = colouring.values().cloned().collect();
+
         assert_eq!(colours.len(), 1 );        
+    }
+
+    #[test]
+    fn domset() {
+        let G = EditGraph::from_txt("resources/karate.txt").unwrap();
+        let OG = OrdGraph::by_degeneracy(&G);
+
+        for r in 1..5 {
+            let (D, _, Some(S)) = OG.domset(r, true) else { panic!("No witness returned") };
+            println!("Found Karate {}-domset of size {} with scattered set of size {}", r, D.len(), S.len());
+            assert_eq!(G.r_neighbourhood(D.iter(), r as usize).len(), G.num_vertices());
+        }
+
+        let G = EditGraph::grid(50, 50);
+        let OG = OrdGraph::by_degeneracy(&G);
+        let r = 3;
+        let (D, _, Some(S)) = OG.domset(r, true) else { panic!("No witness returned") };
+        println!("Found {}-domset of size {} with scattered set of size {} in 50x50 grid", r, D.len(), S.len());
+        assert_eq!(G.r_neighbourhood(D.iter(), r as usize).len(), G.num_vertices());
+
+        // Check distances of scattered set
+        let mut DTFG = crate::dtfgraph::DTFGraph::orient(&G);
+        DTFG.augment(2*r as usize, 1);
+
+        for tup in S.iter().combinations(2) {
+            let (x,y) = (tup[0], tup[1]);
+            let dist = DTFG.small_distance(x,y);
+            if let Some(d) = dist  {
+                assert!(d >= 2*r+1);
+            }
+        }
     }
 }
