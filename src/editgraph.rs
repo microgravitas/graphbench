@@ -89,6 +89,7 @@
 //! }
 //! ```
 
+use std::borrow::Borrow;
 use std::iter::Sum;
 use itertools::max;
 use fxhash::{FxHashMap, FxHashSet};
@@ -359,6 +360,7 @@ impl EditGraph {
 
         let mut res = EditGraph::with_capacity(n as usize);
 
+        #[allow(clippy::needless_range_loop)]
         for i in 0..ranges.len() {
             let (leftA,rightA) = ranges[i];
             for j in (i+1)..ranges.len() {
@@ -469,11 +471,13 @@ impl EditGraph {
     /// This function panics if the sequence is empty.
     /// 
     /// Returns the contracted vertex.
-    pub fn contract<'a, I>(&mut self, mut vertices:I) -> Vertex where I: Iterator<Item=&'a Vertex> {
+    
+    pub fn contract<V, I>(&mut self, mut vertices:I) -> Vertex 
+        where V: Borrow<Vertex>,  I: Iterator<Item=V> {
         // TODO: handle case when I is empty
-        let u = vertices.next().unwrap();
-        self.contract_into(u, vertices);
-        *u
+        let u = *vertices.next().unwrap().borrow();
+        self.contract_into(&u, vertices);
+        u
     }
 
     /// Contracts the pair $\{u,v\}$ be identifying $v$ with $u$. The operation removes $v$
@@ -495,8 +499,9 @@ impl EditGraph {
 
     /// Contracts all `vertices` into the `center` vertex. The contracted vertex has
     /// as its neighbours all vertices that were adjacent to at least one vertex in `vertices`.
-    pub fn contract_into<'a, I>(&mut self, center:&Vertex, vertices:I) where I: Iterator<Item=&'a Vertex> {
-        let mut contract:VertexSet = vertices.cloned().collect();
+    pub fn contract_into<V, I>(&mut self, center:&Vertex, vertices:I) 
+        where V: Borrow<Vertex>,  I: Iterator<Item=V> { 
+        let mut contract:VertexSet = vertices.map(|u| *u.borrow()).collect();
         contract.remove(center);
 
         let mut N = self.neighbourhood(contract.iter());

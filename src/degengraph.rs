@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::{BTreeSet, HashMap};
 
 
@@ -23,20 +24,22 @@ impl DegenGraph {
     }
 
     /// Creates a degenerate graph representation from `graph` using `order`.
-    pub fn with_ordering<'a, G, I>(graph: &G, order:I) -> DegenGraph
-        where G: Graph, I: Iterator<Item=&'a Vertex>
+    // pub fn with_ordering<'a, G, I, V>(graph: &G, order:I) -> OrdGraph
+    // where V: Borrow<Vertex>, G: Graph, I: Iterator<Item=V>
+    pub fn with_ordering<'a, G, I, V>(graph: &G, order:I) -> DegenGraph
+        where V: Borrow<Vertex>, G: Graph, I: Iterator<Item=V>
     {
-        let order:Vec<_> = order.collect();
+        let order:Vec<_> = order.map(|u| *u.borrow()).collect();
         let indices:VertexMap<_> = order.iter().cloned()
-                .enumerate().map(|(i,u)| (*u,i)).collect();
+                .enumerate().map(|(i,u)| (u,i)).collect();
 
         let mut builder = DegenGraphBuilder::new();
 
-        for u in order {
+        for u in &order {
             let mut L = Vec::new();
-            let iu = indices[&u];            
+            let iu = indices[u];            
             for v in graph.neighbours(u) {
-                let iv = indices[&v];
+                let iv = indices[v];
                 if iv < iu {
                     L.push((iv, *v));
                 }
@@ -158,6 +161,12 @@ impl LinearGraph for DegenGraph {
 pub struct DegenGraphBuilder {
     last_index: Option<u32>,
     dgraph: DegenGraph
+}
+
+impl Default for DegenGraphBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DegenGraphBuilder {

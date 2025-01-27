@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use std::iter;
 
@@ -59,12 +60,11 @@ impl OrdGraph {
     }
     
     /// Creates an ordered graphs from `graph` using `order`.
-    pub fn with_ordering<'a, G, I>(graph: &G, order:I) -> OrdGraph
-        where G: Graph, I: Iterator<Item=&'a Vertex>
+    pub fn with_ordering<'a, G, I, V>(graph: &G, order:I) -> OrdGraph
+        where V: Borrow<Vertex>, G: Graph, I: Iterator<Item=V>
     {
-        let order:Vec<_> = order.collect();
-        let indices:VertexMap<_> = order.iter().cloned()
-                .enumerate().map(|(i,u)| (*u,i)).collect();
+        let order:Vec<_> = order.into_iter().map(|u| *u.borrow()).collect();
+        let indices:VertexMap<_> = order.iter().enumerate().map(|(i,u)| (*u,i)).collect();
         let mut nodes:Vec<_> = Vec::with_capacity(order.len());
 
         for v in &order {

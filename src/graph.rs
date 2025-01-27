@@ -9,7 +9,7 @@
 use fxhash::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 
-use std::{hash::Hash, collections::HashMap, ops::Add};
+use std::{borrow::Borrow, collections::HashMap, hash::Hash, ops::Add};
 
 /// A vertex in a graph.
 pub type Vertex = u32;
@@ -466,6 +466,28 @@ pub trait LinearGraph : Graph {
     fn max_right_degree(&self) -> u32 {
         self.vertices().map(|u| self.right_degree(u)).max().unwrap_or(0)
     }    
+
+    /// Returns the leftmost (smallest) vertex in the provided collection 
+    /// according to the ordering of this graph.
+    fn leftmost<VBorrow, VIter>(&self, vertices:VIter) -> Option<Vertex> 
+        where VBorrow: Borrow<Vertex>, VIter: IntoIterator<Item=VBorrow> {
+        let res = vertices.into_iter().min_by_key(|u| self.index_of(u.borrow()));
+        match res {
+            Some(x) => Some(*x.borrow()),
+            None => None
+        }
+    }
+
+    /// Returns the leftmost (smallest) vertex in the provided collection 
+    /// according to the ordering of this graph.
+    fn rightmost<VBorrow, VIter>(&self, vertices:VIter) -> Option<Vertex> 
+        where VBorrow: Borrow<Vertex>, VIter: IntoIterator<Item=VBorrow> {
+        let res = vertices.into_iter().max_by_key(|u| self.index_of(u.borrow()));
+        match res {
+            Some(x) => Some(*x.borrow()),
+            None => None
+        }
+    }    
 }
 
 //  #######                            
@@ -479,6 +501,17 @@ pub trait LinearGraph : Graph {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::{editgraph::*, ordgraph::OrdGraph};
+
+    #[test]
+    fn ordering() {
+        let G = EditGraph::path(5);
+        let OG = OrdGraph::with_ordering(&G, vec![4,3,2,1,0].iter());
+
+        assert_eq!(OG.leftmost(vec![3,2,1]), Some(3));
+        assert_eq!(OG.rightmost(vec![3,2,1]), Some(1));
+        assert_eq!(OG.leftmost(vec![0]), Some(0));
+    }
 
     #[test]
     fn vertex_map() {

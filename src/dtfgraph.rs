@@ -47,7 +47,7 @@ impl<'a> DTFLayer<'a> {
     }
 }
 
-impl<'a> Graph for DTFLayer<'a> {
+impl Graph for DTFLayer<'_> {
     fn num_vertices(&self) -> usize {
         self.graph.num_vertices()
     }
@@ -78,7 +78,7 @@ impl<'a> Graph for DTFLayer<'a> {
     }
 }
 
-impl<'b> Digraph for DTFLayer<'b> {
+impl Digraph for DTFLayer<'_> {
   
     fn has_arc(&self, u:&Vertex, v:&Vertex) -> bool {
         self.graph.has_arc_at(u, v, self.depth)
@@ -413,7 +413,7 @@ impl DTFGraph {
     /// Returns the distance between the vertices `u` and `v` if it
     /// it smaller than the depth of the augmentation. Otherwise returns `None`.
     pub fn small_distance(&self, u:&Vertex, v:&Vertex) -> Option<u32> {
-        let mut dist = std::u32::MAX;
+        let mut dist = u32::MAX;
 
         if let Some(i) = self.get_arc_depth(u, v) {
             dist = i;
@@ -432,7 +432,7 @@ impl DTFGraph {
             }
         }
 
-        if dist == std::u32::MAX {
+        if dist == u32::MAX {
             return None
         }
         Some(dist)

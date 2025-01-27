@@ -141,7 +141,7 @@ impl<'a, G> EdgeIterator<'a, G> where G: Graph {
     }
 }
 
-impl<'a, G> Iterator for EdgeIterator<'a, G> where G: Graph {
+impl<G> Iterator for EdgeIterator<'_, G> where G: Graph {
     type Item = (Vertex, Vertex);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -216,7 +216,7 @@ impl<'a, G> MixedIterator<'a, G> where G: Graph {
     }
 }
 
-impl<'a, G> Iterator for MixedIterator<'a, G> where G: Graph {
+impl<G> Iterator for MixedIterator<'_, G> where G: Graph {
     type Item = VertexOrEdge;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -282,7 +282,7 @@ impl<'a, D> ArcIterator<'a, D> where D: Digraph{
     }
 }
 
-impl<'a, D> Iterator for ArcIterator<'a, D> where D: Digraph  {
+impl<D> Iterator for ArcIterator<'_, D> where D: Digraph  {
     type Item = (Vertex, Vertex);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -381,7 +381,7 @@ impl<'a> DTFArcIterator<'a> {
     pub fn all_depths(G: &'a DTFGraph) -> DTFArcIterator<'a> {
         let mut res = DTFArcIterator {
             N_it: G.in_neighbourhoods_iter(),
-            curr_v: std::u32::MAX,
+            curr_v: u32::MAX,
             curr_it: None,
         };
         res.advance();
@@ -391,7 +391,7 @@ impl<'a> DTFArcIterator<'a> {
     pub fn fixed_depth(G: &'a DTFGraph, depth:usize) -> DTFArcIterator<'a> {
         let mut res = DTFArcIterator {
             N_it: G.in_neighbourhoods_iter_at(depth),
-            curr_v: std::u32::MAX,
+            curr_v: u32::MAX,
             curr_it: None,
         };
         res.advance();
@@ -408,7 +408,7 @@ impl<'a> DTFArcIterator<'a> {
     }
 }
 
-impl<'a> Iterator for DTFArcIterator<'a> {
+impl Iterator for DTFArcIterator<'_> {
     type Item = Arc;
 
     fn next(&mut self) -> Option<Self::Item> {

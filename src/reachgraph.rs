@@ -20,7 +20,7 @@ pub struct Reachables<'a, const DEPTH: usize> {
     boundaries: [(usize, usize); DEPTH]
 }
 
-impl<'a, const DEPTH: usize> Reachables<'a, DEPTH> {
+impl<const DEPTH: usize> Reachables<'_, DEPTH> {
     /// Returns the total number of reachable vertices at all depths.
     pub fn len(&self) -> usize {
         self.reachables.iter().map(|seg| seg.len()).sum()
@@ -105,7 +105,7 @@ impl<const DEPTH: usize> ReachGraph<DEPTH> {
 
     pub fn reachables_all(&self, u:&Vertex) -> &[u32] {
         let index_u = self.index_of(u);
-        let r = DEPTH as usize;
+        let r = DEPTH;
         debug_assert_eq!(*u, self.contents[index_u]);
 
         let left = index_u + r + 2;
@@ -116,7 +116,7 @@ impl<const DEPTH: usize> ReachGraph<DEPTH> {
 
     fn segment(&self, u:&Vertex) -> &[u32] {
         let index_u = self.index_of(u);
-        let r = DEPTH as usize;
+        let r = DEPTH;
         debug_assert_eq!(*u, self.contents[index_u]);
 
         let right = self.contents[index_u + r + 1] as usize;
@@ -176,6 +176,12 @@ impl<const DEPTH: usize> LinearGraph for ReachGraph<DEPTH> {
 pub struct ReachGraphBuilder<const DEPTH: usize> {
     last_index: Option<u32>,
     rgraph: ReachGraph<DEPTH>
+}
+
+impl<const DEPTH: usize> Default for ReachGraphBuilder<DEPTH> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<const DEPTH: usize> ReachGraphBuilder<DEPTH> {
