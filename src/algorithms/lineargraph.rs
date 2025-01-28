@@ -653,6 +653,8 @@ fn bk_pivot_count<L: LinearGraph>(graph:&L, v:&Vertex, vertices:&[Vertex], inclu
 
 #[cfg(test)]
 mod test {
+    use num::Integer;
+
     use super::*;
     use crate::editgraph::EditGraph;
     use crate::ordgraph::OrdGraph;
@@ -805,8 +807,10 @@ mod test {
         let OG = OrdGraph::by_degeneracy(&G);
         let distance = 4;
 
-        let colouring = OG.scattered_colouring(distance, OG.vertices());
-        assert_eq!(colouring.len(), OG.len());
+        let targets = G.vertices().filter(|x| x.is_even()).collect_vec();
+
+        let colouring = OG.scattered_colouring(distance, targets.clone());
+        assert_eq!(colouring.len(), targets.len());
 
         let colours = colouring.invert();
 
