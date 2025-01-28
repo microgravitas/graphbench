@@ -77,8 +77,11 @@ pub trait LinearGraphAlgorithms {
     /// 
     /// Computing the witness is more expensive than computing the dominating set.
     /// The method returns the r-dominating set, a vertex map containting the minimum distance of
-    /// every vertex to the r-dominating set, and optionally an 2r-scattered witness set.
-    fn domset(&self, radius:u32, witness:bool) -> (VertexSet, VertexMap<u32>, Option<VertexSet>);
+    /// every vertex to the r-dominating set, and optionally a vertex colouring of the r-dominating set
+    /// with the property that every colour class is 2r-scattered.
+    /// 
+    /// To retrieve the largest r-scattered set from the colouring, use [graph::VertexColouring::majority_set]
+    fn domset(&self, radius:u32, witness:bool) -> (VertexSet, VertexMap<u32>, Option<VertexColouring<u32>>);
 
     // Computes an approximate r-domainting set for a specific subset of vertices `target`, similar to 
     // [domset](LinearGraphAlgorithms::domset). If `witness` is set to `true`, the algorithm also
@@ -86,8 +89,10 @@ pub trait LinearGraphAlgorithms {
     //
     /// Computing the witness is more expensive than computing the dominating set.
     /// The method returns the r-dominating set, a vertex map containting the minimum distance of
-    /// every vertex to the r-dominating set, and optionally an 2r-scattered witness set.
-    fn domset_with_target<V,I>(&self, radius:u32, witness:bool, target:I) -> (VertexSet, VertexMap<u32>, Option<VertexSet>) 
+    /// every vertex to the r-dominating set, and optionally a vertex colouring of the r-dominating set
+    /// with the property that every colour class is 2r-scattered.
+    /// 
+    fn domset_with_target<V,I>(&self, radius:u32, witness:bool, target:I) -> (VertexSet, VertexMap<u32>, Option<VertexColouring<u32>>) 
     where V: Borrow<Vertex>, I:IntoIterator<Item=V>;    
 }
 
@@ -230,16 +235,16 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
 
     // pub fn contract<V, I>(&mut self, mut vertices:I) -> Vertex 
         // where V: Borrow<Vertex>,  I: Iterator<Item=V> {
-    fn domset(&self, radius:u32, witness:bool) -> (VertexSet, VertexMap<u32>, Option<VertexSet>) {
+    fn domset(&self, radius:u32, witness:bool) -> (VertexSet, VertexMap<u32>, Option<VertexColouring<u32>>) {
         self.domset_with_target(radius, witness, self.vertices())
     }
 
-    fn domset_with_target<V,I>(&self, radius:u32, witness:bool, target:I) -> (VertexSet, VertexMap<u32>, Option<VertexSet>) 
+    fn domset_with_target<V,I>(&self, radius:u32, witness:bool, target:I) -> (VertexSet, VertexMap<u32>, Option<VertexColouring<u32>>) 
     where V: Borrow<Vertex>, I:IntoIterator<Item=V> {
         let target:VertexSet = target.into_iter().map(|u| *u.borrow()).collect();
         if self.is_empty() || target.is_empty() {
             if witness {
-                return (VertexSet::default(), VertexMap::default(), Some(VertexSet::default()))
+                return (VertexSet::default(), VertexMap::default(), Some(VertexColouring::default()))
             } else {
                 return (VertexSet::default(), VertexMap::default(), None)
             }
@@ -352,9 +357,8 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         // subset. This set is guaranteed to be 
         let OH = OrdGraph::by_degeneracy(&H);
         let colours = OH.colour_greedy();
-        let (subset, _ ) = colours.majority_set().unwrap();
 
-        (domset, dom_distance, Some(subset))
+        (domset, dom_distance, Some(colours.into()))
     }    
 }
 
@@ -462,7 +466,8 @@ mod test {
         let OG = OrdGraph::by_degeneracy(&G);
 
         for r in 1..5 {
-            let (D, _, Some(S)) = OG.domset(r, true) else { panic!("No witness returned") };
+            let (D, _, Some(C)) = OG.domset(r, true) else { panic!("No witness returned") };
+            let (S, _) = C.majority_set().unwrap();
             println!("Found Karate {}-domset of size {} with scattered set of size {}", r, D.len(), S.len());
             assert_eq!(G.r_neighbourhood(D.iter(), r as usize).len(), G.num_vertices());
         }
@@ -470,7 +475,8 @@ mod test {
         let G = EditGraph::grid(50, 50);
         let OG = OrdGraph::by_degeneracy(&G);
         let r = 3;
-        let (D, _, Some(S)) = OG.domset(r, true) else { panic!("No witness returned") };
+        let (D, _, Some(C)) = OG.domset(r, true) else { panic!("No witness returned") };
+        let (S, _) = C.majority_set().unwrap();
         println!("Found {}-domset of size {} with scattered set of size {} in 50x50 grid", r, D.len(), S.len());
         assert_eq!(G.r_neighbourhood(D.iter(), r as usize).len(), G.num_vertices());
 
@@ -493,7 +499,9 @@ mod test {
         let OG = OrdGraph::by_degeneracy(&G);
         let T:VertexSet = (0..50).collect();
         let r = 2;
-        let (D, _, Some(S)) = OG.domset_with_target(r, true, &T) else { panic!("No witness returned") };
+        let (D, _, Some(C)) = OG.domset_with_target(r, true, &T) else { panic!("No witness returned") };
+
+        let (S, _) = C.majority_set().unwrap();
 
         println!("Found {}-domset of size {} with scattered set of size {} in 10x10 grid", r, D.len(), S.len());
         println!("Target = {T:?}");

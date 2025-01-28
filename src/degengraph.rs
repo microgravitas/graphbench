@@ -24,7 +24,7 @@ impl DegenGraph {
     }
 
     /// Creates a degenerate graph representation from `graph` using `order`.
-    pub fn with_ordering<'a, G, I, V>(graph: &G, order:I) -> DegenGraph
+    pub fn with_ordering<G, I, V>(graph: &G, order:I) -> DegenGraph
         where V: Borrow<Vertex>, G: Graph, I: IntoIterator<Item=V>
     {
         let order:Vec<_> = order.into_iter().map(|u| *u.borrow()).collect();

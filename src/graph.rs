@@ -149,6 +149,39 @@ impl<T> VertexMapOperations<T> for VertexMap<T> where T: Copy + Hash + Eq {
     }
 }
 
+pub struct VertexColouring<T> where T: Copy + Hash + Eq {
+    colours:VertexMap<T>
+}
+
+impl<T> VertexColouring<T> where T: Copy + Hash + Eq {
+    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, u32, T> {
+        self.colours.iter()
+    }
+}
+
+impl<T> From<VertexMap<T>> for VertexColouring<T> where T: Copy + Hash + Eq {
+    fn from(value: VertexMap<T>) -> Self {
+        VertexColouring{ colours: value }
+    }
+}
+
+impl<T> Default for VertexColouring<T> where T: Copy + Hash + Eq {
+    fn default() -> Self {
+        Self { colours: Default::default() }
+    }
+}
+
+impl<T> VertexMapOperations<T> for VertexColouring<T> where T: Copy + Hash + Eq {
+    fn majority_set(&self) -> Option<(VertexSet, T)> {
+        self.colours.majority_set()
+    }
+
+    fn invert(&self) -> FxHashMap<T, VertexSet> {
+        self.colours.invert()
+    }
+}
+
+
 /// Trait for static graphs.
 pub trait Graph {
     /// Returns the number of vertices in the graph.
@@ -237,7 +270,7 @@ pub trait Graph {
     }    
 
     /// Returns the subgraph induced by the vertices contained in `vertices`.
-    fn subgraph<'a, M, V, I>(&self, vertices:I) -> M 
+    fn subgraph<M, V, I>(&self, vertices:I) -> M 
                 where V: Borrow<Vertex>, I: IntoIterator<Item=V>, M: MutableGraph, {
         let selected:VertexSet = vertices.into_iter().map(|u| *u.borrow()).collect();
         let mut G = M::with_capacity(selected.len());
@@ -483,10 +516,7 @@ pub trait LinearGraph : Graph {
     fn rightmost<V, I>(&self, vertices:I) -> Option<Vertex> 
         where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let res = vertices.into_iter().max_by_key(|u| self.index_of(u.borrow()));
-        match res {
-            Some(x) => Some(*x.borrow()),
-            None => None
-        }
+        res.map(|x| *x.borrow())
     }    
 }
 

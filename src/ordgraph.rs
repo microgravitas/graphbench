@@ -60,7 +60,7 @@ impl OrdGraph {
     }
     
     /// Creates an ordered graphs from `graph` using `order`.
-    pub fn with_ordering<'a, G, I, V>(graph: &G, order:I) -> OrdGraph
+    pub fn with_ordering<G, I, V>(graph: &G, order:I) -> OrdGraph
         where V: Borrow<Vertex>, G: Graph, I: Iterator<Item=V>
     {
         let order:Vec<_> = order.into_iter().map(|u| *u.borrow()).collect();

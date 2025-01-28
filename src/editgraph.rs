@@ -471,7 +471,6 @@ impl EditGraph {
     /// This function panics if the sequence is empty.
     /// 
     /// Returns the contracted vertex.
-    
     pub fn contract<V, I>(&mut self, vertices:I) -> Vertex 
         where V: Borrow<Vertex>,  I: IntoIterator<Item=V> {
         // TODO: handle case when I is empty
