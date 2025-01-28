@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::BTreeSet;
 
 use fxhash::{FxHashMap, FxHashSet};
@@ -76,8 +77,18 @@ pub trait LinearGraphAlgorithms {
     /// 
     /// Computing the witness is more expensive than computing the dominating set.
     /// The method returns the r-dominating set, a vertex map containting the minimum distance of
-    /// every vertex to the r-dominating set, and optionally a 2r-scattered set.
+    /// every vertex to the r-dominating set, and optionally an 2r-scattered witness set.
     fn domset(&self, radius:u32, witness:bool) -> (VertexSet, VertexMap<u32>, Option<VertexSet>);
+
+    // Computes an approximate r-domainting set for a specific subset of vertices `target`, similar to 
+    // [domset](LinearGraphAlgorithms::domset). If `witness` is set to `true`, the algorithm also
+    // computes and r-scattered subset of the `target` set. 
+    //
+    /// Computing the witness is more expensive than computing the dominating set.
+    /// The method returns the r-dominating set, a vertex map containting the minimum distance of
+    /// every vertex to the r-dominating set, and optionally an 2r-scattered witness set.
+    fn domset_with_target<V,I>(&self, radius:u32, witness:bool, target:I) -> (VertexSet, VertexMap<u32>, Option<VertexSet>) 
+    where V: Borrow<Vertex>, I:IntoIterator<Item=V>;    
 }
 
 impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
@@ -217,8 +228,16 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         colours
     }
 
+    // pub fn contract<V, I>(&mut self, mut vertices:I) -> Vertex 
+        // where V: Borrow<Vertex>,  I: Iterator<Item=V> {
     fn domset(&self, radius:u32, witness:bool) -> (VertexSet, VertexMap<u32>, Option<VertexSet>) {
-        if self.is_empty() {
+        self.domset_with_target(radius, witness, self.vertices())
+    }
+
+    fn domset_with_target<V,I>(&self, radius:u32, witness:bool, target:I) -> (VertexSet, VertexMap<u32>, Option<VertexSet>) 
+    where V: Borrow<Vertex>, I:IntoIterator<Item=V> {
+        let target:VertexSet = target.into_iter().map(|u| *u.borrow()).collect();
+        if self.is_empty() || target.is_empty() {
             if witness {
                 return (VertexSet::default(), VertexMap::default(), Some(VertexSet::default()))
             } else {
@@ -245,8 +264,15 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         let wreach = self.wreach_sets(radius);
 
         for v in order.iter() {
-            dom_distance.insert(*v, undominated);
-            dom_counter.insert(*v, 0);
+            if target.contains(v) {
+                dom_distance.insert(*v, undominated);
+                dom_counter.insert(*v, 0);
+            } else {
+                // Mark as already dominated. We use a radius `radius` here so that 
+                // no neighbour is marked as dominated because of this trick.
+                dom_distance.insert(*v, radius);
+                dom_counter.insert(*v, 0);
+            }
         }
 
         for v in order {
@@ -261,11 +287,12 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
             }
 
             // Otherwise, we add v to the dominating set
+            assert!(target.contains(&v));
             domset.insert(v);
             scattered.insert(v);
             dom_distance.insert(v, 0);
 
-            // Update dominationg distance for v's in-neighbours
+            // Update dominating distance for v's in-neighbours
             for (u,dist) in wreach.get(&v).unwrap().iter() {
                 *dom_counter.get_mut(u).unwrap() += 1;
                 *dom_distance.get_mut(u).unwrap() = u32::min(dom_distance[u], *dist);
@@ -446,6 +473,34 @@ mod test {
         let (D, _, Some(S)) = OG.domset(r, true) else { panic!("No witness returned") };
         println!("Found {}-domset of size {} with scattered set of size {} in 50x50 grid", r, D.len(), S.len());
         assert_eq!(G.r_neighbourhood(D.iter(), r as usize).len(), G.num_vertices());
+
+        // Check distances of scattered set
+        let mut DTFG = crate::dtfgraph::DTFGraph::orient(&G);
+        DTFG.augment(2*r as usize, 1);
+
+        for tup in S.iter().combinations(2) {
+            let (x,y) = (tup[0], tup[1]);
+            let dist = DTFG.small_distance(x,y);
+            if let Some(d) = dist  {
+                assert!(d >= 2*r+1);
+            }
+        }
+    }
+
+    #[test]
+    fn domset_partial() {
+        let G = EditGraph::grid(10, 10);
+        let OG = OrdGraph::by_degeneracy(&G);
+        let T:VertexSet = (0..50).collect();
+        let r = 2;
+        let (D, _, Some(S)) = OG.domset_with_target(r, true, &T) else { panic!("No witness returned") };
+
+        println!("Found {}-domset of size {} with scattered set of size {} in 10x10 grid", r, D.len(), S.len());
+        println!("Target = {T:?}");
+        println!("Domset = {D:?}");
+        println!("Scattered = {S:?}");        
+        let dominated = G.r_neighbourhood(D.iter(), r as usize);
+        assert!(T.is_subset(&dominated));
 
         // Check distances of scattered set
         let mut DTFG = crate::dtfgraph::DTFGraph::orient(&G);

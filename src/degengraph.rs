@@ -24,12 +24,10 @@ impl DegenGraph {
     }
 
     /// Creates a degenerate graph representation from `graph` using `order`.
-    // pub fn with_ordering<'a, G, I, V>(graph: &G, order:I) -> OrdGraph
-    // where V: Borrow<Vertex>, G: Graph, I: Iterator<Item=V>
     pub fn with_ordering<'a, G, I, V>(graph: &G, order:I) -> DegenGraph
-        where V: Borrow<Vertex>, G: Graph, I: Iterator<Item=V>
+        where V: Borrow<Vertex>, G: Graph, I: IntoIterator<Item=V>
     {
-        let order:Vec<_> = order.map(|u| *u.borrow()).collect();
+        let order:Vec<_> = order.into_iter().map(|u| *u.borrow()).collect();
         let indices:VertexMap<_> = order.iter().cloned()
                 .enumerate().map(|(i,u)| (u,i)).collect();
 

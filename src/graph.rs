@@ -220,15 +220,15 @@ pub trait Graph {
 
     /// Returns all vertices which lie within distance at most `r` to `u`.
     fn r_neighbours(&self, u:&Vertex, r:usize) -> FxHashSet<Vertex>  {
-        self.r_neighbourhood([*u].iter(), r)
+        self.r_neighbourhood([*u], r)
     }
 
     /// Given an iterator `vertices` over vertices and a distance `r`, returns all vertices of the graph
     /// which are within distance at most `r` to vertices contained in `vertices`.
-    fn r_neighbourhood<'a,I>(&self, vertices:I, r:usize) -> FxHashSet<Vertex>  
-                where I: Iterator<Item=&'a Vertex>, Vertex: 'a {
+    fn r_neighbourhood<V,I>(&self, vertices:I, r:usize) -> FxHashSet<Vertex>  
+                where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut res:FxHashSet<Vertex> = FxHashSet::default();
-        res.extend(vertices.cloned());
+        res.extend(vertices.into_iter().map(|u| *u.borrow()));
         for _ in 0..r {
             let ext = self.closed_neighbourhood(res.iter());
             res.extend(ext);
@@ -237,9 +237,9 @@ pub trait Graph {
     }    
 
     /// Returns the subgraph induced by the vertices contained in `vertices`.
-    fn subgraph<'a, M, I>(&self, vertices:I) -> M 
-                where M: MutableGraph, I: Iterator<Item=&'a Vertex> {
-        let selected:VertexSet = vertices.cloned().collect();
+    fn subgraph<'a, M, V, I>(&self, vertices:I) -> M 
+                where V: Borrow<Vertex>, I: IntoIterator<Item=V>, M: MutableGraph, {
+        let selected:VertexSet = vertices.into_iter().map(|u| *u.borrow()).collect();
         let mut G = M::with_capacity(selected.len());
         for v in &selected {
             G.add_vertex(v);
@@ -469,8 +469,8 @@ pub trait LinearGraph : Graph {
 
     /// Returns the leftmost (smallest) vertex in the provided collection 
     /// according to the ordering of this graph.
-    fn leftmost<VBorrow, VIter>(&self, vertices:VIter) -> Option<Vertex> 
-        where VBorrow: Borrow<Vertex>, VIter: IntoIterator<Item=VBorrow> {
+    fn leftmost<V, I>(&self, vertices:I) -> Option<Vertex> 
+        where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let res = vertices.into_iter().min_by_key(|u| self.index_of(u.borrow()));
         match res {
             Some(x) => Some(*x.borrow()),
@@ -480,8 +480,8 @@ pub trait LinearGraph : Graph {
 
     /// Returns the leftmost (smallest) vertex in the provided collection 
     /// according to the ordering of this graph.
-    fn rightmost<VBorrow, VIter>(&self, vertices:VIter) -> Option<Vertex> 
-        where VBorrow: Borrow<Vertex>, VIter: IntoIterator<Item=VBorrow> {
+    fn rightmost<V, I>(&self, vertices:I) -> Option<Vertex> 
+        where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let res = vertices.into_iter().max_by_key(|u| self.index_of(u.borrow()));
         match res {
             Some(x) => Some(*x.borrow()),
