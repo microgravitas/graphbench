@@ -51,7 +51,6 @@ impl OrdNode {
     }
 }
 
-
 impl OrdGraph {
     /// Creates an ordered graph from `graph` by computing a degeneracy ordering.
     pub fn by_degeneracy<G>(graph: &G) -> OrdGraph where G: Graph {

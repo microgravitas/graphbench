@@ -415,24 +415,24 @@ impl DTFGraph {
     pub fn small_distance(&self, u:&Vertex, v:&Vertex) -> Option<u32> {
         let mut dist = u32::MAX;
 
-        if let Some(i) = self.get_arc_depth(u, v) {
-            dist = i;
+        if let Some(d) = self.get_arc_depth(u, v) {
+            dist = d;
         }
 
-        if let Some(i) = self.get_arc_depth(v, u) {
-            dist = i;
+        if let Some(d) = self.get_arc_depth(v, u) {
+            dist = dist.min(d);
         }
 
         let Nv = self.in_neighbours_with_weights(v);
         for d in 1..(self.depth+1) {
             for x in self.in_neighbours_at(u, d) {
                 if Nv.contains_key(x) {
-                    dist = min(dist, Nv[x]+d as u32);
+                    dist = dist.min(Nv[x]+d as u32);
                 }
             }
         }
 
-        if dist == u32::MAX {
+        if dist > self.depth as u32 {
             return None
         }
         Some(dist)

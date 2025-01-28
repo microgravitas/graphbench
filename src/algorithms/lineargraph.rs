@@ -1,7 +1,9 @@
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
+use std::u32;
 
 use fxhash::{FxHashMap, FxHashSet};
+use union_find_rs::prelude::*;
 
 use crate::editgraph::EditGraph;
 use crate::ordgraph::OrdGraph;
@@ -68,7 +70,7 @@ pub trait LinearGraphAlgorithms {
 
 
     // Computes a greedy colouring of this graph.
-    fn colour_greedy(&self) -> VertexMap<u32>;
+    fn colour_greedy(&self) -> VertexColouring<u32>;
 
     /// Computes an approximate r-dominating set of the graph. If `witness` is set
     /// to `true`, the algorithm also computes an r-scatterd subset of the dominating set,
@@ -93,6 +95,12 @@ pub trait LinearGraphAlgorithms {
     /// with the property that every colour class is 2r-scattered.
     /// 
     fn domset_with_target<V,I>(&self, radius:u32, witness:bool, target:I) -> (VertexSet, VertexMap<u32>, Option<VertexColouring<u32>>) 
+    where V: Borrow<Vertex>, I:IntoIterator<Item=V>;    
+
+
+    /// Computes a vertex colouring such that every pair of vertices with the same colour
+    /// have distance at least `distance` to each other.
+    fn scattered_colouring<V,I>(&self, distance:u32, target:I) -> VertexColouring<u32>
     where V: Borrow<Vertex>, I:IntoIterator<Item=V>;    
 }
 
@@ -208,11 +216,11 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         results.len() as u64
     }
 
-    fn colour_greedy(&self) -> VertexMap<u32> {
-        let mut colours = VertexMap::default();
+    fn colour_greedy(&self) -> VertexColouring<u32> {
+        let mut colours:VertexColouring<u32> = VertexColouring::default();
         let mut used_colours:Vec<u32> = vec![];
         for (v, N) in self.left_neighbourhoods() {
-            let Ncols:Vec<u32> = N.iter().map(|x| *colours.get(x).unwrap()).collect();
+            let Ncols:Vec<u32> = N.iter().map(|x| colours[x]).collect();
             if Ncols.len() == used_colours.len() {
                 let new_colour = used_colours.len() as u32;
                 used_colours.push(new_colour); 
@@ -227,7 +235,6 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                     break
                 }
             }
-            assert!(colours.contains_key(&v));
         }
 
         colours
@@ -360,6 +367,217 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
 
         (domset, dom_distance, Some(colours.into()))
     }    
+
+    fn scattered_colouring<V,I>(&self, distance:u32, target:I) -> VertexColouring<u32>
+    where V: Borrow<Vertex>, I:IntoIterator<Item=V> {
+        let mut target:VertexSet = target.into_iter().map(|u| *u.borrow()).collect();
+        if self.is_empty() || target.is_empty() {
+            return VertexColouring::default();
+        }
+
+        let mut colouring = VertexColouring::default();
+
+        let radius = distance.div_ceil(2);
+        let wreach = self.wreach_sets(distance);
+        let undominated = radius+1;
+
+        while !target.is_empty() {
+            let mut domset = VertexSet::default();
+            let mut scattered = VertexSet::default();
+            let mut dom_distance = FxHashMap::<Vertex, u32>::default();
+            let mut dom_counter = FxHashMap::<Vertex, u32>::default();
+
+            let cutoff = distance.pow(2);
+            let n = self.num_vertices() as i64;
+
+            // Sort by _decreasing_ in-degree, tie-break by
+            // total degree.
+            let order:Vec<Vertex> = self.vertices()
+                    .cloned()
+                    .sorted_by_key(|u| -(self.left_degree(u) as i64)*n - (self.degree(u) as i64))
+                    .collect();
+
+            for v in order.iter() {
+                if target.contains(v) {
+                    dom_distance.insert(*v, undominated);
+                    dom_counter.insert(*v, 0);
+                } else {
+                    // Mark as already dominated. We use a radius `radius` here so that 
+                    // no neighbour is marked as dominated because of this trick.
+                    dom_distance.insert(*v, radius);
+                    dom_counter.insert(*v, 0);
+                }
+            }
+
+            for v in order {
+                // Update domination distance of v via its in-neighbours
+                for (u,dist) in wreach.get(&v).unwrap().iter() {
+                    *dom_distance.get_mut(&v).unwrap() = u32::min(dom_distance[&v],  dist+dom_distance[u]);
+                }
+
+                // If v is a already dominated we have nothing else to do
+                if dom_distance[&v] <= radius {
+                    continue
+                }
+
+                // Otherwise, we add v to the dominating set
+                assert!(target.contains(&v));
+                domset.insert(v);
+                scattered.insert(v);
+                dom_distance.insert(v, 0);
+
+                // Update dominating distance for v's in-neighbours
+                for (u,dist) in wreach.get(&v).unwrap().iter() {
+                    *dom_counter.get_mut(u).unwrap() += 1;
+                    *dom_distance.get_mut(u).unwrap() = u32::min(dom_distance[u], *dist);
+
+                    // If a vertex has been an in-neigbhour of a domination node for
+                    // too many time, we include it in the domset.
+                    if dom_counter[u] > cutoff && !domset.contains(u) {
+                        domset.insert(*u);
+                        dom_distance.insert(*u, 0);
+
+                        for (x,xdist) in wreach.get(u).unwrap().iter() {
+                            *dom_distance.get_mut(x).unwrap() += u32::min(dom_distance[x], *xdist);
+                        }
+                    }
+                }
+            }
+
+            // Collect 'out-neighbours' so we can compute auxilliary graph
+            let mut out_neigbhours:VertexMap<VertexMap<u32>> = VertexMap::default();
+            for x in &scattered { 
+                for (w,dist) in wreach.get(x).unwrap().iter() {
+                    out_neigbhours.entry(*w).or_default().insert(*x, *dist);
+                }
+            }
+
+            let mut H = EditGraph::new();
+            H.add_vertices(scattered.iter().cloned());
+            for (w, O) in out_neigbhours {
+                for pair in O.iter().combinations(2) {
+                    let (x, dx) = pair[0];
+                    let (y, dy) = pair[1];
+                    if dx + dy <= 2*radius {
+                        H.add_edge(x, y);
+                    }
+                }
+
+                if !scattered.contains(&w) {
+                    continue
+                }
+
+                for (x,dx) in O.iter() {
+                    if *dx > 2*radius {
+                        continue
+                    }
+                    H.add_edge(&w,x);
+                }
+            }
+            assert_eq!(H.num_vertices(), scattered.len());
+
+            // Compute greedy colouring and return largest monochromatic
+            // subset. This set is guaranteed to be 
+            let OH = OrdGraph::by_degeneracy(&H);
+            let colours = OH.colour_greedy();
+            colouring.disjoint_extend(&colours);
+
+            // Remove coloured vertices from target
+            target.retain(|u| !colouring.contains(&u));
+        }
+
+        // Attempt to improve colouring
+        let mut improved = true;
+        while improved {
+            improved = false;
+
+            let classes = colouring.invert();
+            let mut order = classes.iter().collect_vec();
+            order.sort_by_key(|(_,set)| set.len());
+
+            println!(">>> Classess {}", classes.len());
+
+            // Set of 'used' colours for this round
+            let mut used:FxHashSet<u32> = FxHashSet::default();
+            for ((col1,set1),(col2,set2)) in order.iter().tuple_combinations() {
+                if used.contains(col1) || used.contains(col2) {
+                    continue
+                }
+
+                let dist = small_distance_sets(&wreach, distance, set1.iter(), set2.iter());
+                if let Some(dist) = dist {
+                    if dist < 2*radius {
+                        // Cannot merge these two classes
+                        continue;
+                    }
+                }
+                println!("Distance between {col1} and {col2} is {dist:?}, merging");
+
+                for x in set1.iter() {
+                    colouring.insert(*x, **col2);
+                }
+                used.insert(**col1);
+                used.insert(**col2);
+                improved = true;
+            }
+        };
+
+        colouring
+    }    
+}
+
+// TODO: These methods should probably go into its own dedicated 'WReach' struct
+fn small_distance_sets<V,I1,I2>(wreach:&VertexMap<VertexMap<u32>>, distance:u32, X:I1, Y:I2) -> Option<u32>
+    where V: Borrow<Vertex>, I1: IntoIterator<Item=V>, I2: IntoIterator<Item=V> {
+    let X:VertexSet = X.into_iter().map(|u| *u.borrow()).collect();
+    let Y:VertexSet = Y.into_iter().map(|u| *u.borrow()).collect();
+
+    println!("Computing distance between {X:?} and {Y:?}");
+    let mut dist = u32::MAX;
+    for x in &X {
+        for y in &Y {
+            if x == y {
+                return Some(0)
+            }
+            println!("  {x} -- {y} have distance {:?}", small_distance(wreach, distance, x, y));
+            if let Some(d) = small_distance(wreach, distance, x, y) {
+                dist = u32::min(dist, d);
+            }
+        }
+    }
+    if dist == u32::MAX {
+        return None
+    }
+    Some(dist)
+}
+
+fn small_distance(wreach:&VertexMap<VertexMap<u32>>, distance:u32, x:&Vertex, y:&Vertex) -> Option<u32> {
+    if x == y {
+        return Some(0)
+    }
+
+    let Wx = &wreach[x];
+    let Wy = &wreach[y];
+
+    let mut dist = u32::MAX;
+    if Wx.contains_key(y) {
+        dist = Wx[y];
+    }
+    if Wy.contains_key(x) {
+        dist = dist.min(Wy[x]);
+    }
+
+    for w in Wx.keys() {
+        if !Wy.contains_key(w) {
+            continue
+        }
+        dist = dist.min(Wx[&w] + Wy[&w]);
+    }
+
+    if dist > distance {
+        return None
+    }
+    Some(dist)
 }
 
 fn bk_pivot_count<L: LinearGraph>(graph:&L, v:&Vertex, vertices:&[Vertex], include:&mut VertexSet, mut maybe:VertexSet, mut exclude:VertexSet, results:&mut FxHashSet<BTreeSet<Vertex>>) {
@@ -447,7 +665,7 @@ mod test {
         let D = OrdGraph::by_degeneracy(&G);
 
         let colouring = D.colour_greedy();
-        let colours:FxHashSet<u32> = colouring.values().cloned().collect();
+        let colours:FxHashSet<u32> = colouring.colours().cloned().collect();
         assert_eq!(colours.len(), 5 );
 
         let mut G = EditGraph::new();
@@ -455,7 +673,7 @@ mod test {
         let D = OrdGraph::by_degeneracy(&G);
 
         let colouring = D.colour_greedy();
-        let colours:FxHashSet<u32> = colouring.values().cloned().collect();
+        let colours:FxHashSet<u32> = colouring.colours().cloned().collect();
 
         assert_eq!(colours.len(), 1 );        
     }
@@ -519,6 +737,90 @@ mod test {
             let dist = DTFG.small_distance(x,y);
             if let Some(d) = dist  {
                 assert!(d >= 2*r+1);
+            }
+        }
+    }
+
+    #[test]
+    fn test_small_distance() {
+        let G = EditGraph::grid(20, 20);
+        let r = 5;
+        let OG = OrdGraph::by_degeneracy(&G);
+
+        let wreach = OG.wreach_sets(2*r);
+
+        let mut DTFG = crate::dtfgraph::DTFGraph::orient(&G);        
+        DTFG.augment(5 as usize, 1);        
+
+        for pair in G.vertices().combinations(2) {
+            let (u,v) = (pair[0], pair[1]);
+            let dist_dtf = DTFG.small_distance(u, v);
+            let dist_wreach = small_distance(&wreach, r, u, v);
+
+            if let Some(d1) = dist_dtf {
+                if let Some(d2) = dist_wreach {
+                    assert_eq!(d1, d2);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_small_distance_sets() {
+        let G = EditGraph::grid(5, 6);
+        let r = 12; // Twice the distances we care about
+        // 00 -- 01 -- 02 -- 03 -- 04 -- 05
+        // |     |     |     |     |     |
+        // 06 -- 07 -- 08 -- 09 -- 10 -- 11
+        // |     |     |     |     |     |
+        // 12 -- 13 -- 14 -- 15 -- 16 -- 17
+        // |     |     |     |     |     |
+        // 18 -- 19 -- 20 -- 21 -- 22 -- 23
+        // |     |     |     |     |     |
+        // 24 -- 25 -- 26 -- 27 -- 28 -- 29
+        let OG = OrdGraph::by_degeneracy(&G);
+        let wreach = OG.wreach_sets(r+1);
+
+        assert_eq!(small_distance(&wreach, r, &0, &0), Some(0));
+        assert_eq!(small_distance(&wreach, r, &0, &1), Some(1));
+        assert_eq!(small_distance(&wreach, r, &0, &2), Some(2));
+        assert_eq!(small_distance(&wreach, r, &0, &3), Some(3));
+        assert_eq!(small_distance(&wreach, r, &0, &4), Some(4));
+        assert_eq!(small_distance(&wreach, r, &0, &5), Some(5));
+
+        let A = vec![0,1,2,3,4,5];
+        let B = vec![24,25,26,27,28,29];
+        assert_eq!(small_distance_sets(&wreach, r, A, B), Some(4));
+
+        let A = vec![24];
+        let B = vec![15, 10, 05];
+        assert_eq!(small_distance_sets(&wreach, r, A, B), Some(5));
+    }
+
+    #[test]
+    fn scattered_colouring() {
+        // Compute 2-scattered colouring of karate
+        // let G = EditGraph::from_txt("resources/karate.txt").unwrap();
+        let G = EditGraph::grid(10, 10);
+        let OG = OrdGraph::by_degeneracy(&G);
+        let distance = 4;
+
+        let colouring = OG.scattered_colouring(distance, OG.vertices());
+        assert_eq!(colouring.len(), OG.len());
+
+        let colours = colouring.invert();
+
+        // Check distances of scattered colours
+        let mut DTFG = crate::dtfgraph::DTFGraph::orient(&G);
+        DTFG.augment(2*distance as usize, 1); // Larger distance than needed, for good measure
+
+        for (col, set) in colours.iter() {
+            for (x,y) in set.iter().tuple_combinations() {
+                assert!(x != y);
+                let dist = DTFG.small_distance(x,y); 
+                if let Some(d) = dist  {
+                    assert!(d >= distance);
+                }
             }
         }
     }

@@ -9,7 +9,7 @@
 use fxhash::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 
-use std::{borrow::Borrow, collections::HashMap, hash::Hash, ops::Add};
+use std::{borrow::Borrow, collections::HashMap, hash::Hash, ops::{Add, Index}};
 
 /// A vertex in a graph.
 pub type Vertex = u32;
@@ -149,35 +149,84 @@ impl<T> VertexMapOperations<T> for VertexMap<T> where T: Copy + Hash + Eq {
     }
 }
 
+#[derive(Debug)]
 pub struct VertexColouring<T> where T: Copy + Hash + Eq {
-    colours:VertexMap<T>
+    colouring:VertexMap<T>
 }
 
 impl<T> VertexColouring<T> where T: Copy + Hash + Eq {
-    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, u32, T> {
-        self.colours.iter()
+    pub fn from_iter<I>(iter:I) -> Self where I: IntoIterator<Item=(Vertex,T)> {
+        let colouring:VertexMap<T> = VertexMap::from_iter(iter.into_iter());
+        VertexColouring{ colouring }
+    }
+
+    pub fn insert(&mut self, v:Vertex, c:T) -> Option<T> {
+        self.colouring.insert(v, c)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item=(&Vertex, &T)> {
+        self.colouring.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.colouring.len()
+    }
+
+    pub fn vertices(&self) -> impl Iterator<Item=&Vertex>  {
+        self.colouring.keys()
+    }
+
+    pub fn colours(&self) -> impl Iterator<Item=&T>  {
+        self.colouring.values().unique()
+    }    
+
+    pub fn disjoint_extend(&mut self, other:&VertexColouring<T>) where T: num::Integer {
+        let colours:FxHashSet<T> = self.colouring.values().cloned().collect();
+        let offset:T = if colours.is_empty() {
+            T::zero()
+        } else {
+            let mut res = *colours.iter().max().unwrap();
+            res.inc();
+            res 
+        };
+
+        for (u, c) in other.iter() {
+            self.colouring.entry(*u).or_insert(*c+offset);
+        }
+    }
+    
+    pub fn contains(&self, u:&Vertex) -> bool {
+        self.colouring.contains_key(u)
+    }
+}
+
+impl<T> Index<&Vertex> for VertexColouring<T> where T: Copy + Hash + Eq {
+    type Output = T;
+    
+    fn index(&self, index: &Vertex) -> &Self::Output {
+        &self.colouring[index]
     }
 }
 
 impl<T> From<VertexMap<T>> for VertexColouring<T> where T: Copy + Hash + Eq {
     fn from(value: VertexMap<T>) -> Self {
-        VertexColouring{ colours: value }
+        VertexColouring{ colouring: value }
     }
 }
 
 impl<T> Default for VertexColouring<T> where T: Copy + Hash + Eq {
     fn default() -> Self {
-        Self { colours: Default::default() }
+        Self { colouring: Default::default() }
     }
 }
 
 impl<T> VertexMapOperations<T> for VertexColouring<T> where T: Copy + Hash + Eq {
     fn majority_set(&self) -> Option<(VertexSet, T)> {
-        self.colours.majority_set()
+        self.colouring.majority_set()
     }
 
     fn invert(&self) -> FxHashMap<T, VertexSet> {
-        self.colours.invert()
+        self.colouring.invert()
     }
 }
 
@@ -562,6 +611,31 @@ mod test {
         let (mset, value) = map.majority_set().unwrap();
         assert_eq!(mset, vec![0,1,2].into_iter().collect::<VertexSet>() );
         assert_eq!(value, 100);
+    }
 
+    #[test]
+    fn vertex_colouring() {    
+        let mut colA:VertexColouring<u32> = VertexColouring::from_iter(vec![(1,100),(2,100),(3,200),(4,200),(5,300)]);
+        let colB:VertexColouring<u32> = VertexColouring::from_iter(vec![(5,100),(6,100),(7,200),(8,200),(9,300)]);
+
+        assert_eq!(colA.colours().cloned().collect::<VertexSet>(), VertexSet::from_iter(vec![100,200,300]));
+        assert_eq!(colA.vertices().cloned().collect::<VertexSet>(), VertexSet::from_iter(vec![1,2,3,4,5]));
+        assert_eq!(colA[&1], 100);
+        assert_eq!(colA[&2], 100);
+        assert_eq!(colA[&3], 200);
+        assert_eq!(colA[&4], 200);
+        assert_eq!(colA[&5], 300);
+
+        // colB contains a different colour for vertex 5, but disjoint_extend is not supposed to overwrite 
+        // existing colours.
+        colA.disjoint_extend(&colB);
+        assert_eq!(colA[&1], 100);
+        assert_eq!(colA[&2], 100);
+        assert_eq!(colA[&3], 200);
+        assert_eq!(colA[&4], 200);
+        assert_eq!(colA[&5], 300);
+        assert_eq!(colA.vertices().cloned().collect::<VertexSet>(), VertexSet::from_iter(vec![1,2,3,4,5,6,7,8,9]));
+        assert_eq!(colA.colours().count(), 6); // We do not know how colours are remapped, but we know 
+                                               // the total number of colours we should get
     }
 }

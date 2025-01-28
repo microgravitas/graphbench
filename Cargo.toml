@@ -10,6 +10,7 @@ license = "MIT"
 
 
 [dependencies]
+num = "0.4"
 fxhash = "0.2.1"
 flate2 = "1.0.16"
 itertools = "0.9.0"
