@@ -381,23 +381,22 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         let wreach = self.wreach_sets(distance);
         let undominated = radius+1;
 
+        // Sort by _decreasing_ in-degree, tie-break by
+        // total degree.
+        let cutoff = distance.pow(2);        
+        let n = self.num_vertices() as i64;        
+        let order:Vec<Vertex> = self.vertices()
+                .cloned()
+                .sorted_by_key(|u| -(self.left_degree(u) as i64)*n - (self.degree(u) as i64))
+                .collect();        
+
         while !target.is_empty() {
             let mut domset = VertexSet::default();
             let mut scattered = VertexSet::default();
-            let mut dom_distance = FxHashMap::<Vertex, u32>::default();
-            let mut dom_counter = FxHashMap::<Vertex, u32>::default();
+            let mut dom_distance:VertexMap<u32> = VertexMap::default();
+            let mut dom_counter:VertexMap<u32> = VertexMap::default();
 
-            let cutoff = distance.pow(2);
-            let n = self.num_vertices() as i64;
-
-            // Sort by _decreasing_ in-degree, tie-break by
-            // total degree.
-            let order:Vec<Vertex> = self.vertices()
-                    .cloned()
-                    .sorted_by_key(|u| -(self.left_degree(u) as i64)*n - (self.degree(u) as i64))
-                    .collect();
-
-            for v in order.iter() {
+            for v in &order {
                 if target.contains(v) {
                     dom_distance.insert(*v, undominated);
                     dom_counter.insert(*v, 0);
@@ -409,7 +408,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                 }
             }
 
-            for v in order {
+            for &v in &order {
                 // Update domination distance of v via its in-neighbours
                 for (u,dist) in wreach.get(&v).unwrap().iter() {
                     *dom_distance.get_mut(&v).unwrap() = u32::min(dom_distance[&v],  dist+dom_distance[u]);
@@ -801,8 +800,6 @@ mod test {
 
     #[test]
     fn scattered_colouring() {
-        // Compute 2-scattered colouring of karate
-        // let G = EditGraph::from_txt("resources/karate.txt").unwrap();
         let G = EditGraph::grid(10, 10);
         let OG = OrdGraph::by_degeneracy(&G);
         let distance = 4;
