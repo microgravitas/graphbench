@@ -611,7 +611,7 @@ impl DTFGraph {
 
                         for rx in 1..(radius+1) {
                             for x in self.in_neighbours_at(u,  rx as usize) {
-                                *dom_distance.get_mut(x).unwrap() += min(dom_distance[x],  rx);
+                                *dom_distance.get_mut(x).unwrap() = min(dom_distance[x],  rx);
                             }
                         }
                     }

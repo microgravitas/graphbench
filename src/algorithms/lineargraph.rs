@@ -316,7 +316,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                     dom_distance.insert(*u, 0);
 
                     for (x,xdist) in wreach.get(u).unwrap().iter() {
-                        *dom_distance.get_mut(x).unwrap() += u32::min(dom_distance[x], *xdist);
+                        *dom_distance.get_mut(x).unwrap() = u32::min(dom_distance[x], *xdist);
                     }
                 }
             }
@@ -420,7 +420,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                 }
 
                 // Otherwise, we add v to the dominating set
-                assert!(target.contains(&v));
+                assert!(target.contains(&v), "{v} is not a target vertex");
                 domset.insert(v);
                 scattered.insert(v);
                 dom_distance.insert(v, 0);
@@ -437,7 +437,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                         dom_distance.insert(*u, 0);
 
                         for (x,xdist) in wreach.get(u).unwrap().iter() {
-                            *dom_distance.get_mut(x).unwrap() += u32::min(dom_distance[x], *xdist);
+                            *dom_distance.get_mut(x).unwrap() = u32::min(dom_distance[x], *xdist);
                         }
                     }
                 }
@@ -481,6 +481,8 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
             let colours = OH.colour_greedy();
             colouring.disjoint_extend(&colours);
 
+            assert_eq!(colours.len(), scattered.len());
+
             // Remove coloured vertices from target
             target.retain(|u| !colouring.contains(&u));
         }
@@ -493,8 +495,6 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
             let classes = colouring.invert();
             let mut order = classes.iter().collect_vec();
             order.sort_by_key(|(_,set)| set.len());
-
-            println!(">>> Classess {}", classes.len());
 
             // Set of 'used' colours for this round
             let mut used:FxHashSet<u32> = FxHashSet::default();
@@ -510,8 +510,8 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                         continue;
                     }
                 }
-                println!("Distance between {col1} and {col2} is {dist:?}, merging");
 
+                // Merge these two classes, mark as used up for this round
                 for x in set1.iter() {
                     colouring.insert(*x, **col2);
                 }
@@ -531,14 +531,13 @@ fn small_distance_sets<V,I1,I2>(wreach:&VertexMap<VertexMap<u32>>, distance:u32,
     let X:VertexSet = X.into_iter().map(|u| *u.borrow()).collect();
     let Y:VertexSet = Y.into_iter().map(|u| *u.borrow()).collect();
 
-    println!("Computing distance between {X:?} and {Y:?}");
     let mut dist = u32::MAX;
     for x in &X {
         for y in &Y {
             if x == y {
                 return Some(0)
             }
-            println!("  {x} -- {y} have distance {:?}", small_distance(wreach, distance, x, y));
+
             if let Some(d) = small_distance(wreach, distance, x, y) {
                 dist = u32::min(dist, d);
             }
@@ -800,11 +799,11 @@ mod test {
 
     #[test]
     fn scattered_colouring() {
-        let G = EditGraph::grid(10, 10);
+        let G = EditGraph::grid(30, 30);
         let OG = OrdGraph::by_degeneracy(&G);
         let distance = 4;
 
-        let targets = G.vertices().filter(|x| x.is_even()).collect_vec();
+        let targets = G.vertices().filter(|x| *x % 3 == 0).collect_vec();
 
         let colouring = OG.scattered_colouring(distance, targets.clone());
         assert_eq!(colouring.len(), targets.len());
@@ -825,4 +824,30 @@ mod test {
             }
         }
     }
+
+    /*
+        Fixed. The bug was in _all_ dominating set algorithms when updating the neighbours
+        of a vertex that was added because of the `domcounter`` trick. In the inner loop on 
+        the marked line below the `=` was accidentally a `+=`. This was rare enough to almost
+        never matter.
+        ```
+            if dom_counter[u] > cutoff && !domset.contains(u) {
+                domset.insert(*u);
+                dom_distance.insert(*u, 0);
+
+                for (x,xdist) in wreach.get(u).unwrap().iter() {
+            --->   *dom_distance.get_mut(x).unwrap() = u32::min(dom_distance[x], *xdist);
+                }
+            }
+        ```
+     */
+    // #[test]
+    // fn bughunt() {
+    //     let mut G = EditGraph::from_file("resources/Yeast.txt.gz").unwrap();
+    //     G.remove_loops();
+    //     let target = vec![1952, 753, 1509, 2138, 499, 688, 2073, 874, 369, 1187, 304, 1249, 1122, 1311, 428, 806, 995, 301, 1435, 425, 992, 1181, 549, 422, 1618, 168, 1680, 292, 1615, 165, 543, 227, 416, 478, 162, 35, 537, 283, 661, 850, 156, 153, 150, 23, 212, 463, 147, 209, 398, 584, 2096, 268, 203, 1337, 1021, 1966, 138, 767, 135, 1647, 1520, 826, 132, 699, 2022, 1517, 2273, 64, 253, 442, 126, 882, 566, 61, 628, 1068, 185, 58, 1570, 120, 1443, 2010, 811, 492, 176, 238, 46, 1053, 170, 737, 988, 294, 167, 985, 1614, 1487, 285, 1041, 31, 2299, 849, 1038, 1983, 155, 1100, 595, 784, 214, 1726, 1915, 276, 1599, 149, 1912, 146, 586, 775, 648, 1714, 1587, 199, 388, 1900, 1962, 134, 1646, 69, 131, 509, 382, 1767, 252, 627, 122, 500, 184, 1129, 57, 748, 243, 1377, 872, 1817, 2257, 302, 237, 299, 1055, 172, 1808, 169, 925, 1114, 231, 1554, 166, 544, 1678, 39, 290, 163, 352, 854, 727, 721, 1666, 972, 1350, 1034, 591, 210, 399, 588, 777, 966, 83, 272, 1028, 334, 585, 1025, 266, 644, 833, 390, 263, 1208, 136, 765, 1521, 71, 827, 1016, 133, 6, 1896, 68, 1202, 508, 697, 254, 1010, 505];
+    //     let OG = OrdGraph::by_degeneracy(&G);
+
+    //     let colouring = OG.scattered_colouring(3, &target);
+    // }
 }

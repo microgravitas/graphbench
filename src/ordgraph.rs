@@ -68,7 +68,7 @@ impl OrdGraph {
 
         for v in &order {
             nodes.push(OrdNode::new(v));
-            assert!(indices[v] == nodes.len()-1);
+            assert!(indices[v] == nodes.len()-1, "Index error while computing degenereacy. Remove loops from the graph!");
         }
 
         for (u,v) in graph.edges() {
