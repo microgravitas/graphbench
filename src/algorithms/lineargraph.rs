@@ -3,6 +3,8 @@ use std::collections::BTreeSet;
 use std::u32;
 
 use fxhash::{FxHashMap, FxHashSet};
+use num::range;
+use num::Integer;
 use union_find_rs::prelude::*;
 
 use crate::editgraph::EditGraph;
@@ -377,7 +379,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
 
         let mut colouring = VertexColouring::default();
 
-        let radius = distance.div_ceil(2);
+        let radius = distance / 2;
         let wreach = self.wreach_sets(distance);
         let undominated = radius+1;
 
@@ -489,35 +491,50 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
 
         // Attempt to improve colouring
         let mut improved = true;
+        let mut unimprovable:FxHashSet<u32> = FxHashSet::default(); // Colours that cannot be merged
         while improved {
             improved = false;
 
             let classes = colouring.invert();
-            let mut order = classes.iter().collect_vec();
+            let mut order = classes.iter().filter(|(col,_)| !unimprovable.contains(col)).collect_vec();
             order.sort_by_key(|(_,set)| set.len());
 
             // Set of 'used' colours for this round
             let mut used:FxHashSet<u32> = FxHashSet::default();
-            for ((col1,set1),(col2,set2)) in order.iter().tuple_combinations() {
-                if used.contains(col1) || used.contains(col2) {
-                    continue
+            for i in 0..order.len() {
+                let (col1, set1) = &order[i];
+                assert!(!unimprovable.contains(col1));
+                if used.contains(col1) {
+                    continue;
                 }
-
-                let dist = small_distance_sets(&wreach, distance, set1.iter(), set2.iter());
-                if let Some(dist) = dist {
-                    if dist < 2*radius {
-                        // Cannot merge these two classes
+                for j in i+1..order.len() {
+                    let (col2, set2) = &order[j];
+                    if used.contains(col2) {
                         continue;
                     }
+                    assert!(!unimprovable.contains(col1));
+
+                    let dist = small_distance_sets(&wreach, distance, set1.iter(), set2.iter());
+                    if let Some(dist) = dist {
+                        if dist < 2*radius {
+                            // Cannot merge these two classes
+                            continue;
+                        }
+                    }
+                    
+                    // Merge these two classes, mark as used up for this round
+                    for x in set1.iter() {
+                        colouring.insert(*x, **col2);
+                    }
+                    used.insert(**col1);
+                    used.insert(**col2);
+                    improved = true;
                 }
 
-                // Merge these two classes, mark as used up for this round
-                for x in set1.iter() {
-                    colouring.insert(*x, **col2);
+                // This colour cannot be merged with anything
+                if !used.contains(col1) {
+                    unimprovable.insert(**col1);
                 }
-                used.insert(**col1);
-                used.insert(**col2);
-                improved = true;
             }
         };
 
@@ -823,6 +840,31 @@ mod test {
                 }
             }
         }
+    }
+
+    #[test]
+    fn improve() {
+        let mut G = EditGraph::from_file("resources/Yeast.txt.gz").unwrap();
+        G.remove_loops();
+        let target:VertexSet = vec![1952, 753, 1509, 2138, 499, 688, 2073, 874, 369, 1187, 304, 1249, 1122, 1311, 428, 806, 995, 301, 1435, 425, 992, 1181, 549, 422, 1618, 168, 1680, 292, 1615, 165, 543, 227, 416, 478, 162, 35, 537, 283, 661, 850, 156, 153, 150, 23, 212, 463, 147, 209, 398, 584, 2096, 268, 203, 1337, 1021, 1966, 138, 767, 135, 1647, 1520, 826, 132, 699, 2022, 1517, 2273, 64, 253, 442, 126, 882, 566, 61, 628, 1068, 185, 58, 1570, 120, 1443, 2010, 811, 492, 176, 238, 46, 1053, 170, 737, 988, 294, 167, 985, 1614, 1487, 285, 1041, 31, 2299, 849, 1038, 1983, 155, 1100, 595, 784, 214, 1726, 1915, 276, 1599, 149, 1912, 146, 586, 775, 648, 1714, 1587, 199, 388, 1900, 1962, 134, 1646, 69, 131, 509, 382, 1767, 252, 627, 122, 500, 184, 1129, 57, 748, 243, 1377, 872, 1817, 2257, 302, 237, 299, 1055, 172, 1808, 169, 925, 1114, 231, 1554, 166, 544, 1678, 39, 290, 163, 352, 854, 727, 721, 1666, 972, 1350, 1034, 591, 210, 399, 588, 777, 966, 83, 272, 1028, 334, 585, 1025, 266, 644, 833, 390, 263, 1208, 136, 765, 1521, 71, 827, 1016, 133, 6, 1896, 68, 1202, 508, 697, 254, 1010, 505].into_iter().collect();
+        let OG = OrdGraph::by_degeneracy(&G);
+
+        let colouring = OG.scattered_colouring(3, &target);
+        let colours = colouring.invert();
+        println!("Subset method: {} colours", colours.len() );        
+        for (_,S) in colours.iter() {
+            println!("2-scattered set ({}): {:?}", S.len(), S);
+        }
+
+        println!("");
+
+        let colouring = OG.scattered_colouring(3, G.vertices());
+        let colours = colouring.invert();
+        println!("Whole graph method: {} colours", colours.len() );
+        for (_,S) in colours.iter() {
+            let S:VertexSet = S.intersection(&target).cloned().collect();
+            println!("2-scattered set ({}): {:?}", S.len(), S);
+        }        
     }
 
     /*
