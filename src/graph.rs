@@ -295,6 +295,7 @@ pub trait Graph {
         let mut res:FxHashSet<Vertex> = FxHashSet::default();
         for v in vertices {
             res.extend(self.neighbours(v).cloned());
+            res.insert(*v);
         }
 
         res
