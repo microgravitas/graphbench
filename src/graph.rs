@@ -367,10 +367,11 @@ pub trait MutableGraph: Graph{
     /// Adds a collection of `vertices` to the graph.
     ///
     /// Returns the number of vertices added this way.
-    fn add_vertices(&mut self, vertices: impl Iterator<Item=Vertex>) -> u32 {
+    fn add_vertices<V>(&mut self, vertices: impl Iterator<Item=V>) -> u32
+        where V:Borrow<Vertex> {
         let mut count = 0;
         for v in vertices {
-            if self.add_vertex(&v) {
+            if self.add_vertex(v.borrow()) {
                 count += 1;
             }
         }
