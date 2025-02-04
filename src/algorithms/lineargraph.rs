@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
+use std::hash::DefaultHasher;
 use std::u32;
 
 use fxhash::{FxHashMap, FxHashSet};
@@ -102,7 +103,7 @@ pub trait LinearGraphAlgorithms {
 
     /// Computes a vertex colouring such that every pair of vertices with the same colour
     /// have distance at least `distance` to each other.
-    fn scattered_colouring<V,I>(&self, distance:u32, target:I) -> VertexColouring<u32>
+    fn scattered_colouring<V,I>(&self, distance:u32, target:I) -> Vec<VertexSet>
     where V: Borrow<Vertex>, I:IntoIterator<Item=V>;    
 }
 
@@ -370,11 +371,11 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         (domset, dom_distance, Some(colours.into()))
     }    
 
-    fn scattered_colouring<V,I>(&self, distance:u32, target:I) -> VertexColouring<u32>
+    fn scattered_colouring<V,I>(&self, distance:u32, target:I) -> Vec<VertexSet>
     where V: Borrow<Vertex>, I:IntoIterator<Item=V> {
         let mut target:VertexSet = target.into_iter().map(|u| *u.borrow()).collect();
         if self.is_empty() || target.is_empty() {
-            return VertexColouring::default();
+            return Vec::default();
         }
 
         let mut colouring = VertexColouring::default();
@@ -491,28 +492,32 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
 
         // Attempt to improve colouring
         let mut improved = true;
-        let mut unimprovable:FxHashSet<u32> = FxHashSet::default(); // Colours that cannot be merged
+
+        let mut classes:Vec<VertexSet> = colouring.invert().values().cloned().collect();
+        let mut unimprovable:Vec<VertexSet> = Vec::default();
+
         while improved {
             improved = false;
 
-            let classes = colouring.invert();
-            let mut order = classes.iter().filter(|(col,_)| !unimprovable.contains(col)).collect_vec();
-            order.sort_by_key(|(_,set)| set.len());
+            classes.retain(|S| !S.is_empty());
+            classes.sort_by_key(|S| S.len());
 
-            // Set of 'used' colours for this round
-            let mut used:FxHashSet<u32> = FxHashSet::default();
-            for i in 0..order.len() {
-                let (col1, set1) = &order[i];
-                assert!(!unimprovable.contains(col1));
-                if used.contains(col1) {
+            // println!("Remaining sizes: {:?}", classes.iter().map(|S| S.len()).collect_vec());
+
+            for i in 0..classes.len() {
+                let (classes_left, classes_right) = classes.split_at_mut(i+1);
+                let set1 = &mut classes_left[i];
+
+                if set1.is_empty() {
                     continue;
                 }
-                for j in i+1..order.len() {
-                    let (col2, set2) = &order[j];
-                    if used.contains(col2) {
+
+                let mut improved_current_set = false;
+                for j in 0..classes_right.len() {
+                    let set2 = &mut classes_right[j];
+                    if set2.is_empty() {
                         continue;
-                    }
-                    assert!(!unimprovable.contains(col1));
+                    }                    
 
                     let dist = small_distance_sets(&wreach, distance, set1.iter(), set2.iter());
                     if let Some(dist) = dist {
@@ -523,22 +528,22 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                     }
                     
                     // Merge these two classes, mark as used up for this round
-                    for x in set1.iter() {
-                        colouring.insert(*x, **col2);
-                    }
-                    used.insert(**col1);
-                    used.insert(**col2);
+                    set1.extend(set2.drain());
                     improved = true;
+                    improved_current_set = true;
                 }
 
                 // This colour cannot be merged with anything
-                if !used.contains(col1) {
-                    unimprovable.insert(**col1);
+                if improved_current_set {
+                    unimprovable.push(set1.drain().collect());
                 }
             }
         };
 
-        colouring
+        classes.retain(|S| !S.is_empty());
+        unimprovable.extend(classes.into_iter());
+
+        unimprovable
     }    
 }
 
@@ -761,7 +766,7 @@ mod test {
     #[test]
     fn test_small_distance() {
         let G = EditGraph::grid(20, 20);
-        let r = 5;
+        let r = 4;
         let OG = OrdGraph::by_degeneracy(&G);
 
         let wreach = OG.wreach_sets(2*r);
@@ -822,16 +827,13 @@ mod test {
 
         let targets = G.vertices().filter(|x| *x % 3 == 0).collect_vec();
 
-        let colouring = OG.scattered_colouring(distance, targets.clone());
-        assert_eq!(colouring.len(), targets.len());
-
-        let colours = colouring.invert();
+        let colours = OG.scattered_colouring(distance, targets.clone());
 
         // Check distances of scattered colours
         let mut DTFG = crate::dtfgraph::DTFGraph::orient(&G);
         DTFG.augment(2*distance as usize, 1); // Larger distance than needed, for good measure
 
-        for (col, set) in colours.iter() {
+        for set in colours.iter() {
             for (x,y) in set.iter().tuple_combinations() {
                 assert!(x != y);
                 let dist = DTFG.small_distance(x,y); 
@@ -844,27 +846,18 @@ mod test {
 
     #[test]
     fn improve() {
-        let mut G = EditGraph::from_file("resources/Yeast.txt.gz").unwrap();
+        // let mut G = EditGraph::from_file("resources/email-Enron.txt.gz").unwrap();
+        let mut G = EditGraph::from_file("resources/twittercrawl.txt.gz").unwrap();
         G.remove_loops();
-        let target:VertexSet = vec![1952, 753, 1509, 2138, 499, 688, 2073, 874, 369, 1187, 304, 1249, 1122, 1311, 428, 806, 995, 301, 1435, 425, 992, 1181, 549, 422, 1618, 168, 1680, 292, 1615, 165, 543, 227, 416, 478, 162, 35, 537, 283, 661, 850, 156, 153, 150, 23, 212, 463, 147, 209, 398, 584, 2096, 268, 203, 1337, 1021, 1966, 138, 767, 135, 1647, 1520, 826, 132, 699, 2022, 1517, 2273, 64, 253, 442, 126, 882, 566, 61, 628, 1068, 185, 58, 1570, 120, 1443, 2010, 811, 492, 176, 238, 46, 1053, 170, 737, 988, 294, 167, 985, 1614, 1487, 285, 1041, 31, 2299, 849, 1038, 1983, 155, 1100, 595, 784, 214, 1726, 1915, 276, 1599, 149, 1912, 146, 586, 775, 648, 1714, 1587, 199, 388, 1900, 1962, 134, 1646, 69, 131, 509, 382, 1767, 252, 627, 122, 500, 184, 1129, 57, 748, 243, 1377, 872, 1817, 2257, 302, 237, 299, 1055, 172, 1808, 169, 925, 1114, 231, 1554, 166, 544, 1678, 39, 290, 163, 352, 854, 727, 721, 1666, 972, 1350, 1034, 591, 210, 399, 588, 777, 966, 83, 272, 1028, 334, 585, 1025, 266, 644, 833, 390, 263, 1208, 136, 765, 1521, 71, 827, 1016, 133, 6, 1896, 68, 1202, 508, 697, 254, 1010, 505].into_iter().collect();
         let OG = OrdGraph::by_degeneracy(&G);
 
-        let colouring = OG.scattered_colouring(3, &target);
-        let colours = colouring.invert();
+        println!("Loaded graph: n = {}, m = {}, d = {}", G.num_vertices(), G.num_edges(), OG.max_left_degree());
+
+        let colours = OG.scattered_colouring(3, G.vertices());
         println!("Subset method: {} colours", colours.len() );        
-        for (_,S) in colours.iter() {
+        for S in colours.iter() {
             println!("2-scattered set ({}): {:?}", S.len(), S);
         }
-
-        println!("");
-
-        let colouring = OG.scattered_colouring(3, G.vertices());
-        let colours = colouring.invert();
-        println!("Whole graph method: {} colours", colours.len() );
-        for (_,S) in colours.iter() {
-            let S:VertexSet = S.intersection(&target).cloned().collect();
-            println!("2-scattered set ({}): {:?}", S.len(), S);
-        }        
     }
 
     /*
