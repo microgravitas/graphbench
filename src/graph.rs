@@ -203,7 +203,7 @@ impl<T> VertexColouring<T> where T: Copy + Hash + Eq {
         self.colouring.contains_key(u)
     }
 
-    fn subset<V,I>(&self, vertices:I) -> VertexColouring<T>  
+    pub fn subset<V,I>(&self, vertices:I) -> VertexColouring<T>  
                 where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut res = VertexColouring::default();
         for v in vertices { 
