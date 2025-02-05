@@ -534,7 +534,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                 }
 
                 // This colour cannot be merged with anything
-                if improved_current_set {
+                if !improved_current_set {
                     unimprovable.push(set1.drain().collect());
                 }
             }
