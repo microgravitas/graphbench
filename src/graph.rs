@@ -195,8 +195,24 @@ impl<T> VertexColouring<T> where T: Copy + Hash + Eq {
         }
     }
     
+    pub fn get(&self, u:&Vertex) -> Option<&T> {
+        self.colouring.get(u)
+    }
+
     pub fn contains(&self, u:&Vertex) -> bool {
         self.colouring.contains_key(u)
+    }
+
+    fn subset<V,I>(&self, vertices:I) -> VertexColouring<T>  
+                where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
+        let mut res = VertexColouring::default();
+        for v in vertices { 
+            let v = *v.borrow();
+            if let Some(col) = self.get(&v) {
+                res.insert(v, *col);
+            }
+        }
+        res
     }
 }
 
@@ -207,6 +223,7 @@ impl<T> Index<&Vertex> for VertexColouring<T> where T: Copy + Hash + Eq {
         &self.colouring[index]
     }
 }
+
 
 impl<T> From<VertexMap<T>> for VertexColouring<T> where T: Copy + Hash + Eq {
     fn from(value: VertexMap<T>) -> Self {

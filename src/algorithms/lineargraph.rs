@@ -844,21 +844,21 @@ mod test {
         }
     }
 
-    #[test]
-    fn improve() {
-        // let mut G = EditGraph::from_file("resources/email-Enron.txt.gz").unwrap();
-        let mut G = EditGraph::from_file("resources/twittercrawl.txt.gz").unwrap();
-        G.remove_loops();
-        let OG = OrdGraph::by_degeneracy(&G);
+    // #[test]
+    // fn improve() {
+    //     // let mut G = EditGraph::from_file("resources/email-Enron.txt.gz").unwrap();
+    //     let mut G = EditGraph::from_file("resources/twittercrawl.txt.gz").unwrap();
+    //     G.remove_loops();
+    //     let OG = OrdGraph::by_degeneracy(&G);
 
-        println!("Loaded graph: n = {}, m = {}, d = {}", G.num_vertices(), G.num_edges(), OG.max_left_degree());
+    //     println!("Loaded graph: n = {}, m = {}, d = {}", G.num_vertices(), G.num_edges(), OG.max_left_degree());
 
-        let colours = OG.scattered_colouring(3, G.vertices());
-        println!("Subset method: {} colours", colours.len() );        
-        for S in colours.iter() {
-            println!("2-scattered set ({}): {:?}", S.len(), S);
-        }
-    }
+    //     let colours = OG.scattered_colouring(3, G.vertices());
+    //     println!("Subset method: {} colours", colours.len() );        
+    //     for S in colours.iter() {
+    //         println!("2-scattered set ({}): {:?}", S.len(), S);
+    //     }
+    // }
 
     /*
         Fixed. The bug was in _all_ dominating set algorithms when updating the neighbours
