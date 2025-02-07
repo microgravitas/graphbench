@@ -80,6 +80,10 @@ impl DegenGraph {
         unsafe{ self.contents.get_unchecked(iu+3..iu+3+num_neighbours) }
     }
 
+    pub fn right_neighbours(&self, u:&Vertex) -> &VertexSet {
+        &self.right_neighbours[u]
+    }
+    
     /// Returns true if `u` is left of `v` and uv is an edge in the graph.
     /// Returns false if `u` is right of `v`, either `u` or `v` is not in the graph
     /// or if the edge uv is not in the graph.
