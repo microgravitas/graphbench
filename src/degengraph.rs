@@ -449,6 +449,46 @@ mod test {
         assert_eq!(D.sreach_set(&3, 1), [(2,1)].into_iter().collect());
         assert_eq!(D.sreach_set(&3, 2), [(2,1),(1,2)].into_iter().collect());
         assert_eq!(D.sreach_set(&3, 3), [(2,1),(1,2),(0,3)].into_iter().collect());
+
+
+        // Larger example to test sreach(2): 
+        // 0 ... 100 999 200..300 
+        // With edges from i to i + 200 and from 999 to 200...300. 
+        let mut H = EditGraph::new();
+        let mut S_truth:VertexMap<u32> = VertexMap::default();
+        let mut ordering = vec![];
+
+        for i in 0..=100 {
+            H.add_vertex(&i);
+            S_truth.insert(i, 2);
+            ordering.push(i);            
+        }
+        ordering.push(999);
+        H.add_vertex(&999);        
+
+        for i in 200..=300 {
+            H.add_vertex(&i);
+            ordering.push(i);
+        }
+
+        for i in 0..=100 {
+            assert!(H.contains(&i));
+            assert!(H.contains(&(i+200)));
+            H.add_edge(&i,&(i+200));
+        }
+        for i in 200..=300 {
+            assert!(H.contains(&i));
+            H.add_edge(&999, &i);
+        }
+
+        assert_eq!(H.num_edges(), 2*101 );
+        assert_eq!(H.num_vertices(), 2*101+1 );
+
+        println!("{ordering:?}");
+        println!("{:?}", H.edges().collect_vec());
+        let D = DegenGraph::with_ordering(&H, ordering);
+
+        assert_eq!(D.sreach_set(&999, 2), S_truth);
     }    
 
     #[test]
@@ -465,4 +505,27 @@ mod test {
             assert_eq!(&S_local, S_global);
         }
     }    
+
+    #[test]
+    fn sreach2() {
+        let mut G = EditGraph::from_file("./resources/Yeast.txt.gz").unwrap();
+        G.remove_loops();
+        let D = DegenGraph::from_graph(&G);
+
+        for u in D.vertices() {
+            let mut Nu:VertexSet = D.left_neighbours(u).into_iter().collect();
+
+            if Nu.is_empty() {
+                continue
+            }
+
+            let anchor = Nu.iter().max_by_key(|x| D.index_of(x)).unwrap();
+            let S = D.sreach_set(anchor, 2);
+            let mut Sverts:VertexSet = S.iter().map(|(x,_)| *x).collect();            
+            Sverts.insert(*anchor);
+
+            assert!(Nu.is_subset(&Sverts));
+
+        }
+    }        
 }
