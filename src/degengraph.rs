@@ -421,4 +421,48 @@ mod test {
         assert_eq!(D.count_max_cliques(), 5*5*5);        
     }
 
+    #[test]
+    fn sreach_basics() {
+        let mut H = EditGraph::new();
+        H.add_vertex(&0);
+        H.add_vertex(&1);
+        H.add_vertex(&2);
+        H.add_vertex(&3);
+        H.add_vertex(&4);
+        H.add_vertex(&5);
+        H.add_vertex(&6);
+
+        //     .---------.
+        // 0  1  2--(3)--4  5--6
+        // `         `-----'  ' 
+        //  `----------------'
+        H.add_edges([(0,6),(1,4),(2,3),(3,4),(3,5),(5,6)].into_iter());
+
+        let D = DegenGraph::with_ordering(&H, [0,1,2,3,4,5,6]);
+        assert_eq!(D.sreach_set(&3, 1), [(2,1)].into_iter().collect());
+        assert_eq!(D.sreach_set(&3, 2), [(2,1),(1,2)].into_iter().collect());
+        assert_eq!(D.sreach_set(&3, 3), [(2,1),(1,2),(0,3)].into_iter().collect());
+
+        // Add spurious edges which do not change the strong reachability for (3)
+        H.add_edges([(0,1),(1,2),(2,4),(2,5),(2,6)].into_iter());
+        let D = DegenGraph::with_ordering(&H, [0,1,2,3,4,5,6]);
+        assert_eq!(D.sreach_set(&3, 1), [(2,1)].into_iter().collect());
+        assert_eq!(D.sreach_set(&3, 2), [(2,1),(1,2)].into_iter().collect());
+        assert_eq!(D.sreach_set(&3, 3), [(2,1),(1,2),(0,3)].into_iter().collect());
+    }    
+
+    #[test]
+    fn sreach_consistency() {
+        let mut G = EditGraph::from_file("./resources/Yeast.txt.gz").unwrap();
+        G.remove_loops();
+        let D = DegenGraph::from_graph(&G);
+
+        let Sreach = D.sreach_sets(3);
+        for u in D.vertices() {
+            let S_global = &Sreach[u];
+            let S_local = D.sreach_set(u, 3);
+            println!("{S_global:?}");
+            assert_eq!(&S_local, S_global);
+        }
+    }    
 }
