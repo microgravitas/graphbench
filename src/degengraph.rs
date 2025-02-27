@@ -9,6 +9,7 @@ use crate::algorithms::GraphAlgorithms;
 use crate::graph::*;
 use crate::iterators::*;
 
+#[derive(Clone)]
 pub struct DegenGraph {
     indices: VertexMap<usize>,
     pub(crate) contents:Vec<u32>,
@@ -56,6 +57,62 @@ impl DegenGraph {
                     m: 0,
                     right_neighbours: VertexMap::default(),
                     contents: Vec::default() }
+    }
+
+    /// Relabels the vertices of this graph according to the underlying ordering, so
+    /// the first vertex is 0, the second 1 etc. 
+    /// Additionally, the left neighbourhoods are sorted.
+    /// 
+    /// Returns a vertex map from the new vertex names (keys) to the old vertex names (values).
+    pub fn normalize(&mut self) -> VertexMap<Vertex> {
+        let mut i = 0;
+        let mut ix = 0;
+        let mut new_to_old = VertexMap::default();
+        let mut old_to_new = VertexMap::default();
+        unsafe {
+            loop {
+                let u = *self.contents.get_unchecked(i); // contents[i]
+                let next = *self.contents.get_unchecked(i+1) as usize; // contents[i+1]
+                let num_neighbors = *self.contents.get_unchecked(i+2) as usize; // contents[i+2]
+
+                let left = i+3;
+                let right = left+num_neighbors;
+
+                // Relabel u itself
+                *self.contents.get_unchecked_mut(i) = ix as u32;
+                new_to_old.insert(ix as u32, u);
+                old_to_new.insert(u, ix as u32);
+
+                // Relabel left neighbourhood
+                let mut N:Vec<Vertex> = self.contents.get_unchecked(left..right).iter().map(|u| old_to_new[u]).collect();
+                N.sort_unstable();
+                self.contents.get_unchecked_mut(left..right).clone_from_slice(&N);
+
+                if next == i {
+                    break
+                }
+                i = next;
+                ix += 1;
+            }
+        }
+
+        // Change right neighbourhood
+        let mut right_Ns = VertexMap::default();
+        for (u, N) in self.right_neighbours.iter() {
+            let new_N:VertexSet = N.into_iter().map(|x| old_to_new[x]).collect();
+            let new_u = old_to_new[u];
+            right_Ns.insert(new_u, new_N);
+        }
+        self.right_neighbours = right_Ns;
+
+        // Change indices
+        let mut new_indices = VertexMap::default();
+        for (u,ix) in self.indices.iter() {
+            new_indices.insert(old_to_new[u], *ix);
+        }
+        self.indices = new_indices;
+
+        new_to_old
     }
 
     /// Returns the first vertex in the ordering, if the graph is non-empty.
@@ -527,5 +584,31 @@ mod test {
             assert!(Nu.is_subset(&Sverts));
 
         }
-    }        
+    }     
+
+    #[test]
+    fn normalize() {
+        let mut G = EditGraph::from_file("./resources/Yeast.txt.gz").unwrap();
+        G.remove_loops();
+        let D = DegenGraph::from_graph(&G);
+        let mut E = D.clone();
+        let E_to_D:VertexMap<_> = E.normalize();
+        let D_to_E:VertexMap<_> = E_to_D.iter().map(|(k,v)| (*v,*k)).collect();
+
+        for (u,v) in D.edges() {
+            assert!(E.adjacent(&D_to_E[&u], &D_to_E[&v]));
+        }
+
+        for (u,v) in E.edges() {
+            assert!(D.adjacent(&E_to_D[&u], &E_to_D[&v]));
+        }
+
+        for u in D.vertices() {
+            let eu = &D_to_E[u];
+            assert_eq!(D.degree(u), E.degree(eu));
+            assert_eq!(D.left_degree(u), E.left_degree(eu));
+            assert_eq!(D.right_degree(u), E.right_degree(eu));
+        }
+
+    }   
 }
