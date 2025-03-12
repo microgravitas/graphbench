@@ -32,5 +32,8 @@ pub mod iterators;
 /// Graph algorithms.
 pub mod algorithms;
 
+/// Data structures
+pub mod datastructures;
+
 /// File I/O.
 pub mod io;
