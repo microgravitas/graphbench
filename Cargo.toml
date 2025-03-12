@@ -1,6 +1,6 @@
 [package]
 name = "graphbench"
-version = "0.1.8  "
+version = "0.1.81"
 authors = ["felix <felix.reidl@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/microgravitas/graphbench"
