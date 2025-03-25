@@ -33,7 +33,6 @@ impl SReachContext {
 
     fn insert(&mut self, neighs:&[Vertex]) {
         let key = self.to_bitset(neighs);
-        let temp = key.clone();
         *self.right_neighbours.entry(key).or_default() += 1;
     }
 
@@ -50,6 +49,32 @@ impl SReachContext {
         }
         counts.into_iter().map(|(bits,count)| (self.to_vecset(&bits), count)).collect()
     }
+
+    /// Aggregates counts for all sets in this storage that intersect the `target` set in
+    /// exactly the rightmost element in the context (e.g. the 'anchor' vertex for this struct)
+    fn count_first_intersection(&self, target:&[Vertex]) -> usize {
+        let mask = self.to_bitset(target);    
+        let anchor_mask = self.singleton_bitset(&self.context[self.context.len()-1]);
+
+        let mut res:usize = 0;
+
+        for (bits, count) in self.right_neighbours.iter() {
+            let bits = mask.clone() & bits;
+            if bits == anchor_mask {
+                res += count;
+            }
+        }
+        res
+    }    
+
+    fn singleton_bitset(&self, u:&Vertex) -> VertexBitVec {
+        let mut bitvec:VertexBitVec = BitVec::with_capacity(self.context.len());
+        bitvec.resize(self.context.len(), false);
+        if let Some(&ix) = self.indices.get(u) {
+            bitvec.set(ix as usize, true);
+        }
+        bitvec
+    }    
 
     fn to_bitset(&self, set:&[Vertex]) -> VertexBitVec {
         let mut bitvec:VertexBitVec = BitVec::with_capacity(self.context.len());
@@ -191,6 +216,53 @@ impl SReachTraceOracle {
 
         traces
     }
+
+    pub fn compute_neighbour_count(&self, inner: &[Vertex], graph:&DegenGraph) -> usize {
+        let mut res:usize = 0;
+
+        debug_assert!(inner.is_sorted_by_key(|x| graph.index_of(x)));
+
+        // Count neighbourhoods induced by vertices to the right using the 
+        // sreach context sets
+        for i in 1..=inner.len() { // All non-empty prefixes of `inner`, including `inner` itself
+            let prefix = &inner[..i];
+            let anchor = *&inner[i-1];
+            let ctx = &self.contexts[&anchor];
+            
+            res += ctx.count_first_intersection(&prefix);
+        }
+
+
+        // Add neighbourhoods induced by vertices to the left 
+        let mut left_neighbours: VertexSet = VertexSet::default();
+        for u in inner.iter() {
+            left_neighbours.extend(graph.left_neighbours_slice(u).into_iter());
+            left_neighbours.insert(*u);
+        }
+
+        'outer: for u in left_neighbours.into_iter() {
+            let is_inner = inner.contains(&u);
+
+            for w in graph.left_neighbours_slice(&u) {
+                if inner.contains(w) {
+                    // The vertex u has been counted already in the first phase. If this 
+                    // vertex is in `inner`, we need to correct that.
+                    if is_inner {
+                        res -= 1;
+                    }
+                    continue 'outer;
+                }
+            }
+
+            if is_inner { 
+                continue;
+            }
+
+            res += 1;
+        }
+
+        res
+    }    
 
     pub fn is_shattered<V,I>(&self, inner: I, k:u32, graph:&DegenGraph) -> bool where V: Borrow<u32>, I:IntoIterator<Item=V> {
         let mut inner = inner.into_iter().map(|u| *u.borrow()).collect_vec();
