@@ -159,11 +159,19 @@ impl SReachTraceOracle {
                 debug_assert!(set.is_sorted_by_key(|x| graph.index_of(x)));
 
                 // println!("  {set:?} ({count})");
-                *traces.entry(set.clone()).or_default() += count;
+                // We avoid using the entry API here because it forces us to
+                // always clone `set`
+                match traces.get_mut(&set)  {
+                    Some(trace_count) => *trace_count += count,
+                    None => { traces.insert(set.clone(), count); },
+                };
+                
 
                 // Correct count for prefix
                 let set_prefix = &set[..set.len()-1];
-                *traces.get_mut(set_prefix).unwrap() -= count; // This entry must exist
+                unsafe {
+                    *traces.get_mut(set_prefix).unwrap_unchecked() -= count; // This entry must exist
+                }
             }
         }
 
@@ -176,41 +184,32 @@ impl SReachTraceOracle {
             left_neighbours.insert(*u);
         }
 
-        // Collect traces of left neighbours in the set `inner`
-        // Note: It is important that vertices _without_ any trace in `inner`, .e.g
-        //       vertices that are themselves in `inner` but have no neighbours there,
-        //       are included in `left_traces` with an empty trace. This will correct the 
-        //       overall count for the empty trace in the final result.
-        let mut left_traces:VertexMap<Vec<u32>> = Default::default();
-        for y in left_neighbours {
-            let mut N = left_traces.entry(y).or_default();            
-            for x in inner.iter() {
-                if graph.adjacent(x, &y) {
-                    N.push(*x); // We take care of duplicates below
+        for y in left_neighbours.into_iter() {
+            let mut trace = vec![];
+            
+            // `trace` will inherit the ordering of `inner`
+            let mut trace_prefix = vec![];
+            for u in inner.iter() {
+                if graph.adjacent(u, &y) {
+                    trace.push(*u); 
+                    if graph.adjacent_ordered(u, &y) {
+                        trace_prefix.push(*u);
+                    }
                 }
             }
-        }
-
-        // println!("Left traces {left_traces:?}");
-
-        for (x, mut N) in left_traces.into_iter() {
-            // Prepare trace
-            N.sort_unstable();
-            N.dedup();
-            N.sort_by_key(|y| graph.index_of(y));
 
             // Only count trace if the source vertices lies outside of `inner`
-            if !inner.contains(&x) {
-                *traces.entry(N.clone()).or_default() += 1;
+            if !inner.contains(&y) {
+                match traces.get_mut(&trace) {
+                    Some(trace_counter) => *trace_counter += 1,
+                    None => {traces.insert(trace.clone(), 1);},
+                }
             }
 
-            // Correct count of `traces` by removing prefixes. To that end, we first
-            // need to determine where x lies in relation to N
-            let ix = graph.index_of(&x);
-            let part = N.partition_point(|y| graph.index_of(y) < ix);
-
-            let Nprefix = &N[..part]; 
-            *traces.get_mut(Nprefix).unwrap() -= 1;
+            // Correct count for prefix. This key must exist in `traces`
+            unsafe {
+                *traces.get_mut(&trace_prefix).unwrap_unchecked() -= 1;    
+            }
         }
         // println!("Final traces {traces:?}");
 
