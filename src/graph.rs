@@ -160,6 +160,10 @@ impl<T> VertexColouring<T> where T: Copy + Hash + Eq {
         VertexColouring{ colouring }
     }
 
+    pub fn as_map(self) -> VertexMap<T> {
+        self.colouring
+    }
+
     pub fn insert(&mut self, v:Vertex, c:T) -> Option<T> {
         self.colouring.insert(v, c)
     }
