@@ -149,7 +149,7 @@ impl<T> VertexMapOperations<T> for VertexMap<T> where T: Copy + Hash + Eq {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug,PartialEq,Eq)]
 pub struct VertexColouring<T> where T: Copy + Hash + Eq {
     colouring:VertexMap<T>
 }
@@ -612,7 +612,7 @@ pub trait LinearGraph : Graph {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{editgraph::*, ordgraph::OrdGraph};
+    use crate::{editgraph::*, io::LoadFromFile, ordgraph::OrdGraph};
 
     #[test]
     fn ordering() {
@@ -669,5 +669,12 @@ mod test {
         assert_eq!(colA.vertices().cloned().collect::<VertexSet>(), VertexSet::from_iter(vec![1,2,3,4,5,6,7,8,9]));
         assert_eq!(colA.colours().count(), 6); // We do not know how colours are remapped, but we know 
                                                // the total number of colours we should get
+
+
+        let col_sets = vec![VertexSet::from_iter(vec![1,2,3]), VertexSet::from_iter(vec![4,5,6])];
+        let colA = VertexColouring::from_sets(col_sets);
+        let colB:VertexColouring<u32> = VertexColouring::from_iter(vec![(1,0),(2,0),(3,0),(4,1),(5,1),(6,1)]);
+
+        assert_eq!(colA, colB);
     }
 }
