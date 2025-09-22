@@ -20,6 +20,9 @@ pub type Edge = (Vertex, Vertex);
 /// An arc in a digraph.
 pub type Arc = (Vertex, Vertex);
 
+/// A sequence of vertices
+pub type VertexSequence = Vec<Vertex>;
+
 /// A set of vertices (implemented as a hashset).
 pub type VertexSet = FxHashSet<Vertex>;
 
