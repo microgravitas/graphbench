@@ -247,8 +247,12 @@ impl<T> VertexMapOperations<T> for VertexColouring<T> where T: Copy + Hash + Eq 
     }
 }
 
-impl VertexColouring<u32> {
-    pub fn from_sets<I>(iter:I) -> Self where I: IntoIterator<Item=VertexSet> {
+pub trait IntegerColouring<T> {
+    fn from_sets<I>(iter:I) -> Self where I: IntoIterator<Item=VertexSet>;
+}
+
+impl IntegerColouring<u32> for VertexColouring<u32> {
+    fn from_sets<I>(iter:I) -> Self where I: IntoIterator<Item=VertexSet> {
         let mut colouring:VertexMap<u32> = VertexMap::default();
         for (i,set) in iter.into_iter().enumerate() {
             let i = i as u32;
