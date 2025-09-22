@@ -473,14 +473,10 @@ pub trait Digraph: Graph {
     fn has_arc(&self, u:&Vertex, v:&Vertex) -> bool;
 
     /// Returns the number of arcs which point to `u` in the digraph.
-    fn in_degree(&self, u:&Vertex) -> u32 {
-        self.in_neighbours(u).count() as u32
-    }
+    fn in_degree(&self, u:&Vertex) -> u32;
 
     /// Returns the number of arcs which point away from `u` in the digraph.
-    fn out_degree(&self, u:&Vertex) -> u32 {
-        self.out_neighbours(u).count() as u32
-    }
+    fn out_degree(&self, u:&Vertex) -> u32;
 
     /// Returns the in-degrees of all vertices in the digraph as a map.
     fn in_degrees(&self) -> VertexMap<u32> {
@@ -510,12 +506,45 @@ pub trait Digraph: Graph {
 
     /// Returns an iterator over the in-neighbours of `u`.
     fn in_neighbours<'a>(&'a self, u:&Vertex) -> Box<dyn Iterator<Item=&'a Vertex> + 'a>;
+
+    /// Given an iterator `vertices` over vertices, returns all vertices of the graph
+    /// which are out-neighbours of those vertices but not part of `vertices` themselves.
+    fn out_neighbourhood<'a, I>(&self, vertices:I) -> FxHashSet<Vertex> 
+                where I: Iterator<Item=&'a Vertex>, Vertex: 'a {
+        let mut res:FxHashSet<Vertex> = FxHashSet::default();
+        let centers:FxHashSet<Vertex> = vertices.cloned().collect();
+
+        for v in &centers {
+            res.extend(self.out_neighbours(v).cloned());
+        }
+
+        res.retain(|u| !centers.contains(u));
+        res
+    }    
+
+    /// Given an iterator `vertices` over vertices, returns all vertices of the graph
+    /// which are in-neighbours of those vertices but not part of `vertices` themselves.
+    fn in_neighbourhood<'a, I>(&self, vertices:I) -> FxHashSet<Vertex> 
+                where I: Iterator<Item=&'a Vertex>, Vertex: 'a {
+        let mut res:FxHashSet<Vertex> = FxHashSet::default();
+        let centers:FxHashSet<Vertex> = vertices.cloned().collect();
+
+        for v in &centers {
+            res.extend(self.in_neighbours(v).cloned());
+        }
+
+        res.retain(|u| !centers.contains(u));
+        res
+    }       
 }
 
 /// Trait for mutable digraphs (currently incomplete).
 pub trait MutableDigraph: Digraph  {
     /// Creats an empty mutable digraph
     fn new() -> Self;
+
+    /// Creates a mutable dugraph with a hint on how many vertices it will probably contain.
+    fn with_capacity(n: usize) -> Self;
 
     /// Adds the vertex `u` to the digraph.
     /// 
@@ -536,6 +565,65 @@ pub trait MutableDigraph: Digraph  {
     /// 
     /// Returns `true` if the arc was removed and `false` if it was not contained in the graph.        
     fn remove_arc(&mut self, u: &Vertex, v: &Vertex) -> bool;
+
+    /// Adds a collection of `vertices` to the graph.
+    ///
+    /// Returns the number of vertices added this way.
+    fn add_vertices<V>(&mut self, vertices: impl Iterator<Item=V>) -> u32
+        where V:Borrow<Vertex> {
+        let mut count = 0;
+        for v in vertices {
+            if self.add_vertex(v.borrow()) {
+                count += 1;
+            }
+        }
+        count
+    }
+
+    /// Adds a collection of `arcs` to the graph.
+    ///
+    /// Returns the number of arcs added this way.
+    fn add_arcs(&mut self, arcs: impl Iterator<Item=Edge>) -> u32 {
+        let mut count = 0;
+        for (u,v) in arcs {
+            if self.add_arc(&u, &v) {
+                count += 1;
+            }
+        }
+        count
+    }
+
+    /// Removes all loops from the graph.
+    /// 
+    /// Returns the number of loops removed.
+    fn remove_loops(&mut self) -> usize {
+        let mut cands = Vec::new();
+        for u in self.vertices() {
+            if self.adjacent(u, u) {
+                cands.push(*u)
+            }
+        }
+
+        let res = cands.len();
+        for u in cands.into_iter() {
+            self.remove_arc(&u, &u);
+        }
+
+        res
+    }    
+
+    /// Removes all isolate vertices, that is, vertices without any neighbours.
+    /// 
+    /// Returns the number of isolates removed.
+    fn remove_isolates(&mut self) -> usize {
+        let cands:Vec<_> = self.vertices().filter(|&u| self.degree(u) == 0).cloned().collect();
+        let res = cands.len();
+        for u in cands.into_iter() {
+            self.remove_vertex(&u);
+        }
+
+        res
+    }    
 }
 
 /// Represents graphs imbued with a linear ordering. The assumption is that this is used for

@@ -13,6 +13,9 @@ pub mod graph;
 /// Graph data structure with various editing operations.
 pub mod editgraph;
 
+/// Directed graph data structure with various editing operations.
+pub mod editdigraph;
+
 /// Graph data structure for fast short-distance queries.
 pub mod dtfgraph;
 
