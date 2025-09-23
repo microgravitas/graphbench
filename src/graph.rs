@@ -409,8 +409,8 @@ pub trait MutableGraph: Graph{
     /// Adds a collection of `vertices` to the graph.
     ///
     /// Returns the number of vertices added this way.
-    fn add_vertices<V>(&mut self, vertices: impl Iterator<Item=V>) -> u32
-        where V:Borrow<Vertex> {
+    fn add_vertices<I, V>(&mut self, vertices:I) -> u32
+        where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut count = 0;
         for v in vertices {
             if self.add_vertex(v.borrow()) {
@@ -423,9 +423,11 @@ pub trait MutableGraph: Graph{
     /// Adds a collection of `edges` to the graph.
     ///
     /// Returns the number of edges added this way.
-    fn add_edges(&mut self, edges: impl Iterator<Item=Edge>) -> u32 {
+    fn add_edges<I, E>(&mut self, edges:I) -> u32 
+        where E: Borrow<Edge>, I: IntoIterator<Item=E> {
         let mut count = 0;
-        for (u,v) in edges {
+        for e in edges {
+            let (u,v) = *e.borrow();
             if self.add_edge(&u, &v) {
                 count += 1;
             }
@@ -570,8 +572,8 @@ pub trait MutableDigraph: Digraph  {
     /// Adds a collection of `vertices` to the graph.
     ///
     /// Returns the number of vertices added this way.
-    fn add_vertices<V>(&mut self, vertices: impl Iterator<Item=V>) -> u32
-        where V:Borrow<Vertex> {
+    fn add_vertices<V,I>(&mut self, vertices:I) -> u32
+        where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut count = 0;
         for v in vertices {
             if self.add_vertex(v.borrow()) {
@@ -584,9 +586,11 @@ pub trait MutableDigraph: Digraph  {
     /// Adds a collection of `arcs` to the graph.
     ///
     /// Returns the number of arcs added this way.
-    fn add_arcs(&mut self, arcs: impl Iterator<Item=Edge>) -> u32 {
+    fn add_arcs<E,I>(&mut self, arcs: I) -> u32 
+        where E: Borrow<Edge>, I: IntoIterator<Item=E> {
         let mut count = 0;
-        for (u,v) in arcs {
+        for e in arcs {
+            let (u,v) = *e.borrow();
             if self.add_arc(&u, &v) {
                 count += 1;
             }
