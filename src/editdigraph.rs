@@ -115,18 +115,12 @@ impl Digraph for EditDigraph {
 
     /// Returns the number of arcs which point to `u` in the digraph.
     fn in_degree(&self, u:&Vertex) -> u32 {
-        match self.in_adj.get(u) {
-            Some(N) => N.len() as u32,
-            None => panic!("Vertex not contained in EditDigraph")
-        }
+        *self.in_degs.get(u).expect("Vertex not contained in EditDigraph")
     }
 
     /// Returns the number of arcs which point away from `u` in the digraph.
     fn out_degree(&self, u:&Vertex) -> u32 {
-        match self.out_adj.get(u) {
-            Some(N) => N.len() as u32,
-            None => panic!("Vertex not contained in EditDigraph")
-        }
+        *self.out_degs.get(u).expect("Vertex not contained in EditDigraph")
     }    
 }
 
@@ -209,6 +203,10 @@ impl MutableDigraph for EditDigraph {
             for v in &N {
                 self.remove_arc(u, v);
             }
+            let N = self.in_adj.get(u).unwrap().clone();
+            for v in &N {
+                self.remove_arc(v, u);
+            }            
 
             self.out_adj.remove(u);
             self.in_adj.remove(u);
@@ -404,6 +402,48 @@ mod test {
 
     use super::*;
     use crate::algorithms::GraphAlgorithms;
+
+    #[test]
+    fn add_remove_arcs() {
+        let mut G = EditDigraph::new();  
+        G.add_arc(&0, &1);
+        G.add_arc(&0, &2); 
+        G.add_arc(&0, &3);
+
+        assert_eq!(G.out_degree(&0), 3);
+        assert_eq!(G.in_degree(&0), 0); 
+        assert_eq!(G.out_neighbours(&0).cloned().collect::<Vec<_>>(), vec![1,2,3]);
+
+        G.remove_arc(&0, &3);
+        assert_eq!(G.out_degree(&0), 2);
+        assert_eq!(G.in_degree(&0), 0); 
+        assert_eq!(G.out_neighbours(&0).cloned().collect::<Vec<_>>(), vec![1,2]);        
+
+        G.remove_arc(&0, &2);
+        assert_eq!(G.out_degree(&0), 1);
+        assert_eq!(G.in_degree(&0), 0); 
+        assert_eq!(G.out_neighbours(&0).cloned().collect::<Vec<_>>(), vec![1]);      
+
+        G.remove_arc(&0, &1);
+        assert_eq!(G.out_degree(&0), 0);
+        assert_eq!(G.in_degree(&0), 0); 
+    }
+
+    #[test]
+    fn remove_vertex() {
+        let mut G = EditDigraph::new();  
+        G.add_arc(&0, &1);
+        G.add_arc(&0, &2); 
+        G.add_arc(&0, &3);
+
+        G.add_arc(&1, &0);
+        G.add_arc(&2, &0);
+        G.add_arc(&3, &0);
+
+        G.remove_vertex(&0);
+
+        assert_eq!(G.num_edges(), 0);
+    }
 
 
     #[test]
