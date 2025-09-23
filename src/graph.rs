@@ -316,10 +316,10 @@ pub trait Graph {
 
     /// Given an iterator `vertices` over vertices, returns all vertices of the graph
     /// which are neighbours of those vertices but not part of `vertices` themselves.
-    fn neighbourhood<'a, I>(&self, vertices:I) -> FxHashSet<Vertex> 
-                where I: Iterator<Item=&'a Vertex>, Vertex: 'a {
+    fn neighbourhood<V, I>(&self, vertices:I) -> FxHashSet<Vertex> 
+                where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut res:FxHashSet<Vertex> = FxHashSet::default();
-        let centers:FxHashSet<Vertex> = vertices.cloned().collect();
+        let centers:FxHashSet<Vertex> = vertices.into_iter().map(|u| *u.borrow()).collect();
 
         for v in &centers {
             res.extend(self.neighbours(v).cloned());
@@ -331,12 +331,13 @@ pub trait Graph {
 
     /// Given an iterator `vertices` over vertices, returns all vertices of the graph
     /// which are neighbours of those vertices as well as all vertices contained in `vertices`.
-    fn closed_neighbourhood<'a, I>(&self, vertices:I) -> FxHashSet<Vertex> 
-                where I: Iterator<Item=&'a Vertex>, Vertex: 'a {
+    fn closed_neighbourhood<V, I>(&self, vertices:I) -> FxHashSet<Vertex> 
+                where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut res:FxHashSet<Vertex> = FxHashSet::default();
         for v in vertices {
-            res.extend(self.neighbours(v).cloned());
-            res.insert(*v);
+            let v = *v.borrow();
+            res.extend(self.neighbours(&v).cloned());
+            res.insert(v);
         }
 
         res
@@ -509,10 +510,10 @@ pub trait Digraph: Graph {
 
     /// Given an iterator `vertices` over vertices, returns all vertices of the graph
     /// which are out-neighbours of those vertices but not part of `vertices` themselves.
-    fn out_neighbourhood<'a, I>(&self, vertices:I) -> FxHashSet<Vertex> 
-                where I: Iterator<Item=&'a Vertex>, Vertex: 'a {
+    fn out_neighbourhood<V, I>(&self, vertices:I) -> FxHashSet<Vertex> 
+                where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut res:FxHashSet<Vertex> = FxHashSet::default();
-        let centers:FxHashSet<Vertex> = vertices.cloned().collect();
+        let centers:FxHashSet<Vertex> = vertices.into_iter().map(|u| *u.borrow()).collect();
 
         for v in &centers {
             res.extend(self.out_neighbours(v).cloned());
@@ -524,10 +525,10 @@ pub trait Digraph: Graph {
 
     /// Given an iterator `vertices` over vertices, returns all vertices of the graph
     /// which are in-neighbours of those vertices but not part of `vertices` themselves.
-    fn in_neighbourhood<'a, I>(&self, vertices:I) -> FxHashSet<Vertex> 
-                where I: Iterator<Item=&'a Vertex>, Vertex: 'a {
+    fn in_neighbourhood<V, I>(&self, vertices:I) -> FxHashSet<Vertex> 
+                where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut res:FxHashSet<Vertex> = FxHashSet::default();
-        let centers:FxHashSet<Vertex> = vertices.cloned().collect();
+        let centers:FxHashSet<Vertex> = vertices.into_iter().map(|u| *u.borrow()).collect();
 
         for v in &centers {
             res.extend(self.in_neighbours(v).cloned());
