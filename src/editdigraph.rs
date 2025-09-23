@@ -176,7 +176,7 @@ impl MutableDigraph for EditDigraph {
         self.add_vertex(u);
         self.add_vertex(v);
 
-        if !self.adjacent(u, v) {
+        if !self.has_arc(u, v) {
             self.out_adj.get_mut(u).unwrap().insert(*v);
             self.in_adj.get_mut(v).unwrap().insert(*u);
             self.out_degs.insert(*u, self.out_degs[u] + 1);
@@ -189,7 +189,7 @@ impl MutableDigraph for EditDigraph {
     }
 
     fn remove_arc(&mut self, u:&Vertex, v:&Vertex) -> bool {
-        if self.adjacent(u, v) {
+        if self.has_arc(u, v) {
             self.out_adj.get_mut(u).unwrap().remove(v);
             self.in_adj.get_mut(v).unwrap().remove(u);
             self.out_degs.insert(*u, self.out_degs[u] - 1);
