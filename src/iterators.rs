@@ -38,7 +38,7 @@ impl<'a, G> Iterator for NeighIterator<'a, G> where G: Graph {
     }
 }
 
-/// Neighbourhood iterators for digraphs which eithe returns all in- or all 
+/// Neighbourhood iterators for digraphs which eithe returns all in- or all
 /// out-neighbourhoods. At each step, the iterator returns a pair $(v,N^-(v))$ when in
 /// in-neighbourhood mode and $(v,N^+(V))$ when in out-neighbourhood mode.
 pub struct DiNeighIterator<'a, G> where G: Graph {
@@ -74,7 +74,7 @@ impl<'a, D> Iterator for DiNeighIterator<'a, D> where D: Digraph {
 }
 
 /// Allows construction of a [NeighIterator].
-/// 
+///
 /// Has a default implementation for [Graph].
 pub trait NeighIterable<G> where G: Graph {
     /// Returns a [NeighIterator] for the graph.
@@ -89,12 +89,12 @@ impl<G> NeighIterable<G> for G where G: Graph {
 
 
 /// Allows construction of a [DiNeighIterator].
-/// 
+///
 /// Has a default implementation for [Digraph].
 pub trait DiNeighIterable<D> where D: Digraph {
     /// Returns a [DiNeighIterator] over all in-neighbourhoods of this graph.
     fn in_neighbourhoods(&self) -> DiNeighIterator<D>;
-    
+
     /// Returns a [DiNeighIterator] over all out-neighbourhoods of this graph.
     fn out_neighbourhoods(&self) -> DiNeighIterator<D>;
 }
@@ -111,7 +111,7 @@ impl<D> DiNeighIterable<D> for D where D: Digraph {
 
 /// Edge iterator for graphs. Each edge is returned with the smaller
 /// vertex first, so the edge $\\{15,3\\}$ would be returned as $(3,15)$.
-/// 
+///
 /// The associated trait EdgeIterable is implemented for generic graphs
 /// to provide the method `edges(...)` to create an `EdgeIterator`.
 pub struct EdgeIterator<'a, G> where G: Graph {
@@ -169,7 +169,7 @@ impl<G> Iterator for EdgeIterator<'_, G> where G: Graph {
 }
 
 /// Allows construction of [EdgeIterator].
-/// 
+///
 /// This trait has a default implementation for [Graph].
 pub trait EdgeIterable<G> where G: Graph {
     /// Returns an [EdgeIterator] over the edges of this graph.
@@ -183,7 +183,7 @@ impl<G> EdgeIterable<G> for G where G: Graph {
 }
 
 /// An iterator that returns all vertices and edges of the graph.
-/// 
+///
 /// This trait has a default implementation for [Graph].
 pub struct MixedIterator<'a, G> where G: Graph {
     N_it: NeighIterator<'a, G>,
@@ -205,7 +205,7 @@ impl<'a, G> MixedIterator<'a, G> where G: Graph {
     }
 
     fn advance(&mut self) {
-        self.returned_v = false;        
+        self.returned_v = false;
         if let Some((v, it)) = self.N_it.next() {
             self.curr_v = Some(v);
             self.curr_it = Some(it);
@@ -236,7 +236,7 @@ impl<G> Iterator for MixedIterator<'_, G> where G: Graph {
             }
 
             self.advance();
-        } 
+        }
 
         None
     }
@@ -264,7 +264,7 @@ pub struct ArcIterator<'a, D> where D: Digraph {
 impl<'a, D> ArcIterator<'a, D> where D: Digraph{
     pub fn new(graph: &'a D) -> ArcIterator<'a, D> {
         let mut res = ArcIterator {
-            N_it: graph.in_neighbourhoods(),
+            N_it: graph.out_neighbourhoods(),
             curr_v: None,
             curr_it: None,
         };
@@ -306,7 +306,7 @@ impl<D> Iterator for ArcIterator<'_, D> where D: Digraph  {
 }
 
 /// Allows construction of [ArcIterator].
-/// 
+///
 /// This trait has a default implementation for [Digraph].
 pub trait ArcIterable<D> where D: Digraph {
     /// Returns an [ArcIterator] over the arcs of this digraph.
@@ -368,8 +368,8 @@ impl<'a> Iterator for DTFNIterator<'a> {
     }
 }
 
-/// Arc iterator for [DTFGraph]. If the iterator is in 'all depths' mode it 
-/// iterates over all arcs of the augmentation. If the iterator operates on one 
+/// Arc iterator for [DTFGraph]. If the iterator is in 'all depths' mode it
+/// iterates over all arcs of the augmentation. If the iterator operates on one
 /// specific depth $d$ then it only return arcs with weight (depth) $d$.
 pub struct DTFArcIterator<'a> {
     N_it: DTFNIterator<'a>,
@@ -433,7 +433,7 @@ impl Iterator for DTFArcIterator<'_> {
 
 
 /// Left-neighbourhood iterators for linear graphs. At each step, the iterator
-/// returns a pair $(v,L(v))$. 
+/// returns a pair $(v,L(v))$.
 pub struct LeftNeighIterator<'a, L> where L: LinearGraph  {
     graph: &'a L,
     v_it: Box<dyn Iterator<Item=&'a Vertex> + 'a>
@@ -457,7 +457,7 @@ impl<L> Iterator for LeftNeighIterator<'_, L> where L: LinearGraph  {
 }
 
 /// Allows construction of a [LeftNeighIterator].
-/// 
+///
 /// Has a default implementation for [LinearGraph].
 pub trait LeftNeighIterable<L> where L: LinearGraph {
     /// Returns a [NeighIterator] for the graph.
@@ -471,13 +471,13 @@ impl<L> LeftNeighIterable<L> for L where L: LinearGraph {
 }
 
 
-//  #######                            
-//     #    ######  ####  #####  ####  
-//     #    #      #        #   #      
-//     #    #####   ####    #    ####  
-//     #    #           #   #        # 
-//     #    #      #    #   #   #    # 
-//     #    ######  ####    #    ####  
+//  #######
+//     #    ######  ####  #####  ####
+//     #    #      #        #   #
+//     #    #####   ####    #    ####
+//     #    #           #   #        #
+//     #    #      #    #   #   #    #
+//     #    ######  ####    #    ####
 
 #[cfg(test)]
 mod test {
@@ -487,7 +487,7 @@ mod test {
     use crate::ordgraph::*;
     use crate::io::*;
 
-    #[test] 
+    #[test]
     fn edge_iterator() {
         let G = EditGraph::clique(4);
         let edges:EdgeSet = G.edges().collect();
@@ -495,7 +495,7 @@ mod test {
         assert_eq!(edges,test);
     }
 
-    #[test] 
+    #[test]
     fn N_iterator() {
         let G = EditGraph::biclique(2,2);
         for (v,N) in G.neighbourhoods() {
@@ -505,9 +505,9 @@ mod test {
                 assert!(G.adjacent(&u, &v));
             }
         }
-    }    
+    }
 
-    #[test] 
+    #[test]
     fn mixed_iterator() {
         let G = EditGraph::biclique(4,5);
         let members:MixedSet = G.vertices_and_edges().collect();
@@ -517,22 +517,22 @@ mod test {
                         .collect();
         let edges:EdgeSet = members.iter()
                         .filter_map(|m| if let VertexOrEdge::E((u,v)) = m { Some((*u,*v)) } else { None })
-                        .collect();      
-        assert_eq!(vertices, VertexSet::from_iter(G.vertices().cloned())); 
-        assert_eq!(edges, EdgeSet::from_iter(G.edges().map(|e| e )));                  
-    }        
-    
+                        .collect();
+        assert_eq!(vertices, VertexSet::from_iter(G.vertices().cloned()));
+        assert_eq!(edges, EdgeSet::from_iter(G.edges().map(|e| e )));
+    }
+
     #[test]
     fn wreach_iterator() {
         const R:usize = 5;
         let G = EditGraph::from_txt("./resources/karate.txt").unwrap();
         let O = OrdGraph::by_degeneracy(&G);
         let W = O.to_wreach_graph::<R>();
-        
+
         for (v,reachables) in W.iter() {
             assert_eq!(v, reachables.from);
             assert_eq!(reachables, W.reachables(&v));
         }
-        
+
     }
 }

@@ -121,7 +121,7 @@ impl Digraph for EditDigraph {
     /// Returns the number of arcs which point away from `u` in the digraph.
     fn out_degree(&self, u:&Vertex) -> u32 {
         *self.out_degs.get(u).expect("Vertex not contained in EditDigraph")
-    }    
+    }
 }
 
 impl FromIterator<Edge> for EditDigraph {
@@ -137,7 +137,7 @@ impl FromIterator<Edge> for EditDigraph {
 impl MutableDigraph for EditDigraph {
     fn new() -> EditDigraph {
         EditDigraph{
-              in_adj: FxHashMap::default(),            
+              in_adj: FxHashMap::default(),
               out_adj: FxHashMap::default(),
               in_degs: FxHashMap::default(),
               out_degs: FxHashMap::default(),
@@ -187,7 +187,7 @@ impl MutableDigraph for EditDigraph {
             self.out_adj.get_mut(u).unwrap().remove(v);
             self.in_adj.get_mut(v).unwrap().remove(u);
             self.out_degs.insert(*u, self.out_degs[u] - 1);
-            self.in_degs.insert(*v, self.in_degs[v] - 1);            
+            self.in_degs.insert(*v, self.in_degs[v] - 1);
             self.m -= 1;
             true
         } else {
@@ -206,7 +206,7 @@ impl MutableDigraph for EditDigraph {
             let N = self.in_adj.get(u).unwrap().clone();
             for v in &N {
                 self.remove_arc(v, u);
-            }            
+            }
 
             self.out_adj.remove(u);
             self.in_adj.remove(u);
@@ -268,7 +268,7 @@ impl EditDigraph {
             }
         }
 
-        res        
+        res
     }
 
     /// Generates an empty directed graph (independent set) on `n` vertices.
@@ -278,7 +278,7 @@ impl EditDigraph {
             res.add_vertex(&u);
         }
 
-        res        
+        res
     }
 
     /// Generates a complete bipartite graph (biclique) on `s`+`t` vertices.
@@ -291,7 +291,7 @@ impl EditDigraph {
             }
         }
 
-        res        
+        res
     }
 
     /// Generates a directed grid with s rows and t columns. Arcs go from
@@ -361,7 +361,7 @@ impl EditDigraph {
     /// where $n$ is the number of vertices in the graph. The relative order of the indices
     /// is preserved, e.g. the smallest vertex from the original graph will be labelled $0$ and
     /// the largest one $n-1$.
-    /// 
+    ///
     /// Returns a tuple (`graph`, `map`) where `graph` is the relabelled graph and
     /// `map` stores the mapping from new vertices to old vertices.
     pub fn normalize(&self) -> (EditDigraph, FxHashMap<Vertex, Vertex>) {
@@ -387,14 +387,14 @@ impl EditDigraph {
 
 
 
-//  #######                            
-//     #    ######  ####  #####  ####  
-//     #    #      #        #   #      
-//     #    #####   ####    #    ####  
-//     #    #           #   #        # 
-//     #    #      #    #   #   #    # 
-//     #    ######  ####    #    ####  
-                                    
+//  #######
+//     #    ######  ####  #####  ####
+//     #    #      #        #   #
+//     #    #####   ####    #    ####
+//     #    #           #   #        #
+//     #    #      #    #   #   #    #
+//     #    ######  ####    #    ####
+
 
 #[cfg(test)]
 mod test {
@@ -405,35 +405,35 @@ mod test {
 
     #[test]
     fn add_remove_arcs() {
-        let mut G = EditDigraph::new();  
+        let mut G = EditDigraph::new();
         G.add_arc(&0, &1);
-        G.add_arc(&0, &2); 
+        G.add_arc(&0, &2);
         G.add_arc(&0, &3);
 
         assert_eq!(G.out_degree(&0), 3);
-        assert_eq!(G.in_degree(&0), 0); 
+        assert_eq!(G.in_degree(&0), 0);
         assert_eq!(G.out_neighbours(&0).cloned().collect::<Vec<_>>(), vec![1,2,3]);
 
         G.remove_arc(&0, &3);
         assert_eq!(G.out_degree(&0), 2);
-        assert_eq!(G.in_degree(&0), 0); 
-        assert_eq!(G.out_neighbours(&0).cloned().collect::<Vec<_>>(), vec![1,2]);        
+        assert_eq!(G.in_degree(&0), 0);
+        assert_eq!(G.out_neighbours(&0).cloned().collect::<Vec<_>>(), vec![1,2]);
 
         G.remove_arc(&0, &2);
         assert_eq!(G.out_degree(&0), 1);
-        assert_eq!(G.in_degree(&0), 0); 
-        assert_eq!(G.out_neighbours(&0).cloned().collect::<Vec<_>>(), vec![1]);      
+        assert_eq!(G.in_degree(&0), 0);
+        assert_eq!(G.out_neighbours(&0).cloned().collect::<Vec<_>>(), vec![1]);
 
         G.remove_arc(&0, &1);
         assert_eq!(G.out_degree(&0), 0);
-        assert_eq!(G.in_degree(&0), 0); 
+        assert_eq!(G.in_degree(&0), 0);
     }
 
     #[test]
     fn remove_vertex() {
-        let mut G = EditDigraph::new();  
+        let mut G = EditDigraph::new();
         G.add_arc(&0, &1);
-        G.add_arc(&0, &2); 
+        G.add_arc(&0, &2);
         G.add_arc(&0, &3);
 
         G.add_arc(&1, &0);
@@ -455,17 +455,32 @@ mod test {
         G.add_arc(&2, &3);
         G.add_arc(&3, &4);
 
-        // Check that undirected graph neighbourhoods work as intended 
+        // Check that undirected graph neighbourhoods work as intended
         assert_eq!( G.neighbourhood([2].iter()), [1,3].iter().cloned().collect());
         assert_eq!( G.neighbourhood([1,2].iter()), [0,3].iter().cloned().collect());
         assert_eq!( G.neighbourhood([1,3].iter()), [0,2,4].iter().cloned().collect());
 
-        // Check that directed graph neighbourhoods work as intended 
+        // Check that directed graph neighbourhoods work as intended
         assert_eq!( G.in_neighbourhood([2].iter()), [1].iter().cloned().collect());
         assert_eq!( G.out_neighbourhood([2].iter()), [3].iter().cloned().collect());
         assert_eq!( G.in_neighbourhood([1,2].iter()), [0].iter().cloned().collect());
         assert_eq!( G.out_neighbourhood([1,2].iter()), [3].iter().cloned().collect());
-        assert_eq!( G.in_neighbourhood([1,3].iter()), [0,2].iter().cloned().collect());        
-        assert_eq!( G.out_neighbourhood([1,3].iter()), [2,4].iter().cloned().collect());        
+        assert_eq!( G.in_neighbourhood([1,3].iter()), [0,2].iter().cloned().collect());
+        assert_eq!( G.out_neighbourhood([1,3].iter()), [2,4].iter().cloned().collect());
+    }
+
+    #[test]
+    fn arcs() {
+        let mut G = EditDigraph::new();
+        // 0 --> 1 --> 2 --> 3 --> 4
+        G.add_arc(&0, &1);
+        G.add_arc(&1, &2);
+        G.add_arc(&2, &3);
+        G.add_arc(&3, &4);
+
+        assert_eq!( G.num_edges(), 4);
+        let arcs = EdgeSet::from_iter(vec![(0,1),(1,2),(2,3),(3,4)]);
+        let arcs_graph = G.arcs().collect();
+        assert_eq!(arcs, arcs_graph);
     }
 }
