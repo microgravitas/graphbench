@@ -32,6 +32,9 @@ pub mod degengraph;
 /// Various iterators for graph traits.
 pub mod iterators;
 
+/// Graph operations
+pub mod operations;
+
 /// Graph comparison relations.
 pub mod compare;
 
