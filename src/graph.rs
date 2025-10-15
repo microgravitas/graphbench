@@ -1,9 +1,9 @@
-//! Defines several traits for graph data structures. 
-//! 
+//! Defines several traits for graph data structures.
+//!
 //! We distinguish between undirected vs directed graphs (digraphs), as well as static vs mutable graphs.
-//! Static graphs do not allow modifications and can therefore be implemented with a 
+//! Static graphs do not allow modifications and can therefore be implemented with a
 //! smaller memory footprint and faster access times.
-//! 
+//!
 //! This library uses 32 bits to represent vertices, therefore graphs cannot contain more than
 //! $2^{32} \approx 4.29~\text{Billion}$ vertices.
 use fxhash::{FxHashMap, FxHashSet};
@@ -42,7 +42,7 @@ pub type MixedSetRef<'a> = FxHashSet<&'a VertexOrEdge>;
 pub type EdgeSet = FxHashSet<Edge>;
 
 /// An enum which holds either a vertex or an edge. Used to allow
-/// [mixed-type sets](MixedSet) and [iteration](crate::iterators::MixedIterator). 
+/// [mixed-type sets](MixedSet) and [iteration](crate::iterators::MixedIterator).
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub enum VertexOrEdge {
     V(Vertex),
@@ -55,7 +55,7 @@ impl VertexOrEdge {
             VertexOrEdge::V(v) => Some(v),
             VertexOrEdge::E(_) => None,
         }
-    }    
+    }
 
     pub fn is_vertex(self) -> bool {
         match self {
@@ -84,15 +84,15 @@ impl VertexOrEdge {
         self.intersection(other).is_some()
     }
 
-    // Returns the intersection of these two objects, which is 
+    // Returns the intersection of these two objects, which is
     // either a vertex (Some(V(x))), an edge (Some(E(e))), or nothing (None).
     pub fn intersection(self, other:VertexOrEdge) -> Option<VertexOrEdge> {
         use VertexOrEdge::*;
         match (self, other) {
             (V(x), V(y)) => {
                 if x == y {
-                    Some(V(x)) 
-                } else { 
+                    Some(V(x))
+                } else {
                     None
                 }
             },
@@ -115,17 +115,17 @@ impl VertexOrEdge {
                 }
             }
         }
-    }    
+    }
 }
 
 pub trait VertexMapOperations<T> where T: Copy + Hash + Eq {
-    // Groups the vertices in this map by their values 
+    // Groups the vertices in this map by their values
     // and returns the largest set among those. Ties are broken
     // arbitrarily.
     // Returns None if the vertex map is empty.
     fn majority_set(&self) -> Option<(VertexSet, T)>;
 
-    // 
+    //
     fn invert(&self) -> FxHashMap<T, VertexSet>;
 }
 
@@ -142,7 +142,7 @@ impl<T> VertexMapOperations<T> for VertexMap<T> where T: Copy + Hash + Eq {
             .next().unwrap();
         Some((set, value))
     }
-    
+
     fn invert(&self) -> FxHashMap<T, VertexSet> {
         let mut res:FxHashMap<T, VertexSet> = FxHashMap::default();
         for (&u, &value) in self.iter() {
@@ -185,7 +185,7 @@ impl<T> VertexColouring<T> where T: Copy + Hash + Eq {
 
     pub fn colours(&self) -> impl Iterator<Item=&T>  {
         self.colouring.values().unique()
-    }    
+    }
 
     pub fn disjoint_extend(&mut self, other:&VertexColouring<T>) where T: num::Integer {
         let colours:FxHashSet<T> = self.colouring.values().cloned().collect();
@@ -194,14 +194,14 @@ impl<T> VertexColouring<T> where T: Copy + Hash + Eq {
         } else {
             let mut res = *colours.iter().max().unwrap();
             res.inc();
-            res 
+            res
         };
 
         for (u, c) in other.iter() {
             self.colouring.entry(*u).or_insert(*c+offset);
         }
     }
-    
+
     pub fn get(&self, u:&Vertex) -> Option<&T> {
         self.colouring.get(u)
     }
@@ -210,10 +210,10 @@ impl<T> VertexColouring<T> where T: Copy + Hash + Eq {
         self.colouring.contains_key(u)
     }
 
-    pub fn subset<V,I>(&self, vertices:I) -> VertexColouring<T>  
+    pub fn subset<V,I>(&self, vertices:I) -> VertexColouring<T>
                 where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut res = VertexColouring::default();
-        for v in vertices { 
+        for v in vertices {
             let v = *v.borrow();
             if let Some(col) = self.get(&v) {
                 res.insert(v, *col);
@@ -225,7 +225,7 @@ impl<T> VertexColouring<T> where T: Copy + Hash + Eq {
 
 impl<T> Index<&Vertex> for VertexColouring<T> where T: Copy + Hash + Eq {
     type Output = T;
-    
+
     fn index(&self, index: &Vertex) -> &Self::Output {
         &self.colouring[index]
     }
@@ -316,7 +316,7 @@ pub trait Graph {
 
     /// Given an iterator `vertices` over vertices, returns all vertices of the graph
     /// which are neighbours of those vertices but not part of `vertices` themselves.
-    fn neighbourhood<V, I>(&self, vertices:I) -> FxHashSet<Vertex> 
+    fn neighbourhood<V, I>(&self, vertices:I) -> FxHashSet<Vertex>
                 where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut res:FxHashSet<Vertex> = FxHashSet::default();
         let centers:FxHashSet<Vertex> = vertices.into_iter().map(|u| *u.borrow()).collect();
@@ -331,7 +331,7 @@ pub trait Graph {
 
     /// Given an iterator `vertices` over vertices, returns all vertices of the graph
     /// which are neighbours of those vertices as well as all vertices contained in `vertices`.
-    fn closed_neighbourhood<V, I>(&self, vertices:I) -> FxHashSet<Vertex> 
+    fn closed_neighbourhood<V, I>(&self, vertices:I) -> FxHashSet<Vertex>
                 where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut res:FxHashSet<Vertex> = FxHashSet::default();
         for v in vertices {
@@ -350,7 +350,7 @@ pub trait Graph {
 
     /// Given an iterator `vertices` over vertices and a distance `r`, returns all vertices of the graph
     /// which are within distance at most `r` to vertices contained in `vertices`.
-    fn r_neighbourhood<V,I>(&self, vertices:I, r:usize) -> FxHashSet<Vertex>  
+    fn r_neighbourhood<V,I>(&self, vertices:I, r:usize) -> FxHashSet<Vertex>
                 where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut res:FxHashSet<Vertex> = FxHashSet::default();
         res.extend(vertices.into_iter().map(|u| *u.borrow()));
@@ -359,10 +359,10 @@ pub trait Graph {
             res.extend(ext);
         }
         res
-    }    
+    }
 
     /// Returns the subgraph induced by the vertices contained in `vertices`.
-    fn subgraph<M, V, I>(&self, vertices:I) -> M 
+    fn subgraph<M, V, I>(&self, vertices:I) -> M
                 where V: Borrow<Vertex>, I: IntoIterator<Item=V>, M: MutableGraph, {
         let selected:VertexSet = vertices.into_iter().map(|u| *u.borrow()).collect();
         let mut G = M::with_capacity(selected.len());
@@ -372,10 +372,10 @@ pub trait Graph {
             for u in Nv.intersection(&selected) {
                 G.add_edge(u, v);
             }
-        }   
+        }
 
         G
-    }    
+    }
 }
 
 /// Trait for mutable graphs.
@@ -387,23 +387,23 @@ pub trait MutableGraph: Graph{
     fn with_capacity(n: usize) -> Self;
 
     /// Adds the vertex `u` to the graph.
-    /// 
+    ///
     /// Returns `true` if the vertex was added and `false` if it was already contained in the graph.
     fn add_vertex(&mut self, u: &Vertex) -> bool;
 
-    /// Removes the vertex `u` from the graph. 
-    /// 
+    /// Removes the vertex `u` from the graph.
+    ///
     /// Returns `true` if the vertex was removed and `false` if it was not contained in the graph.
     fn remove_vertex(&mut self, u: &Vertex) -> bool;
 
-    /// Adds the edge `uv` to the graph. 
-    /// 
+    /// Adds the edge `uv` to the graph.
+    ///
     /// Returns `true` if the edge was added and `false` if it was already contained in the graph.
     fn add_edge(&mut self, u: &Vertex, v: &Vertex) -> bool;
 
-    /// Removes the edge `uv` from the graph. 
-    /// 
-    /// Returns `true` if the edge was removed and `false` if it was not contained in the graph.    
+    /// Removes the edge `uv` from the graph.
+    ///
+    /// Returns `true` if the edge was removed and `false` if it was not contained in the graph.
     fn remove_edge(&mut self, u: &Vertex, v: &Vertex) -> bool;
 
     /// Adds a collection of `vertices` to the graph.
@@ -423,7 +423,7 @@ pub trait MutableGraph: Graph{
     /// Adds a collection of `edges` to the graph.
     ///
     /// Returns the number of edges added this way.
-    fn add_edges<I, E>(&mut self, edges:I) -> u32 
+    fn add_edges<I, E>(&mut self, edges:I) -> u32
         where E: Borrow<Edge>, I: IntoIterator<Item=E> {
         let mut count = 0;
         for e in edges {
@@ -436,7 +436,7 @@ pub trait MutableGraph: Graph{
     }
 
     /// Removes all loops from the graph.
-    /// 
+    ///
     /// Returns the number of loops removed.
     fn remove_loops(&mut self) -> usize {
         let mut cands = Vec::new();
@@ -452,10 +452,10 @@ pub trait MutableGraph: Graph{
         }
 
         res
-    }    
+    }
 
     /// Removes all isolate vertices, that is, vertices without any neighbours.
-    /// 
+    ///
     /// Returns the number of isolates removed.
     fn remove_isolates(&mut self) -> usize {
         let cands:Vec<_> = self.vertices().filter(|&u| self.degree(u) == 0).cloned().collect();
@@ -469,7 +469,7 @@ pub trait MutableGraph: Graph{
 }
 
 /// Trait for static digraphs. The trait inherits the [Graph] trait, all methods from that trait
-/// are treating the digraph as an undirected graph. For example, the (undirected) neighbourhood of 
+/// are treating the digraph as an undirected graph. For example, the (undirected) neighbourhood of
 /// a vertex is the union of its in-neighbourhood and its out-neighbourhood in the digraph.
 pub trait Digraph: Graph {
     /// Returns whether the arc `uv` exists in the digraph.
@@ -512,7 +512,7 @@ pub trait Digraph: Graph {
 
     /// Given an iterator `vertices` over vertices, returns all vertices of the graph
     /// which are out-neighbours of those vertices but not part of `vertices` themselves.
-    fn out_neighbourhood<V, I>(&self, vertices:I) -> FxHashSet<Vertex> 
+    fn out_neighbourhood<V, I>(&self, vertices:I) -> FxHashSet<Vertex>
                 where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut res:FxHashSet<Vertex> = FxHashSet::default();
         let centers:FxHashSet<Vertex> = vertices.into_iter().map(|u| *u.borrow()).collect();
@@ -523,11 +523,11 @@ pub trait Digraph: Graph {
 
         res.retain(|u| !centers.contains(u));
         res
-    }    
+    }
 
     /// Given an iterator `vertices` over vertices, returns all vertices of the graph
     /// which are in-neighbours of those vertices but not part of `vertices` themselves.
-    fn in_neighbourhood<V, I>(&self, vertices:I) -> FxHashSet<Vertex> 
+    fn in_neighbourhood<V, I>(&self, vertices:I) -> FxHashSet<Vertex>
                 where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let mut res:FxHashSet<Vertex> = FxHashSet::default();
         let centers:FxHashSet<Vertex> = vertices.into_iter().map(|u| *u.borrow()).collect();
@@ -538,7 +538,7 @@ pub trait Digraph: Graph {
 
         res.retain(|u| !centers.contains(u));
         res
-    }       
+    }
 }
 
 /// Trait for mutable digraphs (currently incomplete).
@@ -550,23 +550,23 @@ pub trait MutableDigraph: Digraph  {
     fn with_capacity(n: usize) -> Self;
 
     /// Adds the vertex `u` to the digraph.
-    /// 
-    /// Returns `true` if the vertex was added and `false` if it was already contained in the graph.    
+    ///
+    /// Returns `true` if the vertex was added and `false` if it was already contained in the graph.
     fn add_vertex(&mut self, u: &Vertex) -> bool;
 
-    /// Removes the vertex `u` from the digraph. 
-    /// 
-    /// Returns `true` if the vertex was removed and `false` if it was not contained in the graph.    
+    /// Removes the vertex `u` from the digraph.
+    ///
+    /// Returns `true` if the vertex was removed and `false` if it was not contained in the graph.
     fn remove_vertex(&mut self, u: &Vertex) -> bool;
 
-    /// Adds the arc `uv` to the digraph. 
-    /// 
+    /// Adds the arc `uv` to the digraph.
+    ///
     /// Returns `true` if the arc was added and `false` if it was already contained in the graph.
     fn add_arc(&mut self, u: &Vertex, v: &Vertex) -> bool;
 
-    /// Removes the arc `uv` from the graph. 
-    /// 
-    /// Returns `true` if the arc was removed and `false` if it was not contained in the graph.        
+    /// Removes the arc `uv` from the graph.
+    ///
+    /// Returns `true` if the arc was removed and `false` if it was not contained in the graph.
     fn remove_arc(&mut self, u: &Vertex, v: &Vertex) -> bool;
 
     /// Adds a collection of `vertices` to the graph.
@@ -586,7 +586,7 @@ pub trait MutableDigraph: Digraph  {
     /// Adds a collection of `arcs` to the graph.
     ///
     /// Returns the number of arcs added this way.
-    fn add_arcs<E,I>(&mut self, arcs: I) -> u32 
+    fn add_arcs<E,I>(&mut self, arcs: I) -> u32
         where E: Borrow<Edge>, I: IntoIterator<Item=E> {
         let mut count = 0;
         for e in arcs {
@@ -599,7 +599,7 @@ pub trait MutableDigraph: Digraph  {
     }
 
     /// Removes all loops from the graph.
-    /// 
+    ///
     /// Returns the number of loops removed.
     fn remove_loops(&mut self) -> usize {
         let mut cands = Vec::new();
@@ -615,10 +615,10 @@ pub trait MutableDigraph: Digraph  {
         }
 
         res
-    }    
+    }
 
     /// Removes all isolate vertices, that is, vertices without any neighbours.
-    /// 
+    ///
     /// Returns the number of isolates removed.
     fn remove_isolates(&mut self) -> usize {
         let cands:Vec<_> = self.vertices().filter(|&u| self.degree(u) == 0).cloned().collect();
@@ -628,24 +628,24 @@ pub trait MutableDigraph: Digraph  {
         }
 
         res
-    }    
+    }
 }
 
 /// Represents graphs imbued with a linear ordering. The assumption is that this is used for
 /// *degenerate* graphs, meaning that each vertex has only few neighbours that appear before it
-/// in the ordering (the 'left' neighbourhood). 
-/// 
+/// in the ordering (the 'left' neighbourhood).
+///
 /// As a consequence this trait does not provide a method to query the right neighbourhood of a vertex
 /// as algorithms designed for degenerate graphs work exclusively on left neighbourhoods.
 pub trait LinearGraph : Graph {
     /// Returns the index of `u` in the ordering.
     fn index_of(&self, u:&Vertex) -> usize;
 
-    /// Returns the left neighbourhood of `u`. 
+    /// Returns the left neighbourhood of `u`.
     fn left_neighbours(&self, u:&Vertex) -> Vec<Vertex>;
 
     /// Returns the size of `u`'s right neighbourhood.
-    fn right_degree(&self, u:&Vertex) -> u32;    
+    fn right_degree(&self, u:&Vertex) -> u32;
 
     /// Returns the number of left neigbhours of `u`. Returns 0 if `u`
     /// is not contained in the graph.
@@ -656,7 +656,7 @@ pub trait LinearGraph : Graph {
             0
         }
     }
-    
+
     /// Returns the sizes of all left neighbourhoods as a map.
     fn left_degrees(&self) -> VertexMap<u32> {
         let mut res = VertexMap::default();
@@ -669,8 +669,8 @@ pub trait LinearGraph : Graph {
     /// Returns the maximum left degree of the graph. Returns zero if the graph is empty.
     fn max_left_degree(&self) -> u32 {
         self.vertices().map(|u| self.left_degree(u)).max().unwrap_or(0)
-    }    
-    
+    }
+
     /// Returns the sizes of all right neighbourhood as a map.
     fn right_degrees(&self) -> VertexMap<u32> {
         let mut res = VertexMap::default();
@@ -683,11 +683,11 @@ pub trait LinearGraph : Graph {
     /// Returns the maximum right degree of the graph. Returns zero if the graph is empty.
     fn max_right_degree(&self) -> u32 {
         self.vertices().map(|u| self.right_degree(u)).max().unwrap_or(0)
-    }    
+    }
 
-    /// Returns the leftmost (smallest) vertex in the provided collection 
+    /// Returns the leftmost (smallest) vertex in the provided collection
     /// according to the ordering of this graph.
-    fn leftmost<V, I>(&self, vertices:I) -> Option<Vertex> 
+    fn leftmost<V, I>(&self, vertices:I) -> Option<Vertex>
         where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let res = vertices.into_iter().min_by_key(|u| self.index_of(u.borrow()));
         match res {
@@ -696,22 +696,22 @@ pub trait LinearGraph : Graph {
         }
     }
 
-    /// Returns the leftmost (smallest) vertex in the provided collection 
+    /// Returns the leftmost (smallest) vertex in the provided collection
     /// according to the ordering of this graph.
-    fn rightmost<V, I>(&self, vertices:I) -> Option<Vertex> 
+    fn rightmost<V, I>(&self, vertices:I) -> Option<Vertex>
         where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let res = vertices.into_iter().max_by_key(|u| self.index_of(u.borrow()));
         res.map(|x| *x.borrow())
-    }    
+    }
 }
 
-//  #######                            
-//     #    ######  ####  #####  ####  
-//     #    #      #        #   #      
-//     #    #####   ####    #    ####  
-//     #    #           #   #        # 
-//     #    #      #    #   #   #    # 
-//     #    ######  ####    #    ####  
+//  #######
+//     #    ######  ####  #####  ####
+//     #    #      #        #   #
+//     #    #####   ####    #    ####
+//     #    #           #   #        #
+//     #    #      #    #   #   #    #
+//     #    ######  ####    #    ####
 
 #[cfg(test)]
 mod test {
@@ -750,7 +750,7 @@ mod test {
     }
 
     #[test]
-    fn vertex_colouring() {    
+    fn vertex_colouring() {
         let mut colA:VertexColouring<u32> = VertexColouring::from_iter(vec![(1,100),(2,100),(3,200),(4,200),(5,300)]);
         let colB:VertexColouring<u32> = VertexColouring::from_iter(vec![(5,100),(6,100),(7,200),(8,200),(9,300)]);
 
@@ -762,7 +762,7 @@ mod test {
         assert_eq!(colA[&4], 200);
         assert_eq!(colA[&5], 300);
 
-        // colB contains a different colour for vertex 5, but disjoint_extend is not supposed to overwrite 
+        // colB contains a different colour for vertex 5, but disjoint_extend is not supposed to overwrite
         // existing colours.
         colA.disjoint_extend(&colB);
         assert_eq!(colA[&1], 100);
@@ -771,7 +771,7 @@ mod test {
         assert_eq!(colA[&4], 200);
         assert_eq!(colA[&5], 300);
         assert_eq!(colA.vertices().cloned().collect::<VertexSet>(), VertexSet::from_iter(vec![1,2,3,4,5,6,7,8,9]));
-        assert_eq!(colA.colours().count(), 6); // We do not know how colours are remapped, but we know 
+        assert_eq!(colA.colours().count(), 6); // We do not know how colours are remapped, but we know
                                                // the total number of colours we should get
 
 
