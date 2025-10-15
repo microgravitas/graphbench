@@ -72,8 +72,8 @@ impl OrdGraph {
         }
 
         for (u,v) in graph.edges() {
-            assert!(indices.contains_key(&u), "Vertex {} not contained in provided ordering", u);
-            assert!(indices.contains_key(&v), "Vertex {} not contained in provided ordering", v);
+            assert!(indices.contains_key(&u), "Vertex {u} not contained in provided ordering");
+            assert!(indices.contains_key(&v), "Vertex {v} not contained in provided ordering");
             let iu = indices[&u];
             let iv = indices[&v];
             if iu < iv {

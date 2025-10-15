@@ -118,7 +118,7 @@ impl EditGraph {
             let tokens:Vec<&str> = l.split_whitespace().collect();
             if tokens.len() != 2 {
                 let err = io::Error::new(io::ErrorKind::InvalidData,
-                        format!("Line {} does not contain two tokens", lineno));
+                        format!("Line {lineno} does not contain two tokens"));
                 return Err(err)
             }
             let u = parse_vertex(tokens[0], lineno)?;
@@ -188,7 +188,7 @@ impl LoadFromFile for EditGraph {
             let tokens:Vec<&str> = l.split_whitespace().collect();
             if tokens.len() != 2 {
                 let err = io::Error::new(io::ErrorKind::InvalidData,
-                        format!("Line {} does not contain two tokens", lineno));
+                        format!("Line {lineno} does not contain two tokens"));
                 return Err(err)
             }
             let u = parse_vertex(tokens[0], lineno)?;
@@ -240,7 +240,7 @@ fn parse_vertex(s: &str, lineno:usize) -> io::Result<Vertex> {
     match s.parse::<Vertex>() {
         Ok(x) => Ok(x),
         Err(_) => Err(io::Error::new(io::ErrorKind::InvalidData,
-                format!("Cannot parse vertex id {} at input line {}", s, lineno)))
+                format!("Cannot parse vertex id {s} at input line {lineno}")))
     }
 }
 

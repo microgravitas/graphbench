@@ -159,7 +159,7 @@ pub struct VertexColouring<T> where T: Copy + Hash + Eq {
 
 impl<T> VertexColouring<T> where T: Copy + Hash + Eq {
     pub fn from_iter<I>(iter:I) -> Self where I: IntoIterator<Item=(Vertex,T)> {
-        let colouring:VertexMap<T> = VertexMap::from_iter(iter.into_iter());
+        let colouring:VertexMap<T> = VertexMap::from_iter(iter);
         VertexColouring{ colouring }
     }
 
@@ -690,10 +690,7 @@ pub trait LinearGraph : Graph {
     fn leftmost<V, I>(&self, vertices:I) -> Option<Vertex>
         where V: Borrow<Vertex>, I: IntoIterator<Item=V> {
         let res = vertices.into_iter().min_by_key(|u| self.index_of(u.borrow()));
-        match res {
-            Some(x) => Some(*x.borrow()),
-            None => None
-        }
+        res.map(|x| *x.borrow())
     }
 
     /// Returns the leftmost (smallest) vertex in the provided collection

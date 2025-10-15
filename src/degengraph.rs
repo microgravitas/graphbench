@@ -99,7 +99,7 @@ impl DegenGraph {
         // Change right neighbourhood
         let mut right_Ns = VertexMap::default();
         for (u, N) in self.right_neighbours.iter() {
-            let new_N:VertexSet = N.into_iter().map(|x| old_to_new[x]).collect();
+            let new_N:VertexSet = N.iter().map(|x| old_to_new[x]).collect();
             let new_u = old_to_new[u];
             right_Ns.insert(new_u, new_N);
         }

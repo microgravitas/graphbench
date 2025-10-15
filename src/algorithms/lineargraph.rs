@@ -1,7 +1,6 @@
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use std::hash::DefaultHasher;
-use std::u32;
 
 use fxhash::{FxHashMap, FxHashSet};
 use num::range;
@@ -19,55 +18,55 @@ use itertools::*;
 pub trait LinearGraphAlgorithms {
     /// Conducts a bfs from `root` for `dist` steps ignoring all vertices
     /// left of `root`.
-    /// 
-    /// Returns the bfs as a sequence of layers.    
+    ///
+    /// Returns the bfs as a sequence of layers.
     fn right_bfs(&self, root:&Vertex, dist:u32) -> Vec<VertexSet>;
 
 
-    /// Computes all strongly $r$-reachable vertices to $u$. 
-    /// 
+    /// Computes all strongly $r$-reachable vertices to $u$.
+    ///
     /// A vertex $v$ is strongly $r$-reachable from $u$ if there exists a $u$-$v$-path in the graph
     /// of length at most $r$ where $v$ is the only vertex of the path that comes before $u$ in the
     /// ordering.
-    /// 
+    ///
     /// Returns a map with all vertices that are strongly $r$-reachable
     /// from $u$. For each member $v$ in the map the corresponding values represents
     /// the distance $d \\leq r$ at which $v$ is strongly reachable from $u$.
     fn sreach_set(&self, u:&Vertex, r:u32) -> VertexMap<u32>;
 
     /// Compute all strongly $r$-reachable sets as a map.
-    /// 
+    ///
     /// For each vertex, the return value contains a map whose keys are the strongly $r$-reachable
     /// vertices and the values are the respective distances at which those vertices can be
     /// strongly reached.
     fn sreach_sets(&self, r:u32) -> VertexMap<VertexMap<u32>>;
 
-  /// Returns for each vertex the size of its $r$-weakly reachable set. 
-    /// This method uses less memory than [sreach_sets](LinearGraphAlgorithms::sreach_sets).   
+  /// Returns for each vertex the size of its $r$-weakly reachable set.
+    /// This method uses less memory than [sreach_sets](LinearGraphAlgorithms::sreach_sets).
     fn sreach_sizes(&self, r:u32) -> VertexMap<u32>;
 
-    /// Computes all weakly $r$-reachable sets as a map.. 
-    /// 
+    /// Computes all weakly $r$-reachable sets as a map..
+    ///
     /// A vertex $v$ is weakly $r$-rechable from $u$ if there exists a $u$-$v$-path in the graph
     /// of length at most $r$ whose leftmost vertex is $v$. In particular, $v$ must be left of
     /// $u$ in the ordering.
-    /// 
-    /// Returns a [VertexMap] for each vertex. For a vertex $u$ the corresponding [VertexMap] 
-    /// contains all vertices that are weakly $r$-reachable from $u$. For each member $v$ 
-    /// in this [VertexMap] the corresponding values represents the distance $d \\leq r$ at 
+    ///
+    /// Returns a [VertexMap] for each vertex. For a vertex $u$ the corresponding [VertexMap]
+    /// contains all vertices that are weakly $r$-reachable from $u$. For each member $v$
+    /// in this [VertexMap] the corresponding values represents the distance $d \\leq r$ at
     /// which $v$ is weakly reachable from $u$.
-    /// 
-    /// If the sizes of the weakly $r$-reachable sets are bounded by a constant the computation 
-    /// takes $O(|G|)$ time.    
+    ///
+    /// If the sizes of the weakly $r$-reachable sets are bounded by a constant the computation
+    /// takes $O(|G|)$ time.
     fn wreach_sets(&self, r:u32) -> VertexMap<VertexMap<u32>>;
 
-    /// Returns for each vertex the size of its $r$-weakly reachable set. 
-    /// This method uses less memory than [wreach_sets](LinearGraphAlgorithms::wreach_sets).    
+    /// Returns for each vertex the size of its $r$-weakly reachable set.
+    /// This method uses less memory than [wreach_sets](LinearGraphAlgorithms::wreach_sets).
     fn wreach_sizes(&self, r:u32) -> VertexMap<u32>;
 
-    /// Computes the total number of maximal cliques in the graph. 
-    /// 
-    /// This count includes vertices of degree zero and singles edges which 
+    /// Computes the total number of maximal cliques in the graph.
+    ///
+    /// This count includes vertices of degree zero and singles edges which
     /// cannot be extended into a triangle.
     fn count_max_cliques(&self) -> u64;
 
@@ -79,32 +78,32 @@ pub trait LinearGraphAlgorithms {
     /// to `true`, the algorithm also computes an r-scatterd subset of the dominating set,
     /// e.g. a set in which all vertices have pairwise distance at least 2r+1 (their r-neighbourhoods
     /// are pairswise disjoint).
-    /// 
+    ///
     /// Computing the witness is more expensive than computing the dominating set.
     /// The method returns the r-dominating set, a vertex map containting the minimum distance of
     /// every vertex to the r-dominating set, and optionally a vertex colouring of the r-dominating set
     /// with the property that every colour class is 2r-scattered.
-    /// 
+    ///
     /// To retrieve the largest r-scattered set from the colouring, use [graph::VertexColouring::majority_set]
     fn domset(&self, radius:u32, witness:bool) -> (VertexSet, VertexMap<u32>, Option<VertexColouring<u32>>);
 
-    // Computes an approximate r-domainting set for a specific subset of vertices `target`, similar to 
+    // Computes an approximate r-domainting set for a specific subset of vertices `target`, similar to
     // [domset](LinearGraphAlgorithms::domset). If `witness` is set to `true`, the algorithm also
-    // computes and r-scattered subset of the `target` set. 
+    // computes and r-scattered subset of the `target` set.
     //
     /// Computing the witness is more expensive than computing the dominating set.
     /// The method returns the r-dominating set, a vertex map containting the minimum distance of
     /// every vertex to the r-dominating set, and optionally a vertex colouring of the r-dominating set
     /// with the property that every colour class is 2r-scattered.
-    /// 
-    fn domset_with_target<V,I>(&self, radius:u32, witness:bool, target:I) -> (VertexSet, VertexMap<u32>, Option<VertexColouring<u32>>) 
-    where V: Borrow<Vertex>, I:IntoIterator<Item=V>;    
+    ///
+    fn domset_with_target<V,I>(&self, radius:u32, witness:bool, target:I) -> (VertexSet, VertexMap<u32>, Option<VertexColouring<u32>>)
+    where V: Borrow<Vertex>, I:IntoIterator<Item=V>;
 
 
     /// Computes a vertex colouring such that every pair of vertices with the same colour
     /// have distance at least `distance` to each other.
     fn scattered_colouring<V,I>(&self, distance:u32, target:I) -> Vec<VertexSet>
-    where V: Borrow<Vertex>, I:IntoIterator<Item=V>;    
+    where V: Borrow<Vertex>, I:IntoIterator<Item=V>;
 }
 
 impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
@@ -137,7 +136,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
     fn sreach_set(&self, u:&Vertex, r:u32) -> VertexMap<u32> {
         let bfs = self.right_bfs(u, r-1);
         let mut res = VertexMap::default();
-        
+
         let iu = self.index_of(u);
         for (d, layer) in bfs.iter().enumerate() {
             for v in layer {
@@ -145,7 +144,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                     let ix = self.index_of(&x);
                     if ix < iu {
                         // If x is alyread in `res` then it will be for a smaller
-                        // distance. Therefore we only insert the current distance if 
+                        // distance. Therefore we only insert the current distance if
                         // no entry exists yet.
                         res.entry(x).or_insert((d+1) as u32);
                     }
@@ -154,8 +153,8 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         }
 
         res
-    }    
-      
+    }
+
     fn wreach_sets(&self, r:u32) -> VertexMap<VertexMap<u32>> {
         let mut res = VertexMap::default();
         for u in self.vertices() {
@@ -165,12 +164,12 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
             for (d, layer) in self.right_bfs(u, r).iter().skip(1).enumerate() {
                 for v in layer {
                     assert!(*v != *u);
-                    res.get_mut(v).unwrap().insert(*u, (d+1) as u32); 
+                    res.get_mut(v).unwrap().insert(*u, (d+1) as u32);
                 }
             }
         }
         res
-    }    
+    }
 
     fn wreach_sizes(&self, r:u32) -> VertexMap<u32> {
         let mut res = VertexMap::default();
@@ -186,7 +185,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
             }
         }
         res
-    }      
+    }
 
     fn sreach_sets(&self, r:u32) -> VertexMap<VertexMap<u32>> {
         let mut res = VertexMap::default();
@@ -196,7 +195,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         }
         res
     }
-    
+
     fn sreach_sizes(&self, r:u32) -> VertexMap<u32> {
         let mut res = VertexMap::default();
         for u in self.vertices() {
@@ -204,10 +203,10 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
             res.insert(*u, sreach.len() as u32);
         }
         res
-    }       
+    }
 
     fn count_max_cliques(&self) -> u64 {
-        let mut results = FxHashSet::<BTreeSet<Vertex>>::default(); 
+        let mut results = FxHashSet::<BTreeSet<Vertex>>::default();
 
         for (v,neighbours) in self.left_neighbourhoods() {
             let mut include = VertexSet::default();
@@ -226,7 +225,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
             let Ncols:Vec<u32> = N.iter().map(|x| colours[x]).collect();
             if Ncols.len() == used_colours.len() {
                 let new_colour = used_colours.len() as u32;
-                used_colours.push(new_colour); 
+                used_colours.push(new_colour);
                 colours.insert(v, new_colour);
                 continue
             }
@@ -243,13 +242,13 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         colours
     }
 
-    // pub fn contract<V, I>(&mut self, mut vertices:I) -> Vertex 
+    // pub fn contract<V, I>(&mut self, mut vertices:I) -> Vertex
         // where V: Borrow<Vertex>,  I: Iterator<Item=V> {
     fn domset(&self, radius:u32, witness:bool) -> (VertexSet, VertexMap<u32>, Option<VertexColouring<u32>>) {
         self.domset_with_target(radius, witness, self.vertices())
     }
 
-    fn domset_with_target<V,I>(&self, radius:u32, witness:bool, target:I) -> (VertexSet, VertexMap<u32>, Option<VertexColouring<u32>>) 
+    fn domset_with_target<V,I>(&self, radius:u32, witness:bool, target:I) -> (VertexSet, VertexMap<u32>, Option<VertexColouring<u32>>)
     where V: Borrow<Vertex>, I:IntoIterator<Item=V> {
         let target:VertexSet = target.into_iter().map(|u| *u.borrow()).collect();
         if self.is_empty() || target.is_empty() {
@@ -283,7 +282,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                 dom_distance.insert(*v, undominated);
                 dom_counter.insert(*v, 0);
             } else {
-                // Mark as already dominated. We use a radius `radius` here so that 
+                // Mark as already dominated. We use a radius `radius` here so that
                 // no neighbour is marked as dominated because of this trick.
                 dom_distance.insert(*v, radius);
                 dom_counter.insert(*v, 0);
@@ -335,7 +334,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
 
         // Collect 'out-neighbours' so we can compute auxilliary graph
         let mut out_neigbhours:VertexMap<VertexMap<u32>> = VertexMap::default();
-        for x in &scattered { 
+        for x in &scattered {
             for (w,dist) in wreach.get(x).unwrap().iter() {
                 out_neigbhours.entry(*w).or_default().insert(*x, *dist);
             }
@@ -364,12 +363,12 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
         assert_eq!(H.num_vertices(), scattered.len());
 
         // Compute greedy colouring and return largest monochromatic
-        // subset. This set is guaranteed to be 
+        // subset. This set is guaranteed to be
         let OH = OrdGraph::by_degeneracy(&H);
         let colours = OH.colour_greedy();
 
-        (domset, dom_distance, Some(colours.into()))
-    }    
+        (domset, dom_distance, Some(colours))
+    }
 
     fn scattered_colouring<V,I>(&self, distance:u32, target:I) -> Vec<VertexSet>
     where V: Borrow<Vertex>, I:IntoIterator<Item=V> {
@@ -386,12 +385,12 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
 
         // Sort by _decreasing_ in-degree, tie-break by
         // total degree.
-        let cutoff = distance.pow(2);        
-        let n = self.num_vertices() as i64;        
+        let cutoff = distance.pow(2);
+        let n = self.num_vertices() as i64;
         let order:Vec<Vertex> = self.vertices()
                 .cloned()
                 .sorted_by_key(|u| -(self.left_degree(u) as i64)*n - (self.degree(u) as i64))
-                .collect();        
+                .collect();
 
         while !target.is_empty() {
             let mut domset = VertexSet::default();
@@ -404,7 +403,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                     dom_distance.insert(*v, undominated);
                     dom_counter.insert(*v, 0);
                 } else {
-                    // Mark as already dominated. We use a radius `radius` here so that 
+                    // Mark as already dominated. We use a radius `radius` here so that
                     // no neighbour is marked as dominated because of this trick.
                     dom_distance.insert(*v, radius);
                     dom_counter.insert(*v, 0);
@@ -448,7 +447,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
 
             // Collect 'out-neighbours' so we can compute auxilliary graph
             let mut out_neigbhours:VertexMap<VertexMap<u32>> = VertexMap::default();
-            for x in &scattered { 
+            for x in &scattered {
                 for (w,dist) in wreach.get(x).unwrap().iter() {
                     out_neigbhours.entry(*w).or_default().insert(*x, *dist);
                 }
@@ -479,7 +478,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
             assert_eq!(H.num_vertices(), scattered.len());
 
             // Compute greedy colouring and return largest monochromatic
-            // subset. This set is guaranteed to be 
+            // subset. This set is guaranteed to be
             let OH = OrdGraph::by_degeneracy(&H);
             let colours = OH.colour_greedy();
             colouring.disjoint_extend(&colours);
@@ -487,7 +486,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
             assert_eq!(colours.len(), scattered.len());
 
             // Remove coloured vertices from target
-            target.retain(|u| !colouring.contains(&u));
+            target.retain(|u| !colouring.contains(u));
         }
 
         // Attempt to improve colouring
@@ -517,7 +516,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                     let set2 = &mut classes_right[j];
                     if set2.is_empty() {
                         continue;
-                    }                    
+                    }
 
                     let dist = small_distance_sets(&wreach, distance, set1.iter(), set2.iter());
                     if let Some(dist) = dist {
@@ -526,7 +525,7 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
                             continue;
                         }
                     }
-                    
+
                     // Merge these two classes, mark as used up for this round
                     set1.extend(set2.drain());
                     improved = true;
@@ -535,16 +534,16 @@ impl<L> LinearGraphAlgorithms for L where L: LinearGraph {
 
                 // This colour cannot be merged with anything
                 if !improved_current_set {
-                    unimprovable.push(set1.drain().collect());
+                    unimprovable.push(std::mem::take(set1));
                 }
             }
         };
 
         classes.retain(|S| !S.is_empty());
-        unimprovable.extend(classes.into_iter());
+        unimprovable.extend(classes);
 
         unimprovable
-    }    
+    }
 }
 
 // TODO: These methods should probably go into its own dedicated 'WReach' struct
@@ -591,7 +590,7 @@ fn small_distance(wreach:&VertexMap<VertexMap<u32>>, distance:u32, x:&Vertex, y:
         if !Wy.contains_key(w) {
             continue
         }
-        dist = dist.min(Wx[&w] + Wy[&w]);
+        dist = dist.min(Wx[w] + Wy[w]);
     }
 
     if dist > distance {
@@ -603,12 +602,12 @@ fn small_distance(wreach:&VertexMap<VertexMap<u32>>, distance:u32, x:&Vertex, y:
 fn bk_pivot_count<L: LinearGraph>(graph:&L, v:&Vertex, vertices:&[Vertex], include:&mut VertexSet, mut maybe:VertexSet, mut exclude:VertexSet, results:&mut FxHashSet<BTreeSet<Vertex>>) {
     if maybe.is_empty() && exclude.is_empty() {
         // `include` is a maximal clique
-        
+
         // Add new maximal clique
         let clique:BTreeSet<Vertex> = include.iter().copied().collect();
         results.insert(clique);
 
-        if include.len() > 1 { 
+        if include.len() > 1 {
             // Remove prefix of clique. While we know that it must have been added to `results`
             // at some point, it could have been removed in the meantime.
             let mut clique:BTreeSet<Vertex> = include.iter().copied().collect();
@@ -633,7 +632,7 @@ fn bk_pivot_count<L: LinearGraph>(graph:&L, v:&Vertex, vertices:&[Vertex], inclu
     }
     let u = u.expect("If this fails there is a bug");
 
-    // Compute u's *left* neighbourhood inside of `vertices`. 
+    // Compute u's *left* neighbourhood inside of `vertices`.
     let left_neighbours:Vec<Vertex> = vertices[0..iu].iter()
             .filter_map(|v| if graph.adjacent(&u, v) {Some(*v)} else {None} ).collect();
 
@@ -644,13 +643,13 @@ fn bk_pivot_count<L: LinearGraph>(graph:&L, v:&Vertex, vertices:&[Vertex], inclu
         // if it is a neighbour of the pivot `u`.
         if !maybe.contains(w) || left_neighbours_set.contains(w) {
             continue
-        } 
+        }
 
         // Recursion
         include.insert(*w);
-        bk_pivot_count(graph, 
+        bk_pivot_count(graph,
                 v,
-                &left_neighbours, 
+                &left_neighbours,
                 include,
                 maybe.intersection(&left_neighbours_set).cloned().collect(),
                 exclude.intersection(&left_neighbours_set).cloned().collect(),
@@ -660,16 +659,16 @@ fn bk_pivot_count<L: LinearGraph>(graph:&L, v:&Vertex, vertices:&[Vertex], inclu
         maybe.remove(w);
         exclude.insert(*w);
     }
-}    
+}
 
 
-//  #######                            
-//     #    ######  ####  #####  ####  
-//     #    #      #        #   #      
-//     #    #####   ####    #    ####  
-//     #    #           #   #        # 
-//     #    #      #    #   #   #    # 
-//     #    ######  ####    #    ####  
+//  #######
+//     #    ######  ####  #####  ####
+//     #    #      #        #   #
+//     #    #####   ####    #    ####
+//     #    #           #   #        #
+//     #    #      #    #   #   #    #
+//     #    ######  ####    #    ####
 
 #[cfg(test)]
 mod test {
@@ -698,7 +697,7 @@ mod test {
         let colouring = D.colour_greedy();
         let colours:FxHashSet<u32> = colouring.colours().cloned().collect();
 
-        assert_eq!(colours.len(), 1 );        
+        assert_eq!(colours.len(), 1 );
     }
 
     #[test]
@@ -747,7 +746,7 @@ mod test {
         println!("Found {}-domset of size {} with scattered set of size {} in 10x10 grid", r, D.len(), S.len());
         println!("Target = {T:?}");
         println!("Domset = {D:?}");
-        println!("Scattered = {S:?}");        
+        println!("Scattered = {S:?}");
         let dominated = G.r_neighbourhood(D.iter(), r as usize);
         assert!(T.is_subset(&dominated));
 
@@ -772,8 +771,8 @@ mod test {
 
         let wreach = OG.wreach_sets(2*r);
 
-        let mut DTFG = crate::dtfgraph::DTFGraph::orient(&G);        
-        DTFG.augment(5 as usize, 1);        
+        let mut DTFG = crate::dtfgraph::DTFGraph::orient(&G);
+        DTFG.augment(5 as usize, 1);
 
         for pair in G.vertices().combinations(2) {
             let (u,v) = (pair[0], pair[1]);
@@ -837,7 +836,7 @@ mod test {
         for set in colours.iter() {
             for (x,y) in set.iter().tuple_combinations() {
                 assert!(x != y);
-                let dist = DTFG.small_distance(x,y); 
+                let dist = DTFG.small_distance(x,y);
                 if let Some(d) = dist  {
                     assert!(d >= distance);
                 }

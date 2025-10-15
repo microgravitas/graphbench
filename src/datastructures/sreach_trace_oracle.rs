@@ -37,10 +37,10 @@ impl SReachContext {
     }
 
     fn count_neighbours(&self, target:&[Vertex]) -> FxHashMap<Vec<Vertex>, usize> {
-        let mask = self.to_bitset(target);    
+        let mask = self.to_bitset(target);
 
         // We first count using the bit vectors and later convert the found bit vectors
-        // to vecs with vertices.     
+        // to vecs with vertices.
         let mut counts:FxHashMap<VertexBitVec, usize> = FxHashMap::default();
 
         for (bits, count) in self.right_neighbours.iter() {
@@ -53,7 +53,7 @@ impl SReachContext {
     /// Aggregates counts for all sets in this storage that intersect the `target` set in
     /// exactly the rightmost element in the context (e.g. the 'anchor' vertex for this struct)
     fn count_first_intersection(&self, target:&[Vertex]) -> usize {
-        let mask = self.to_bitset(target);    
+        let mask = self.to_bitset(target);
         let anchor_mask = self.singleton_bitset(&self.context[self.context.len()-1]);
 
         let mut res:usize = 0;
@@ -65,16 +65,16 @@ impl SReachContext {
             }
         }
         res
-    }    
+    }
 
     fn singleton_bitset(&self, u:&Vertex) -> VertexBitVec {
         let mut bitvec:VertexBitVec = BitVec::with_capacity(self.context.len());
         bitvec.resize(self.context.len(), false);
         if let Some(&ix) = self.indices.get(u) {
-            bitvec.set(ix as usize, true);
+            bitvec.set(ix, true);
         }
         bitvec
-    }    
+    }
 
     fn to_bitset(&self, set:&[Vertex]) -> VertexBitVec {
         let mut bitvec:VertexBitVec = BitVec::with_capacity(self.context.len());
@@ -90,7 +90,7 @@ impl SReachContext {
     fn to_vecset(&self, bits:&VertexBitVec) -> Vec<Vertex> {
         let mut res = vec![];
         for ix in bits.iter_ones() {
-            res.push(*&self.context[ix]);
+            res.push(self.context[ix]);
         }
         res
     }
@@ -105,7 +105,7 @@ impl SReachTraceOracle {
         let mut contexts:FxHashMap<_,_> = Default::default();
 
         for x in graph.vertices() {
-            let mut S:Vec<Vertex> = graph.sreach_set(x, 2).into_iter().map(|(x,_)| x).collect();
+            let mut S:Vec<Vertex> = graph.sreach_set(x, 2).into_keys().collect();
             S.push(*x);
             S.sort_by_key(|x| graph.index_of(x));
             S.dedup();
@@ -116,10 +116,10 @@ impl SReachTraceOracle {
         for x in graph.vertices() {
             let mut N = graph.left_neighbours_slice(x).iter().cloned().collect_vec();
             N.sort_by_key(|x| graph.index_of(x));
-            
+
             for i in 1..=N.len() { // All non-empty prefixes of N, including N itself
                 let Nprefix = &N[..i];
-                let anchor = *&N[i-1];
+                let anchor = N[i-1];
                 let ctx = contexts.get_mut(&anchor).unwrap();
                 ctx.insert(Nprefix);
             }
@@ -128,7 +128,7 @@ impl SReachTraceOracle {
         Self{contexts}
     }
 
-    pub fn compute_traces(&self, inner: &Vec<Vertex>, graph:&DegenGraph) -> FxHashMap<Vec<Vertex>, usize>  {
+    pub fn compute_traces(&self, inner: &[Vertex], graph:&DegenGraph) -> FxHashMap<Vec<Vertex>, usize>  {
         // DEBUG: print all sreach info
         // for v in graph.vertices() {
         //     let ctx = &self.contexts[v];
@@ -144,14 +144,14 @@ impl SReachTraceOracle {
 
         traces.insert(vec![], graph.num_vertices());
 
-        // Count neighbourhoods induced by vertices to the right using the 
+        // Count neighbourhoods induced by vertices to the right using the
         // sreach context sets
         for i in 1..=inner.len() { // All non-empty prefixes of `inner`, including `inner` itself
             let prefix = &inner[..i];
-            let anchor = *&inner[i-1];
+            let anchor = inner[i-1];
             let ctx = &self.contexts[&anchor];
-            
-            let counts = ctx.count_neighbours(&prefix);
+
+            let counts = ctx.count_neighbours(prefix);
             for (set, count) in counts.into_iter() {
                 if set.is_empty() {
                      continue // TODO: Is there a nicer way to filter this?
@@ -165,7 +165,7 @@ impl SReachTraceOracle {
                     Some(trace_count) => *trace_count += count,
                     None => { traces.insert(set.clone(), count); },
                 };
-                
+
 
                 // Correct count for prefix
                 let set_prefix = &set[..set.len()-1];
@@ -175,23 +175,23 @@ impl SReachTraceOracle {
             }
         }
 
-        // println!("Right traces {traces:?}");        
+        // println!("Right traces {traces:?}");
 
-        // Add neighbourhoods induced by vertices to the left 
+        // Add neighbourhoods induced by vertices to the left
         let mut left_neighbours: VertexSet = VertexSet::default();
         for u in inner.iter() {
-            left_neighbours.extend(graph.left_neighbours_slice(u).into_iter());
+            left_neighbours.extend(graph.left_neighbours_slice(u).iter());
             left_neighbours.insert(*u);
         }
 
         for y in left_neighbours.into_iter() {
             let mut trace = vec![];
-            
+
             // `trace` will inherit the ordering of `inner`
             let mut trace_prefix = vec![];
             for u in inner.iter() {
                 if graph.adjacent(u, &y) {
-                    trace.push(*u); 
+                    trace.push(*u);
                     if graph.adjacent_ordered(u, &y) {
                         trace_prefix.push(*u);
                     }
@@ -208,7 +208,7 @@ impl SReachTraceOracle {
 
             // Correct count for prefix. This key must exist in `traces`
             unsafe {
-                *traces.get_mut(&trace_prefix).unwrap_unchecked() -= 1;    
+                *traces.get_mut(&trace_prefix).unwrap_unchecked() -= 1;
             }
         }
         // println!("Final traces {traces:?}");
@@ -221,21 +221,21 @@ impl SReachTraceOracle {
 
         debug_assert!(inner.is_sorted_by_key(|x| graph.index_of(x)));
 
-        // Count neighbourhoods induced by vertices to the right using the 
+        // Count neighbourhoods induced by vertices to the right using the
         // sreach context sets
         for i in 1..=inner.len() { // All non-empty prefixes of `inner`, including `inner` itself
             let prefix = &inner[..i];
-            let anchor = *&inner[i-1];
+            let anchor = inner[i-1];
             let ctx = &self.contexts[&anchor];
-            
-            res += ctx.count_first_intersection(&prefix);
+
+            res += ctx.count_first_intersection(prefix);
         }
 
 
-        // Add neighbourhoods induced by vertices to the left 
+        // Add neighbourhoods induced by vertices to the left
         let mut left_neighbours: VertexSet = VertexSet::default();
         for u in inner.iter() {
-            left_neighbours.extend(graph.left_neighbours_slice(u).into_iter());
+            left_neighbours.extend(graph.left_neighbours_slice(u).iter());
             left_neighbours.insert(*u);
         }
 
@@ -244,7 +244,7 @@ impl SReachTraceOracle {
 
             for w in graph.left_neighbours_slice(&u) {
                 if inner.contains(w) {
-                    // The vertex u has been counted already in the first phase. If this 
+                    // The vertex u has been counted already in the first phase. If this
                     // vertex is in `inner`, we need to correct that.
                     if is_inner {
                         res -= 1;
@@ -253,7 +253,7 @@ impl SReachTraceOracle {
                 }
             }
 
-            if is_inner { 
+            if is_inner {
                 continue;
             }
 
@@ -261,7 +261,7 @@ impl SReachTraceOracle {
         }
 
         res
-    }    
+    }
 
     pub fn is_shattered<V,I>(&self, inner: I, k:u32, graph:&DegenGraph) -> bool where V: Borrow<u32>, I:IntoIterator<Item=V> {
         let mut inner = inner.into_iter().map(|u| *u.borrow()).collect_vec();
@@ -292,7 +292,7 @@ impl SReachTraceOracle {
 mod  tests {
     use crate::datastructures::SReachTraceOracle;
 
-    use super::*;    
+    use super::*;
     use crate::{editgraph::EditGraph, graph::MutableGraph, io::*};
     use rand::prelude::*;
     use std::collections::BTreeSet;
@@ -313,7 +313,7 @@ mod  tests {
 
         // [472, 1042, 1313, 1811]
         assert!(sreach_oracle.is_shattered([472, 1042, 1313, 1811], 4, &degen));
-        
+
         // [379, 772, 1248, 1614, 1635]
         assert!(sreach_oracle.is_shattered([379, 772, 1248, 1614, 1635], 5, &degen));
     }
@@ -374,7 +374,7 @@ mod  tests {
         println!("traces: {traces:?}");
         println!("traces: {traces_sreach:?}");
 
-        assert_eq!(traces_sreach, traces);        
+        assert_eq!(traces_sreach, traces);
     }
 
     #[test]
@@ -403,7 +403,7 @@ mod  tests {
             // assert_eq!(count, traces_sreach[X]);
         }
 
-        assert_eq!(traces_sreach, traces);        
+        assert_eq!(traces_sreach, traces);
     }
 
     fn helper_compute_traces(target:&Vec<Vertex>, degen: &DegenGraph) -> FxHashMap<Vec<Vertex>, usize> {
