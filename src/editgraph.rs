@@ -1,70 +1,70 @@
-//! 
+//!
 //! This is a versatile graph data structure that allows various modifications. It uses hash maps
-//! to store adjacency lists internally, therefore it is not very memory- or cash-efficient. 
-//! 
+//! to store adjacency lists internally, therefore it is not very memory- or cash-efficient.
+//!
 //! Graphs can either be loaded from file (see [`graphbench::io`](crate::io)) or constructed
 //! by manually adding vertices and edges. The struct offers a few constructors for named graphs:
-//! 
+//!
 //! ```rust
 //! use graphbench::graph::*;
 //! use graphbench::iterators::*;
 //! use graphbench::editgraph::EditGraph;
-//! 
+//!
 //! fn main() {
 //!     let graph = EditGraph::path(5);
 //!     let edges:EdgeSet = vec![(0,1),(1,2),(2,3),(3,4)].into_iter().collect();
 //!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
-//! 
+//!
 //!     let graph = EditGraph::cycle(5);
 //!     let edges:EdgeSet = vec![(0,1),(1,2),(2,3),(3,4),(0,4)].into_iter().collect();
 //!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
-//! 
+//!
 //!     let graph = EditGraph::matching(4);
 //!     let edges:EdgeSet = vec![(0,4),(1,5),(2,6),(3,7)].into_iter().collect();
 //!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
-//! 
+//!
 //!     let graph = EditGraph::clique(4);
 //!     let edges:EdgeSet = vec![(0,1),(0,2),(0,3),(1,2),(1,3),(2,3)].into_iter().collect();
 //!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
-//! 
+//!
 //!     let graph = EditGraph::biclique(2,3);
 //!     let edges:EdgeSet = vec![(0,2),(0,3),(0,4),(1,2),(1,3),(1,4)].into_iter().collect();
 //!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
-//! 
+//!
 //!     let graph = EditGraph::complete_kpartite(vec![1,2,2].iter());
 //!     let edges:EdgeSet = vec![(0,1),(0,2),(0,3),(0,4),(1,3),(1,4),(2,3),(2,4)].into_iter().collect();
 //!     assert_eq!(graph.edges().collect::<EdgeSet>(), edges);
 //! }
 //! ```
-//! 
+//!
 //! ## Editing operations
-//! 
+//!
 //! Vertices and edges can be added an removed from the graph in $O(1)$ time (see basic example on the [`graphbench`](crate) page).
 //! These operations can also be applied in bulk:
-//! 
+//!
 //! ```rust
 //! use graphbench::graph::*;
 //! use graphbench::editgraph::EditGraph;
-//! 
+//!
 //! fn main() {
 //!     let mut graph = EditGraph::new();
-//!     graph.add_vertices(vec![0,1,2,3].into_iter());   
+//!     graph.add_vertices(vec![0,1,2,3].into_iter());
 //!     graph.add_edges(vec![(0,1),(1,2),(2,3)].into_iter());
-//! 
+//!
 //!     println!("Graph has {} vertices and {} edges", graph.num_vertices(), graph.num_edges());
 //! }
-//! 
+//!
 //! ```
 //! The data structure further supports the *contraction* or *identification* of vertices. This operation
 //! takes a set of vertices $X$ and turns it into a single vertex whose neighbourhood are the neighbours
 //! of $X$. In graph-theoretic terms, the difference between a contraction and identification is that for
 //! a contraction we demand that $G\[X\]$ is connected. The methods offered here will *not* check connectivity.
-//! 
+//!
 //! ```rust
 //! use graphbench::graph::*;
 //! use graphbench::iterators::*;
 //! use graphbench::editgraph::EditGraph;
-//! 
+//!
 //! fn main() {
 //!     let mut graph = EditGraph::path(4);
 //!     graph.contract_pair(&1, &2);
@@ -72,7 +72,7 @@
 //!     assert!(!graph.contains(&2));
 //!     assert_eq!(graph.neighbours(&1).collect::<VertexSetRef>(),
 //!                 [0,3].iter().collect());
-//! 
+//!
 //!     // Identify vertices on left side of a matching
 //!     let mut graph = EditGraph::matching(3);
 //!     graph.contract_into(&0, vec![1,2].iter());
@@ -81,7 +81,7 @@
 //!     assert!(!graph.contains(&2));
 //!     assert_eq!(graph.neighbours(&0).collect::<VertexSetRef>(),
 //!                 [3,4,5].iter().collect());
-//! 
+//!
 //!     // The following is equivalent
 //!     let mut graph_other = EditGraph::matching(3);
 //!     graph_other.contract(vec![0,1,2].iter());
@@ -155,7 +155,7 @@ impl Graph for EditGraph {
     }
 
     fn degree(&self, u:&Vertex) -> u32 {
-        *self.degs.get(u).unwrap_or(&0) 
+        *self.degs.get(u).unwrap_or(&0)
     }
 
     /*
@@ -266,6 +266,14 @@ impl EditGraph {
     /// Generates a path on `n` vertices.
     pub fn path(n:u32) -> EditGraph {
         let mut res = EditGraph::with_capacity(n as usize);
+        if n == 0 {
+            return  res;
+        }
+        if n == 1 {
+            res.add_vertex(&0);
+            return res;
+        }
+
         for u in 0..(n-1) {
             let v = u+1;
             res.add_edge(&u,&v);
@@ -305,12 +313,13 @@ impl EditGraph {
     pub fn clique(n:u32) -> EditGraph {
         let mut res = EditGraph::with_capacity(n as usize);
         for u in 0..n {
+            res.add_vertex(&u);
             for v in (u+1)..n {
                 res.add_edge(&u,&v);
             }
         }
 
-        res        
+        res
     }
 
     /// Generates an empty graph (independent set) on `n` vertices.
@@ -320,7 +329,7 @@ impl EditGraph {
             res.add_vertex(&u);
         }
 
-        res        
+        res
     }
 
 
@@ -333,22 +342,22 @@ impl EditGraph {
             }
         }
 
-        res        
+        res
     }
 
-    /// Generates a complete k-partite graph. 
-    /// 
+    /// Generates a complete k-partite graph.
+    ///
     /// # Arguments
     /// - `sizes` - The sizes of each partite set as a sequence of integers.
     pub fn complete_kpartite<'a, I>(sizes:I) -> EditGraph where I: IntoIterator<Item=&'a u32> {
         let sizes:Vec<u32> = sizes.into_iter().cloned().collect();
 
-        if sizes.is_empty() { 
+        if sizes.is_empty() {
             return EditGraph::new();
         } else if sizes.len() == 1 {
             return EditGraph::clique(sizes[0]);
         }
-        
+
         let mut ranges:Vec<(u32,u32)> = Vec::new();
         let mut left = 0;
         for size in sizes {
@@ -365,7 +374,7 @@ impl EditGraph {
             let (leftA,rightA) = ranges[i];
             for j in (i+1)..ranges.len() {
                 let (leftB,rightB) = ranges[j];
-                for u in leftA..rightA { 
+                for u in leftA..rightA {
                     for v in leftB..rightB {
                         res.add_edge(&u, &v);
                     }
@@ -442,7 +451,7 @@ impl EditGraph {
     /// where $n$ is the number of vertices in the graph. The relative order of the indices
     /// is preserved, e.g. the smallest vertex from the original graph will be labelled $0$ and
     /// the largest one $n-1$.
-    /// 
+    ///
     /// Returns a tuple (`graph`, `map`) where `graph` is the relabelled graph and
     /// `map` stores the mapping from new vertices to old vertices.
     pub fn normalize(&self) -> (EditGraph, FxHashMap<Vertex, Vertex>) {
@@ -467,11 +476,11 @@ impl EditGraph {
 
     /// Contracts all `vertices` into the first vertex of the sequence. The contracted vertex has
     /// as its neighbours all vertices that were adjacent to at least one vertex in `vertices`.
-    /// 
+    ///
     /// This function panics if the sequence is empty.
-    /// 
+    ///
     /// Returns the contracted vertex.
-    pub fn contract<V, I>(&mut self, vertices:I) -> Vertex 
+    pub fn contract<V, I>(&mut self, vertices:I) -> Vertex
         where V: Borrow<Vertex>,  I: IntoIterator<Item=V> {
         // TODO: handle case when I is empty
         let mut it = vertices.into_iter();
@@ -482,7 +491,7 @@ impl EditGraph {
 
     /// Contracts the pair $\{u,v\}$ be identifying $v$ with $u$. The operation removes $v$
     /// from the graph and adds $v$'s neighbours to $u$.
-    /// 
+    ///
     /// Panics if either of the two vertices does not exist.
     pub fn contract_pair(&mut self, u:&Vertex, v:&Vertex)  {
         if !self.contains(u) || !self.contains(v) {
@@ -495,12 +504,12 @@ impl EditGraph {
             self.add_edge(u, &x);
         }
         self.remove_vertex(v);
-    }    
+    }
 
     /// Contracts all `vertices` into the `center` vertex. The contracted vertex has
     /// as its neighbours all vertices that were adjacent to at least one vertex in `vertices`.
-    pub fn contract_into<V, I>(&mut self, center:&Vertex, vertices:I) 
-        where V: Borrow<Vertex>,  I: IntoIterator<Item=V> { 
+    pub fn contract_into<V, I>(&mut self, center:&Vertex, vertices:I)
+        where V: Borrow<Vertex>,  I: IntoIterator<Item=V> {
         let mut contract:VertexSet = vertices.into_iter().map(|u| *u.borrow()).collect();
         contract.remove(center);
 
@@ -519,14 +528,14 @@ impl EditGraph {
 
 
 
-//  #######                            
-//     #    ######  ####  #####  ####  
-//     #    #      #        #   #      
-//     #    #####   ####    #    ####  
-//     #    #           #   #        # 
-//     #    #      #    #   #   #    # 
-//     #    ######  ####    #    ####  
-                                    
+//  #######
+//     #    ######  ####  #####  ####
+//     #    #      #        #   #
+//     #    #####   ####    #    ####
+//     #    #           #   #        #
+//     #    #      #    #   #   #    #
+//     #    ######  ####    #    ####
+
 
 #[cfg(test)]
 mod test {
@@ -536,8 +545,23 @@ mod test {
     use crate::algorithms::GraphAlgorithms;
 
     #[test]
+    fn edge_cases() {
+        assert_eq!(EditGraph::clique(0).num_vertices(), 0);
+        assert_eq!(EditGraph::clique(1).num_vertices(), 1);
+        assert_eq!(EditGraph::path(0).num_vertices(), 0);
+        assert_eq!(EditGraph::path(1).num_vertices(), 1);
+        assert_eq!(EditGraph::cycle(0).num_vertices(), 0);
+        assert_eq!(EditGraph::cycle(1).num_vertices(), 1);
+        assert_eq!(EditGraph::cycle(1).num_edges(), 1);
+        assert_eq!(EditGraph::cycle(2).num_vertices(), 2);
+        assert_eq!(EditGraph::cycle(2).num_edges(), 1);
+
+        assert_eq!(EditGraph::matching(1).num_edges(), 1);
+    }
+
+    #[test]
     fn components() {
-        let n:u32 = 10;        
+        let n:u32 = 10;
         let G = EditGraph::matching(n);
 
         assert_eq!(G.components().len(), G.edges().count());
@@ -545,7 +569,7 @@ mod test {
         assert_eq!(EditGraph::clique(5).components().len(), 1);
     }
 
-    #[test] 
+    #[test]
     fn disj_union() {
         // Basic test
         let mut G = EditGraph::matching(5);
@@ -558,7 +582,7 @@ mod test {
                    EditGraph::clique(2).disj_union(&EditGraph::new()) );
 
         assert_eq!(EditGraph::clique(2),
-                   EditGraph::new().disj_union(&EditGraph::clique(2)) );                   
+                   EditGraph::new().disj_union(&EditGraph::clique(2)) );
 
         // Ensure consistency between ::disj_union and ::disj_unions
         let H1 = EditGraph::clique(5);
@@ -760,31 +784,31 @@ mod test {
         let G = EditGraph::grid(s, t);
 
         assert_eq!(G.num_vertices() as u32, s*t);
-        assert_eq!(G.num_edges() as u32, 2*s*t - s - t);  
+        assert_eq!(G.num_edges() as u32, 2*s*t - s - t);
 
         let (s, t) = (1,6);
         let G = EditGraph::grid(s, t);
 
         assert_eq!(G.num_vertices() as u32, s*t);
-        assert_eq!(G.num_edges() as u32, 2*s*t - s - t); 
+        assert_eq!(G.num_edges() as u32, 2*s*t - s - t);
 
         let (s, t) = (6, 1);
         let G = EditGraph::grid(s, t);
 
         assert_eq!(G.num_vertices() as u32, s*t);
-        assert_eq!(G.num_edges() as u32, 2*s*t - s - t);      
+        assert_eq!(G.num_edges() as u32, 2*s*t - s - t);
 
         let G = EditGraph::grid(0, 999);
         assert!(G.is_empty());
 
         // 2*s*t - s - t
         // 2*2*2 - 2 - 2 = 8 - 4 = 4
-        // x -- x 
+        // x -- x
         // |    |
         // x -- x
-        // 2*2*3 - 2 -3 = 7 
-        // x -- x -- x 
+        // 2*2*3 - 2 -3 = 7
+        // x -- x -- x
         // |    |    |
-        // x -- x -- x 
+        // x -- x -- x
     }
 }
