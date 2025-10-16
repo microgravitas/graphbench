@@ -57,7 +57,7 @@ impl LoadFromFile for VertexSet {
             let u = parse_vertex(l.trim(), i)?;
             res.insert(u);
         }
-    
+
         Ok(res)
     }
 }
@@ -80,7 +80,7 @@ impl LoadFromFile for Vec<Vertex> {
             let u = parse_vertex(l.trim(), i)?;
             res.push(u);
         }
-    
+
         Ok(res)
     }
 }
@@ -91,18 +91,18 @@ impl WriteToFile for Vec<Vertex> {
             buf.write_all(format!("{u}\n").as_bytes())?;
         }
         buf.flush()?;
-        
+
         Ok(())
     }
 }
 
-impl<G:Graph> WriteToFile for G {  
+impl<G:Graph> WriteToFile for G {
     fn write_buf(&self, mut buf:Box<dyn Write>) -> io::Result<()> {
         for (u,v) in self.edges() {
             buf.write_all(format!("{u} {v}\n").as_bytes())?;
         }
         buf.flush()?;
-        
+
         Ok(())
     }
 }
@@ -135,7 +135,7 @@ impl EditGraph {
 impl LoadFromFile for EditGraph {
     /// Loads the graph from a text file which contains edges separated by line breaks.
     /// Edges must be pairs of integers separated by a space.
-    /// 
+    ///
     /// For example, assume the file `edges.txt` contains the following:
     /// ```text
     /// 0 1
@@ -143,13 +143,13 @@ impl LoadFromFile for EditGraph {
     /// 0 3
     /// ```
     /// We can then load the file as follows:
-    /// 
+    ///
     /// ```rust,no_run
     /// use graphbench::graph::*;
     /// use graphbench::io::*;
     /// use graphbench::editgraph::EditGraph;
     /// use graphbench::iterators::EdgeIterable;
-    /// 
+    ///
     /// let graph = EditGraph::from_txt("edges.txt").expect("Could not open edges.txt");
     /// println!("Vertices: {:?}", graph.vertices().collect::<Vec<&Vertex>>());
     /// println!("Edges: {:?}", graph.edges().collect::<Vec<Edge>>());
@@ -215,10 +215,10 @@ fn open_reader(filename:&str) -> io::Result<Box<dyn BufRead>> {
             Box::new(BufReader::new(gz))
         }
         _ => {
-            let error = std::io::Error::new(std::io::ErrorKind::InvalidInput, 
+            let error = std::io::Error::new(std::io::ErrorKind::InvalidInput,
                 format!("Invalid file `{filename:?}`. The supported formats are `.txt.gz` and `.txt`."));
             return Err(error);
-        }        
+        }
     };
     Ok(reader)
 }
@@ -245,13 +245,13 @@ fn parse_vertex(s: &str, lineno:usize) -> io::Result<Vertex> {
 }
 
 
-//  #######                            
-//     #    ######  ####  #####  ####  
-//     #    #      #        #   #      
-//     #    #####   ####    #    ####  
-//     #    #           #   #        # 
-//     #    #      #    #   #   #    # 
-//     #    ######  ####    #    ####  
+//  #######
+//     #    ######  ####  #####  ####
+//     #    #      #        #   #
+//     #    #####   ####    #    ####
+//     #    #           #   #        #
+//     #    #      #    #   #   #    #
+//     #    ######  ####    #    ####
 
 #[cfg(test)]
 mod test {
@@ -277,7 +277,7 @@ mod test {
         let G = EditGraph::biclique(3, 3);
         G.write_txt("resources/temp.txt");
         G.write_gzipped("resources/temp.txt.gz");
-        
+
         let H1 = EditGraph::from_txt("resources/temp.txt").unwrap();
         let H2 = EditGraph::from_gzipped("resources/temp.txt.gz").unwrap();
 
@@ -295,7 +295,7 @@ mod test {
 
         S.write_txt("resources/set.txt");
         S.write_gzipped("resources/set.txt.gz");
-        
+
         let S1 = VertexSet::from_txt("resources/set.txt").unwrap();
         let S2 = VertexSet::from_gzipped("resources/set.txt.gz").unwrap();
 
@@ -306,7 +306,7 @@ mod test {
         let S2 = VertexSet::from_file("resources/set.txt.gz").unwrap();
 
         assert_eq!(S1, S);
-        assert_eq!(S2, S);        
+        assert_eq!(S2, S);
     }
 
     #[test]
@@ -320,7 +320,7 @@ mod test {
 
         S.write_txt("resources/vec.txt");
         S.write_gzipped("resources/vec.txt.gz");
-        
+
         let S1 = Vec::<Vertex>::from_txt("resources/vec.txt").unwrap();
         let S2 = Vec::<Vertex>::from_gzipped("resources/vec.txt.gz").unwrap();
 
@@ -328,9 +328,9 @@ mod test {
         assert_eq!(S2, S);
 
         let S1 = Vec::<Vertex>::from_file("resources/vec.txt").unwrap();
-        let S2 = Vec::<Vertex>::from_file("resources/vec.txt.gz").unwrap();        
+        let S2 = Vec::<Vertex>::from_file("resources/vec.txt.gz").unwrap();
 
         assert_eq!(S1, S);
-        assert_eq!(S2, S);        
-    }    
+        assert_eq!(S2, S);
+    }
 }

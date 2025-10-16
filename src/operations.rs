@@ -82,19 +82,30 @@ impl<G> GraphOperations<G> for G where G: Graph {
             }
         }
 
+        /*
+              a ---- b
+
+            1,a     1,b
+             |       |
+            2,a  X  2,b
+             |       |
+            3,a     3,b
+
+         */
         for ((u,v), x) in map.iter() {
-            // (u,v) ~ (w,*), w in N(u)  or
-            // (u,v) ~ (u,w), w in N(v)
+            // This loop takes care of the edges inside each copy of `self`
             for w in self.neighbours(u) {
-                // (u,v) -- (w,v)
                 let y = map.get(&(*w,*v)).unwrap();
                 res.add_edge(x, y);
             }
 
-            for w in other.neighbours(u) {
-                // (u,v) -- (u,w)
-                let y = map.get(&(*u,*w)).unwrap();
-                res.add_edge(x, y);
+            // This loop connects vertices between copies for each edge that
+            // exists in the second graph
+            for w in other.neighbours(v) {
+                for uu in self.vertices() {
+                    let y = map.get(&(*uu,*w)).unwrap();
+                    res.add_edge(x, y);
+                }
             }
         }
 
@@ -216,5 +227,15 @@ mod test {
 
         assert_eq!(R.num_vertices(), 4);
         assert_eq!(R.num_edges(), 4);
+    }
+
+    #[test]
+    fn lexicographic_product() {
+        let G = EditGraph::path(2); // 0 -- 1
+        let H = EditGraph::path(2); // 0 -- 1
+        let (R,_) = G.lexicographic_product(&H); // Isomorphic to K4
+
+        assert_eq!(R.num_vertices(), 4);
+        assert_eq!(R.num_edges(), 6);
     }
 }
