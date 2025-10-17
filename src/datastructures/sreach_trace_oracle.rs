@@ -7,7 +7,11 @@ use bitvec::prelude::*;
 use fxhash::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 
+#[cfg(target_pointer_width = "64")]
 type VertexBitVec = BitVec<u64,Lsb0>;
+
+#[cfg(target_pointer_width = "32")]
+type VertexBitVec = BitVec<u32,Lsb0>;
 
 #[derive(Debug)]
 struct SReachContext {
