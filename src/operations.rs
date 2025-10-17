@@ -233,7 +233,10 @@ mod test {
     fn lexicographic_product() {
         let G = EditGraph::path(2); // 0 -- 1
         let H = EditGraph::path(2); // 0 -- 1
-        let (R,_) = G.lexicographic_product(&H); // Isomorphic to K4
+        let (mut R,_) = G.lexicographic_product(&H); // Isomorphic to K4
+
+        println!(">> {R:?}");
+        assert_eq!(R.remove_loops(), 0);
 
         assert_eq!(R.num_vertices(), 4);
         assert_eq!(R.num_edges(), 6);
